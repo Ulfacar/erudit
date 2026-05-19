@@ -1,0 +1,532 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ AUTH & ROLES ============
+
+model User {
+  id        String   @id @default(cuid())
+  login     String   @unique
+  email     String?  @unique
+  password  String
+  role      Role
+  starLevel Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher Teacher?
+  student Student?
+  parent  Parent?
+}
+
+enum Role {
+  super_admin
+  analyst
+  zavuch
+  secretary
+  teacher
+  curator
+  specialist
+  student
+  parent
+}
+
+// ============ SCHOOL STRUCTURE ============
+
+model SchoolLevel {
+  id        String  @id @default(cuid())
+  name      String
+  fromGrade Int
+  toGrade   Int
+  classes   Class[]
+}
+
+model Class {
+  id      String      @id @default(cuid())
+  grade   Int
+  letter  String
+  levelId String
+  level   SchoolLevel @relation(fields: [levelId], references: [id])
+
+  curatorId String?
+  curator   Teacher? @relation("CuratorOf", fields: [curatorId], references: [id])
+
+  students        Student[]
+  groups          ClassGroup[]
+  scheduleEntries ScheduleEntry[]
+  homework        Homework[]
+  news            News[]
+}
+
+model ClassGroup {
+  id        String    @id @default(cuid())
+  name      String
+  classId   String
+  class     Class     @relation(fields: [classId], references: [id])
+  students  Student[] @relation("StudentGroups")
+  transfersFrom GroupTransfer[] @relation("TransferFromGroup")
+  transfersTo   GroupTransfer[] @relation("TransferToGroup")
+}
+
+model GroupTransfer {
+  id           String              @id @default(cuid())
+  studentId    String
+  classId      String
+  fromGroupId  String
+  toGroupId    String
+  requestedBy  String              // teacher.id who initiated
+  approvedBy   String?             // teacher.id who approved (if status='approved')
+  status       GroupTransferStatus @default(pending)
+  rejectReason String?             @db.VarChar(500)
+  createdAt    DateTime            @default(now())
+  decidedAt    DateTime?
+
+  fromGroup ClassGroup @relation("TransferFromGroup", fields: [fromGroupId], references: [id])
+  toGroup   ClassGroup @relation("TransferToGroup",   fields: [toGroupId],   references: [id])
+
+  @@index([classId, status, createdAt])
+  @@index([studentId])
+}
+
+enum GroupTransferStatus {
+  pending
+  approved
+  rejected
+}
+
+// ============ PEOPLE ============
+
+model Teacher {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id])
+  firstName  String
+  lastName   String
+  middleName String?
+  position   String?
+  photo      String?
+  hireDate   DateTime?
+
+  subjects        TeacherSubject[]
+  curatorOf       Class[]           @relation("CuratorOf")
+  scheduleEntries ScheduleEntry[]
+  substitutions   Substitution[]
+  descriptors     TeacherDescriptor[]
+  grades          Grade[]
+  homework        Homework[]
+}
+
+/// Дескриптор педагога (по ТЗ): пометки о качестве работы, выговорах, штрафах,
+/// повышениях, частых болезнях и т.п. с привязкой к учебному году.
+/// Уровень доступа:
+///   1 — общий: видим мы (super_admin), завучи и сам педагог
+///   2 — только завучи и super_admin
+///   3 — только super_admin
+model TeacherDescriptor {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  year        Int      // учебный год начала (например 2025 = 2025-2026)
+  text        String   @db.VarChar(2000)
+  accessLevel Int      @default(1) // 1 / 2 / 3
+  authorId    String   // user.id создателя
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([teacherId, year])
+  @@index([accessLevel])
+}
+
+model Student {
+  id          String        @id @default(cuid())
+  userId      String?       @unique
+  user        User?         @relation(fields: [userId], references: [id])
+  firstName   String
+  lastName    String
+  middleName  String?
+  dateOfBirth DateTime?
+  photo       String?
+  status      StudentStatus @default(permanent)
+  classId     String
+  class       Class         @relation(fields: [classId], references: [id])
+  enrolledAt  DateTime      @default(now())
+
+  groups      ClassGroup[]    @relation("StudentGroups")
+  grades      Grade[]
+  attendance  Attendance[]
+  parentLinks ParentStudent[]
+  incidents   BehaviorIncident[]
+
+  medicalData   Json?
+  familyData    Json?
+  financialData Json?
+}
+
+enum StudentStatus {
+  permanent
+  conditional
+  repeating
+}
+
+model Parent {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+  firstName String
+  lastName  String
+  phone     String?
+
+  children ParentStudent[]
+}
+
+model ParentStudent {
+  parentId  String
+  studentId String
+  parent    Parent  @relation(fields: [parentId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id])
+  relation  String
+
+  @@id([parentId, studentId])
+}
+
+// ============ SUBJECTS & WORKLOAD ============
+
+model Subject {
+  id    String  @id @default(cuid())
+  name  String
+  color String?
+
+  teachers        TeacherSubject[]
+  grades          Grade[]
+  scheduleEntries ScheduleEntry[]
+  homework        Homework[]
+}
+
+model TeacherSubject {
+  id           String  @id @default(cuid())
+  teacherId    String
+  subjectId    String
+  classId      String
+  hoursPerWeek Int     @default(0)
+  teacher      Teacher @relation(fields: [teacherId], references: [id])
+  subject      Subject @relation(fields: [subjectId], references: [id])
+
+  @@unique([teacherId, subjectId, classId])
+}
+
+/// Запись о передаче нагрузки от одного учителя к другому (декрет, болезнь, увольнение).
+/// По ТЗ: новый учитель видит все учебные даты, темы и оценки за период до transferredAt
+/// в режиме read-only. Записи накапливаются при каждой передаче, чтобы цепочка была видна.
+model TeacherLoadTransfer {
+  id              String   @id @default(cuid())
+  fromTeacherId   String
+  toTeacherId     String
+  subjectId       String
+  classId         String
+  reason          String?  @db.VarChar(500) // декрет, длительная болезнь, увольнение и т.п.
+  transferredAt   DateTime @default(now())
+  transferredBy   String   // user.id (завуч/super_admin)
+
+  @@index([toTeacherId, classId, subjectId])
+  @@index([fromTeacherId, classId, subjectId])
+}
+
+// ============ SCHEDULE ============
+
+model BellSchedule {
+  id         String   @id @default(cuid())
+  slotNumber Int
+  startTime  String
+  endTime    String
+  type       SlotType
+
+  entries ScheduleEntry[]
+}
+
+enum SlotType {
+  lesson
+  break_time
+  breakfast
+  lunch
+  snack
+  dismissal
+}
+
+model ScheduleEntry {
+  id          String   @id @default(cuid())
+  classId     String
+  teacherId   String
+  subjectId   String
+  slotId      String
+  dayOfWeek   Int
+  periodStart DateTime
+  periodEnd   DateTime
+
+  class   Class        @relation(fields: [classId], references: [id])
+  teacher Teacher      @relation(fields: [teacherId], references: [id])
+  subject Subject      @relation(fields: [subjectId], references: [id])
+  slot    BellSchedule @relation(fields: [slotId], references: [id])
+
+  @@index([classId, dayOfWeek, periodStart, periodEnd])
+  @@index([teacherId, dayOfWeek, periodStart, periodEnd])
+}
+
+model Substitution {
+  id                  String   @id @default(cuid())
+  date                DateTime
+  originalTeacherId   String
+  substituteTeacherId String
+  classId             String
+  subjectId           String
+  slotId              String
+  reason              String?
+  createdAt           DateTime @default(now())
+
+  substitute Teacher @relation(fields: [substituteTeacherId], references: [id])
+}
+
+// ============ GRADING ============
+
+model GradeCategory {
+  id                  String  @id @default(cuid())
+  name                String
+  weight              Int
+  order               Int
+  // По ТЗ: на модерацию идут только Контрольные / Зачёт / Триместровая / Итоговая / Экзамен
+  requiresModeration  Boolean @default(false)
+  // По ТЗ: тип "проверочная работа" — настраиваемый чекбокс (для отчёта № 4)
+  isAssessment        Boolean @default(false)
+  // По ТЗ: учителя могут создавать собственные категории только при разрешении админа
+  enabledForTeachers  Boolean @default(false)
+
+  grades Grade[]
+}
+
+model Grade {
+  id         String      @id @default(cuid())
+  studentId  String
+  subjectId  String
+  categoryId String
+  teacherId  String
+  periodId   String
+  value      Int
+  scale      GradeScale  @default(FIVE)
+  comment    String?     @db.VarChar(500)
+  date       DateTime
+  status     GradeStatus @default(draft)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  student  Student        @relation(fields: [studentId], references: [id])
+  subject  Subject        @relation(fields: [subjectId], references: [id])
+  category GradeCategory  @relation(fields: [categoryId], references: [id])
+  teacher  Teacher        @relation(fields: [teacherId], references: [id])
+  period   AcademicPeriod @relation(fields: [periodId], references: [id])
+  auditLog GradeAuditLog[]
+
+  @@index([studentId, subjectId, periodId])
+  @@index([status])
+}
+
+enum GradeStatus {
+  draft
+  submitted
+  moderated
+  published
+}
+
+enum GradeScale {
+  FIVE
+  TWELVE
+  HUNDRED
+  LETTER
+}
+
+model GradeAuditLog {
+  id        String   @id @default(cuid())
+  gradeId   String
+  userId    String
+  oldValue  Int?
+  newValue  Int?
+  action    String
+  createdAt DateTime @default(now())
+
+  grade Grade @relation(fields: [gradeId], references: [id])
+}
+
+// ============ ATTENDANCE ============
+
+model Attendance {
+  id        String           @id @default(cuid())
+  studentId String
+  date      DateTime
+  status    AttendanceStatus
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, date])
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  excused
+  trip
+  quarantine
+}
+
+// ============ ACADEMIC PERIODS ============
+
+model AcademicPeriod {
+  id        String     @id @default(cuid())
+  name      String
+  type      PeriodType
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean    @default(false)
+
+  grades Grade[]
+}
+
+enum PeriodType {
+  trimester
+  holiday
+  quarantine
+}
+
+// ============ HOMEWORK ============
+
+model Homework {
+  id          String   @id @default(cuid())
+  classId     String
+  subjectId   String
+  teacherId   String
+  description String
+  dueDate     DateTime
+  createdAt   DateTime @default(now())
+
+  class   Class   @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+}
+
+// ============ BEHAVIOR ============
+
+model BehaviorIncident {
+  id             String         @id @default(cuid())
+  studentId      String
+  reporterId     String
+  type           String
+  description    String
+  status         IncidentStatus @default(pending)
+  moderatedBy    String?
+  moderatedAt    DateTime?
+  parentNotified Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([studentId, createdAt])
+}
+
+enum IncidentStatus {
+  pending
+  moderated
+  resolved
+}
+
+// ============ NEWS ============
+
+model News {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  type        NewsType
+  authorId    String
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id])
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum NewsType {
+  school
+  staff
+  class_note
+}
+
+// ============ URGENT ISSUES ============
+
+model UrgentIssue {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  priority    IssuePriority
+  status      IssueStatus   @default(open)
+  authorId    String
+  visibleTo   String[]      // role names: ['zavuch', 'curator', 'super_admin']
+  classId     String?
+  studentId   String?
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum IssuePriority {
+  high
+  medium
+  low
+}
+
+enum IssueStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+// ============ INCIDENTS ============
+
+model Incident {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  type        IncidentType
+  severity    IssuePriority
+  status      IssueStatus   @default(open)
+  authorId    String
+  classId     String?
+  studentId   String?
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum IncidentType {
+  behavior
+  health
+  equipment
+  safety
+  other
+}
+
+// ============ CHAT ============
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  senderId  String
+  roomId    String
+  content   String
+  fileUrl   String?
+  createdAt DateTime @default(now())
+}

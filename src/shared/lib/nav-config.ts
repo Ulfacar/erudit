@@ -1,0 +1,129 @@
+import type { Role } from '@prisma/client'
+
+/**
+ * Source of truth for sidebar / top-tabs visibility AND for per-route gating.
+ * If a user's role is not in `roles`, the link is hidden and the page should
+ * be wrapped in <RoleGate roles={...}> for hard enforcement.
+ */
+export interface NavRoute {
+  /** Stable id, also used as URL path under the dashboard. */
+  href: string
+  label: string
+  /** Allowed roles. Empty array = visible to everyone authenticated. */
+  roles: Role[]
+  children?: NavRoute[]
+}
+
+const ALL_AUTH: Role[] = [
+  'super_admin',
+  'analyst',
+  'zavuch',
+  'secretary',
+  'teacher',
+  'curator',
+  'specialist',
+  'student',
+  'parent',
+]
+
+const ADMIN_TIER: Role[] = ['super_admin', 'analyst']
+const ADMIN_AND_VICE: Role[] = ['super_admin', 'analyst', 'zavuch']
+const STAFF_TIER: Role[] = ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator']
+const STAFF_AND_SECRETARY: Role[] = [...STAFF_TIER, 'secretary']
+const STAFF_PLUS_SPECIALIST: Role[] = [...STAFF_TIER, 'specialist']
+
+export const SIDEBAR_NAV: NavRoute[] = [
+  { href: '/dashboard', label: 'Главная', roles: STAFF_PLUS_SPECIALIST.concat('secretary') },
+  { href: '/calendar', label: 'Календарь', roles: ALL_AUTH },
+  { href: '/classes', label: 'Классы', roles: STAFF_AND_SECRETARY },
+  { href: '/academic-periods', label: 'Учебные периоды', roles: ADMIN_AND_VICE },
+  { href: '/substitutions', label: 'Замены', roles: STAFF_TIER },
+  { href: '/curriculum-plan', label: 'КТП', roles: STAFF_TIER },
+  { href: '/study-plan', label: 'Учебный план', roles: ADMIN_AND_VICE },
+  {
+    href: '/schedule',
+    label: 'Расписание и нагрузка',
+    roles: ALL_AUTH,
+    children: [
+      { href: '/schedule/bells', label: 'Расписание звонков', roles: ALL_AUTH },
+      { href: '/schedule/teacher', label: 'Расписание учителя', roles: STAFF_TIER },
+    ],
+  },
+  {
+    href: '/grading',
+    label: 'Оценивание',
+    roles: STAFF_TIER,
+    children: [
+      { href: '/grading/categories', label: 'Категории оценок', roles: ADMIN_AND_VICE },
+      { href: '/grading/moderation', label: 'Модерация', roles: ADMIN_AND_VICE },
+    ],
+  },
+  { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH },
+  { href: '/students', label: 'Ученики', roles: STAFF_PLUS_SPECIALIST.concat('secretary') },
+  {
+    href: '/teachers',
+    label: 'Педагоги',
+    roles: ['super_admin', 'analyst', 'zavuch', 'secretary'],
+    children: [
+      { href: '/teachers/workload', label: 'Нагрузка', roles: ADMIN_AND_VICE },
+    ],
+  },
+  { href: '/roles', label: 'Роли', roles: ['super_admin'] },
+  { href: '/chats', label: 'Чаты', roles: ALL_AUTH },
+  {
+    href: '/reports',
+    label: 'Отчёты',
+    roles: STAFF_TIER,
+    children: [
+      { href: '/reports/grades', label: 'Успеваемость', roles: STAFF_TIER },
+      { href: '/reports/attendance', label: 'Посещаемость', roles: STAFF_TIER },
+    ],
+  },
+  { href: '/achievements', label: 'Достижения', roles: ALL_AUTH },
+  { href: '/olympiads', label: 'Олимпиады и проекты', roles: ALL_AUTH },
+  { href: '/portfolio', label: 'Портфолио', roles: ALL_AUTH },
+  { href: '/events', label: 'Мероприятия школы', roles: ALL_AUTH },
+  { href: '/studios', label: 'Студии', roles: ALL_AUTH },
+  { href: '/trips', label: 'Выезды', roles: ALL_AUTH },
+  { href: '/staff', label: 'Персонал', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
+  { href: '/documents', label: 'Документы', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
+  { href: '/news', label: 'Новости', roles: ALL_AUTH },
+  { href: '/urgent-issues', label: 'Срочные вопросы', roles: STAFF_PLUS_SPECIALIST },
+  { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist') },
+  { href: '/library', label: 'Библиотека', roles: ALL_AUTH },
+  { href: '/analytics', label: 'Аналитика', roles: ADMIN_AND_VICE },
+]
+
+export interface TopTab {
+  value: string
+  label: string
+  href: string
+  roles: Role[]
+}
+
+export const TOP_TABS: TopTab[] = [
+  { value: 'schedule', label: 'Текущее расписание', href: '/schedule', roles: ALL_AUTH },
+  { value: 'classes', label: 'Классы по группам', href: '/classes', roles: STAFF_AND_SECRETARY },
+  { value: 'teachers', label: 'Педагоги', href: '/teachers', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
+  { value: 'logoped', label: 'Логопед', href: '/workspace/speech', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
+  { value: 'psychologist', label: 'Психолог', href: '/workspace/psychologist', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
+  { value: 'medical', label: 'Мед', href: '/workspace/medical', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
+  { value: 'parents', label: 'Родители', href: '/workspace/parents', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'curator'] },
+  { value: 'accounting', label: 'Бухгалтерия', href: '/workspace/accounting', roles: ADMIN_TIER },
+  { value: 'maintenance', label: 'АХЧ', href: '/workspace/maintenance', roles: ADMIN_AND_VICE },
+  { value: 'kitchen', label: 'Кухня', href: '/workspace/kitchen', roles: ADMIN_TIER },
+]
+
+export function filterNavByRole<T extends { roles: Role[]; children?: T[] }>(
+  items: T[],
+  role: Role | null,
+): T[] {
+  if (!role) return []
+  return items
+    .filter((item) => item.roles.includes(role))
+    .map((item) =>
+      item.children
+        ? ({ ...item, children: filterNavByRole(item.children, role) } as T)
+        : item,
+    )
+}
