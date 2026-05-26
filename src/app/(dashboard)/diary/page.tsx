@@ -413,27 +413,35 @@ function DiaryContent() {
                     {entries.map((e, idx) => (
                       <Group
                         key={e.id}
-                        gap="sm"
+                        gap={0}
                         wrap="nowrap"
-                        py={6}
-                        px="xs"
+                        py={0}
                         style={{
                           borderRadius: 8,
                           background: idx % 2 === 0 ? 'var(--mantine-color-gray-0)' : 'transparent',
+                          overflow: 'hidden',
                         }}
                       >
+                        <div style={{
+                          width: 4,
+                          alignSelf: 'stretch',
+                          background: e.subject.color || '#228be6',
+                          borderRadius: '4px 0 0 4px',
+                          flexShrink: 0,
+                        }} />
                         <Badge
-                          variant="filled"
-                          color="gray"
+                          variant="light"
+                          color={e.subject.color || 'blue'}
                           size="lg"
                           radius="sm"
                           w={36}
+                          ml="xs"
                           style={{ flexShrink: 0 }}
                         >
                           {e.slot.slotNumber}
                         </Badge>
-                        <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                          <Text size="sm" fw={600} truncate>
+                        <Stack gap={0} style={{ flex: 1, minWidth: 0, padding: '6px 8px' }}>
+                          <Text size="sm" fw={600} truncate c={e.subject.color || undefined}>
                             {e.subject.name}
                           </Text>
                           <Text size="xs" c="dimmed" truncate>

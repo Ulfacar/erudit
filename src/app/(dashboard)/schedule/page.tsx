@@ -724,11 +724,12 @@ function ScheduleContent() {
                             style={{
                               borderBottom: cellBorder(slot.type),
                               borderRight: dayIdx < 4 ? `1px solid ${SURFACE_BORDER}` : undefined,
-                              padding: '6px 10px',
+                              padding: 0,
                               background: cellBg(slot.type),
                               cursor: canEdit ? 'pointer' : 'default',
                               verticalAlign: 'middle',
                               transition: 'background 0.15s',
+                              position: 'relative',
                             }}
                             onMouseEnter={canEdit ? (e) => {
                               e.currentTarget.style.background = 'rgba(34, 139, 230, 0.15)';
@@ -737,12 +738,26 @@ function ScheduleContent() {
                               e.currentTarget.style.background = cellBg(slot.type);
                             } : undefined}
                           >
-                            <Text size="xs" fw={600} c="var(--mantine-color-text)" lineClamp={1}>
-                              {entry.subject.name}
-                            </Text>
-                            <Text size="xs" c={TEXT_SEC} lineClamp={1}>
-                              {entry.teacher.lastName} {entry.teacher.firstName?.charAt(0)}.
-                            </Text>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'stretch',
+                              minHeight: 38,
+                            }}>
+                              <div style={{
+                                width: 4,
+                                flexShrink: 0,
+                                borderRadius: '2px 0 0 2px',
+                                background: entry.subject.color || '#228be6',
+                              }} />
+                              <div style={{ padding: '4px 8px', flex: 1, minWidth: 0 }}>
+                                <Text size="xs" fw={600} c={entry.subject.color || 'var(--mantine-color-text)'} lineClamp={1}>
+                                  {entry.subject.name}
+                                </Text>
+                                <Text size="xs" c={TEXT_SEC} lineClamp={1}>
+                                  {entry.teacher.lastName} {entry.teacher.firstName?.charAt(0)}.
+                                </Text>
+                              </div>
+                            </div>
                           </Table.Td>
                         );
                       }
