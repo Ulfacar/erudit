@@ -6,12 +6,33 @@ import { withAuth } from '@/shared/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await withAuth(request);
+    if (auth.response) return auth.response;
+    const role = auth.session.user.role;
+    const userId = auth.session.user.id;
+
     const { searchParams } = request.nextUrl;
-    const classId = searchParams.get('classId');
+    let classId = searchParams.get('classId');
     const teacherId = searchParams.get('teacherId');
     const periodStart = searchParams.get('periodStart');
     const periodEnd = searchParams.get('periodEnd');
     const dayOfWeek = searchParams.get('dayOfWeek');
+
+    // Student/parent: принудительно ограничиваем classId своим/детским классом
+    if (role === 'student') {
+      const self = await prisma.student.findFirst({ where: { userId }, select: { classId: true } });
+      if (!self) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      classId = self.classId;
+    } else if (role === 'parent') {
+      const parent = await prisma.parent.findFirst({
+        where: { userId },
+        select: { children: { select: { student: { select: { classId: true } } } } },
+      });
+      const childClassIds = (parent?.children.map((c) => c.student.classId).filter(Boolean) ?? []) as string[];
+      if (!classId || !childClassIds.includes(classId)) {
+        classId = childClassIds[0] ?? null;
+      }
+    }
 
     if (!classId && !teacherId) {
       return errorResponse('VALIDATION_ERROR', 'Необходимо указать classId или teacherId');
