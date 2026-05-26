@@ -71,6 +71,15 @@ export const SIDEBAR_NAV: NavRoute[] = [
       { href: '/teachers/workload', label: 'Нагрузка', roles: ADMIN_AND_VICE },
     ],
   },
+  {
+    href: '/reports',
+    label: 'Отчёты',
+    roles: STAFF_TIER,
+    children: [
+      { href: '/reports/grades', label: 'Успеваемость', roles: STAFF_TIER },
+      { href: '/reports/attendance', label: 'Посещаемость', roles: STAFF_TIER },
+    ],
+  },
   { href: '/chats', label: 'Чаты', roles: ALL_AUTH },
   { href: '/news', label: 'Новости', roles: ALL_AUTH },
   { href: '/urgent-issues', label: 'Срочные вопросы', roles: STAFF_PLUS_SPECIALIST },
@@ -86,10 +95,6 @@ export const SIDEBAR_NAV: NavRoute[] = [
 //   { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH },
 //   { href: '/curriculum-plan', label: 'КТП', roles: STAFF_TIER },
 //   { href: '/roles', label: 'Роли', roles: ['super_admin'] },
-//   { href: '/reports', label: 'Отчёты', roles: STAFF_TIER, children: [
-//     { href: '/reports/grades', label: 'Успеваемость', roles: STAFF_TIER },
-//     { href: '/reports/attendance', label: 'Посещаемость', roles: STAFF_TIER },
-//   ]},
 //   { href: '/achievements', label: 'Достижения', roles: ALL_AUTH },
 //   { href: '/olympiads', label: 'Олимпиады и проекты', roles: ALL_AUTH },
 //   { href: '/portfolio', label: 'Портфолио', roles: ALL_AUTH },
