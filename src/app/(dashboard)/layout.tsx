@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useDisclosure } from '@mantine/hooks';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
@@ -8,6 +9,7 @@ import { AuthGuard } from '@/shared/components/auth/AuthGuard';
 import {
   ActionIcon,
   AppShell,
+  Burger,
   Avatar,
   Badge,
   Box,
@@ -153,6 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { role, login } = useRole();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure();
 
   // Student/parent → redirect to diary instead of dashboard
   useEffect(() => {
@@ -179,14 +182,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard>
       <AppShell
-        header={{ height: 90 }}
-        navbar={{ width: 220, breakpoint: 'sm' }}
+        header={{ height: { base: 50, sm: 90 } }}
+        navbar={{ width: 220, breakpoint: 'sm', collapsed: { mobile: !mobileOpened } }}
         padding="md"
       >
         <AppShell.Header>
           <Group h={50} px="md" justify="space-between">
             <Group gap="md">
-              <Box w={180}>
+              <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
+              <Box w={180} visibleFrom="sm">
                 <EruditeLogo size="md" />
               </Box>
               <Group gap={8}>
@@ -236,7 +240,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Group>
           </Group>
 
-          <Group h={40} px="md" gap="md">
+          <Group h={40} px="md" gap="md" visibleFrom="sm">
             <Box w={180}>
               <ActionIcon variant="filled" color="blue" size="sm">
                 <IconGridDots size={14} />
@@ -286,6 +290,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       label={item.label}
                       active={pathname === item.href}
                       fz={12}
+                      onClick={closeMobile}
                     />
                     {item.children!.map((child) => (
                       <NavLink
@@ -295,6 +300,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         label={child.label}
                         active={pathname === child.href}
                         fz={12}
+                        onClick={closeMobile}
                       />
                     ))}
                   </NavLink>
@@ -309,6 +315,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   label={item.label}
                   leftSection={ItemIcon ? <ItemIcon size={16} stroke={1.5} /> : undefined}
                   active={isActive}
+                  onClick={closeMobile}
                 />
               );
             })}
