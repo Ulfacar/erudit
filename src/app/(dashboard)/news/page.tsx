@@ -243,7 +243,9 @@ export default function NewsPage() {
         <Tabs.List>
           <Tabs.Tab value="all">Все</Tabs.Tab>
           <Tabs.Tab value="school">Школьные</Tabs.Tab>
-          <Tabs.Tab value="staff">Для сотрудников</Tabs.Tab>
+          {userRole && !['student', 'parent'].includes(userRole) && (
+            <Tabs.Tab value="staff">Для сотрудников</Tabs.Tab>
+          )}
           <Tabs.Tab value="class_note">Для класса</Tabs.Tab>
         </Tabs.List>
       </Tabs>

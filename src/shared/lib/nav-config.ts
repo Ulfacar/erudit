@@ -47,9 +47,9 @@ export const SIDEBAR_NAV: NavRoute[] = [
   {
     href: '/schedule',
     label: 'Расписание и нагрузка',
-    roles: ALL_AUTH,
+    roles: STAFF_AND_SECRETARY,
     children: [
-      { href: '/schedule/bells', label: 'Расписание звонков', roles: ALL_AUTH },
+      { href: '/schedule/bells', label: 'Расписание звонков', roles: STAFF_AND_SECRETARY },
       { href: '/schedule/teacher', label: 'Расписание учителя', roles: STAFF_TIER },
     ],
   },
