@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await withAuth(request);
     if (auth.response) return auth.response;
+    const role = auth.session.user.role;
+    const userId = auth.session.user.id;
 
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get('classId');
@@ -19,6 +21,26 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (classId) where.classId = classId;
     if (subjectId) where.subjectId = subjectId;
+
+    // Student видит только ДЗ своего класса; parent — только классов своих детей.
+    // where.classId перезаписывается — подмена classId из query params невозможна.
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
+    if (!STAFF.includes(role)) {
+      if (role === 'student') {
+        const self = await prisma.student.findFirst({ where: { userId }, select: { classId: true } });
+        if (!self) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+        where.classId = self.classId;
+      } else if (role === 'parent') {
+        const parent = await prisma.parent.findFirst({
+          where: { userId },
+          select: { children: { select: { student: { select: { classId: true } } } } },
+        });
+        const classIds = (parent?.children.map((c) => c.student.classId).filter(Boolean) ?? []) as string[];
+        where.classId = { in: classIds };
+      } else {
+        return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      }
+    }
 
     const homework = await prisma.homework.findMany({
       where,

@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await withAuth(request);
     if (auth.response) return auth.response;
+    const role = auth.session.user.role;
+    const userId = auth.session.user.id;
 
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get('type');
@@ -14,6 +16,21 @@ export async function GET(request: NextRequest) {
     const severity = searchParams.get('severity');
 
     const where: Record<string, unknown> = {};
+
+    // Staff + specialist видят всё; parent — только инциденты своих детей; student — ничего.
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
+    if (!STAFF.includes(role)) {
+      if (role === 'parent') {
+        const parent = await prisma.parent.findFirst({
+          where: { userId },
+          select: { children: { select: { studentId: true } } },
+        });
+        const childIds = parent?.children.map((c) => c.studentId) ?? [];
+        where.studentId = { in: childIds };
+      } else {
+        return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      }
+    }
 
     if (type) {
       where.type = type;

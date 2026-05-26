@@ -3,8 +3,11 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await withAuth(request);
+    if (auth.response) return auth.response;
+
     const classes = await prisma.class.findMany({
       include: {
         level: true,
