@@ -29,12 +29,12 @@ export default function RootLayout({
   return (
     <html lang="ru" className={inter.variable} suppressHydrationWarning>
       <head>
-        <ColorSchemeScript defaultColorScheme="dark" />
+        <ColorSchemeScript defaultColorScheme="light" />
       </head>
       <body>
         <SessionProvider>
           <QueryProvider>
-            <MantineProvider theme={eruditTheme} defaultColorScheme="dark">
+            <MantineProvider theme={eruditTheme} defaultColorScheme="light">
               <Notifications position="top-right" />
               {children}
             </MantineProvider>

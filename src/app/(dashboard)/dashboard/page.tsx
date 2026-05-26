@@ -95,31 +95,28 @@ const EMPTY_STATS: DashboardStats = {
   parallelsDiff: 0,
 };
 
-const URGENT_DATA = [
-  { topic: 'Протечка в кабинете 305', from: 'Завхоз Иванов', time: 'ПОЗАВЧЕРА', urgent: true, role: 'Персонал' },
-  { topic: 'Жалоба от родителей 7А', from: 'Кл. рук. Петрова', time: 'ВЧЕРА', urgent: true, role: 'Родитель' },
-  { topic: 'Замена педагога на 15.04', from: 'Зам. директора', time: 'СЕГОДНЯ', urgent: false, role: 'Педагог' },
-  { topic: 'Обновление учебных материалов', from: 'Методист Сидорова', time: '3 ДНЯ НАЗАД', urgent: false, role: 'Педагог' },
-  { topic: 'Ремонт спортзала', from: 'Директор', time: 'ВЧЕРА', urgent: true, role: 'Персонал' },
-];
+/* Severity → color mapping for incidents */
+const SEVERITY_COLOR: Record<string, string> = {
+  high: 'red',
+  medium: 'yellow',
+  low: 'green',
+};
 
-const INCIDENTS_DATA = [
-  {
-    title: 'Конфликт между учениками',
-    description: 'В 8С классе произошел конфликт между учениками на перемене. Требуется вмешательство психолога.',
-    color: 'red',
-  },
-  {
-    title: 'Неисправность оборудования',
-    description: 'В компьютерном классе вышли из строя 3 компьютера. Необходим ремонт.',
-    color: 'yellow',
-  },
-  {
-    title: 'Плановая проверка',
-    description: 'Успешно пройдена плановая проверка пожарной безопасности.',
-    color: 'green',
-  },
-];
+/* Priority → badge color for urgent issues */
+const PRIORITY_BADGE: Record<string, { color: string; label: string }> = {
+  high: { color: 'red', label: 'Высокий' },
+  medium: { color: 'yellow', label: 'Средний' },
+  low: { color: 'gray', label: 'Низкий' },
+};
+
+function timeAgo(dateStr: string): { text: string; urgent: boolean } {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 864e5);
+  if (days === 0) return { text: 'СЕГОДНЯ', urgent: true };
+  if (days === 1) return { text: 'ВЧЕРА', urgent: true };
+  if (days === 2) return { text: 'ПОЗАВЧЕРА', urgent: false };
+  return { text: `${days} ДН. НАЗАД`, urgent: false };
+}
 
 /* ── Animation variants ── */
 const fadeUp = {
@@ -394,9 +391,29 @@ export default function DashboardPage() {
     },
   });
 
+  const { data: urgentData } = useQuery<{ success: boolean; data: Array<{ id: string; title: string; description: string; priority: string; status: string; createdAt: string; visibleTo: string[] }> }>({
+    queryKey: ['urgent-issues-dashboard'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/urgent-issues?status=open');
+      if (!res.ok) throw new Error('Failed to fetch urgent issues');
+      return res.json();
+    },
+  });
+
+  const { data: incidentsData } = useQuery<{ success: boolean; data: Array<{ id: string; title: string; description: string; type: string; severity: string; status: string; createdAt: string }> }>({
+    queryKey: ['incidents-dashboard'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/incidents?status=open');
+      if (!res.ok) throw new Error('Failed to fetch incidents');
+      return res.json();
+    },
+  });
+
   const stats = data?.data?.stats ?? EMPTY_STATS;
   const lowPerformance = data?.data?.lowPerformance ?? [];
   const medicalIssues = data?.data?.medicalIssues ?? [];
+  const urgentIssues = urgentData?.data ?? [];
+  const incidentsList = incidentsData?.data ?? [];
   const classByAverage = analyticsData?.data?.classByAverage ?? [];
   const weeklyAttendance = analyticsData?.data?.weeklyAttendance ?? 0;
 
@@ -554,25 +571,35 @@ export default function DashboardPage() {
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Тема</Table.Th>
-                  <Table.Th>Роль</Table.Th>
-                  <Table.Th>Заявка от</Table.Th>
+                  <Table.Th>Приоритет</Table.Th>
+                  <Table.Th>Когда</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <motion.tbody variants={staggerContainer} initial="initial" animate="animate">
-                {URGENT_DATA.map((row) => (
-                  <motion.tr key={`${row.topic}-${row.from}`} variants={staggerRow}>
-                    <Table.Td>
-                      <Text size="sm">{row.topic}</Text>
-                      <Text size="xs" c="dimmed">{row.from}</Text>
+                {urgentIssues.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={3}>
+                      <Text ta="center" c="dimmed" size="sm" py="md">Нет открытых вопросов</Text>
                     </Table.Td>
-                    <Table.Td>
-                      <RoleBadge role={row.role} />
-                    </Table.Td>
-                    <Table.Td>
-                      <TimeBadge time={row.time} urgent={row.urgent} />
-                    </Table.Td>
-                  </motion.tr>
-                ))}
+                  </Table.Tr>
+                ) : urgentIssues.slice(0, 5).map((issue) => {
+                  const ta = timeAgo(issue.createdAt);
+                  const pb = PRIORITY_BADGE[issue.priority] ?? PRIORITY_BADGE.low;
+                  return (
+                    <motion.tr key={issue.id} variants={staggerRow}>
+                      <Table.Td>
+                        <Text size="sm">{issue.title}</Text>
+                        <Text size="xs" c="dimmed" lineClamp={1}>{issue.description}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge size="sm" color={pb.color} variant="light">{pb.label}</Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <TimeBadge time={ta.text} urgent={ta.urgent} />
+                      </Table.Td>
+                    </motion.tr>
+                  );
+                })}
               </motion.tbody>
             </Table>
           </Paper>
@@ -588,9 +615,11 @@ export default function DashboardPage() {
             href="/incidents"
           />
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-            {INCIDENTS_DATA.map((item, i) => (
+            {incidentsList.length === 0 ? (
+              <Text ta="center" c="dimmed" size="sm" py="md">Нет открытых происшествий</Text>
+            ) : incidentsList.slice(0, 3).map((item, i) => (
               <motion.div
-                key={item.title ?? `incident-${i}`}
+                key={item.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: 0.7 + i * 0.1 }}
@@ -600,7 +629,7 @@ export default function DashboardPage() {
                   p="sm"
                   style={{
                     borderLeftWidth: 4,
-                    borderLeftColor: `var(--mantine-color-${item.color}-6)`,
+                    borderLeftColor: `var(--mantine-color-${SEVERITY_COLOR[item.severity] ?? 'gray'}-6)`,
                   }}
                 >
                   <Text size="sm" fw={600} mb={6}>
