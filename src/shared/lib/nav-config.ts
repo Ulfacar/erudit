@@ -80,10 +80,12 @@ export const SIDEBAR_NAV: NavRoute[] = [
       { href: '/reports/attendance', label: 'Посещаемость', roles: STAFF_TIER },
     ],
   },
+  { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH },
   { href: '/chats', label: 'Чаты', roles: ALL_AUTH },
   { href: '/news', label: 'Новости', roles: ALL_AUTH },
   { href: '/urgent-issues', label: 'Срочные вопросы', roles: STAFF_PLUS_SPECIALIST },
   { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist') },
+  { href: '/analytics', label: 'Аналитика', roles: ADMIN_AND_VICE },
 ]
 
 /**
@@ -92,7 +94,6 @@ export const SIDEBAR_NAV: NavRoute[] = [
  */
 // export const SIDEBAR_NAV_FUTURE: NavRoute[] = [
 //   { href: '/calendar', label: 'Календарь', roles: ALL_AUTH },
-//   { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH },
 //   { href: '/curriculum-plan', label: 'КТП', roles: STAFF_TIER },
 //   { href: '/roles', label: 'Роли', roles: ['super_admin'] },
 //   { href: '/achievements', label: 'Достижения', roles: ALL_AUTH },
@@ -104,7 +105,6 @@ export const SIDEBAR_NAV: NavRoute[] = [
 //   { href: '/staff', label: 'Персонал', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
 //   { href: '/documents', label: 'Документы', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
 //   { href: '/library', label: 'Библиотека', roles: ALL_AUTH },
-//   { href: '/analytics', label: 'Аналитика', roles: ADMIN_AND_VICE },
 // ]
 
 export interface TopTab {
