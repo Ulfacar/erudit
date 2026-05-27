@@ -214,7 +214,7 @@ function PanelCard({
 }) {
   return (
     <Paper shadow="xs" radius="md" withBorder style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-      <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee'' }}>
+      <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee' }}>
         <Group justify="space-between">
           <Text size="sm" fw={600}>
             {title}
@@ -1085,7 +1085,7 @@ function SubstitutionsContent() {
           {/* Substitutions table */}
           {showSubsTable && (
             <Paper shadow="xs" radius="md" withBorder>
-              <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee'' }}>
+              <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee' }}>
                 <Group justify="space-between">
                   <Text size="sm" fw={600}>
                     {showAllDates ? 'Все замены' : `Активные замены на ${formatDateRu(selectedDate)}`}
@@ -1176,7 +1176,7 @@ function SubstitutionsContent() {
           {/* Weekly schedule grid with substitution overlays */}
           {showScheduleGrid && bellSlots.length > 0 && (
             <Paper shadow="xs" radius="md" withBorder>
-              <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee'' }}>
+              <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee' }}>
                 <Group justify="space-between" align="center">
                   <Text size="sm" fw={600}>
                     Расписание на неделю
@@ -1284,7 +1284,7 @@ function SubstitutionsContent() {
                                 background: isTodayCol
                                   ? 'rgba(34, 139, 230, 0.06)'
                                   : dayEntries.length === 0
-                                  ? ''#ffffff''
+                                  ? '#ffffff'
                                   : undefined,
                               }}
                             >
@@ -1582,8 +1582,8 @@ function SubstitutionsContent() {
                       justifyContent: 'space-between',
                       padding: '8px 12px',
                       borderRadius: 6,
-                      border: `1px solid ${selectedSubstitute === t.id ? 'var(--mantine-color-pink-6)' : ''#e6e9ee''}`,
-                      background: selectedSubstitute === t.id ? 'var(--mantine-color-pink-light)' : ''#f8f9fb'',
+                      border: `1px solid ${selectedSubstitute === t.id ? 'var(--mantine-color-pink-6)' : '#e6e9ee'}`,
+                      background: selectedSubstitute === t.id ? 'var(--mantine-color-pink-light)' : '#f8f9fb',
                       cursor: 'pointer',
                       transition: 'all 0.15s',
                     }}

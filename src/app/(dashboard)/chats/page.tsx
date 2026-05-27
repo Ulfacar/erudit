@@ -23,14 +23,14 @@ import {
 } from '@tabler/icons-react';
 
 /* -- Theme-aware colors -- */
-const SURFACE = ''#ffffff'';
-const SURFACE_BORDER = ''#e6e9ee'';
+const SURFACE = '#ffffff';
+const SURFACE_BORDER = '#e6e9ee';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
 const TEXT_PRIMARY = 'var(--mantine-color-text)';
 const MSG_OWN_BG = '#228be6';
-const MSG_OTHER_BG = ''#fbfcfd'';
-const INPUT_BG = ''#fbfcfd'';
-const HEADER_BG = ''#fbfcfd'';
+const MSG_OTHER_BG = '#fbfcfd';
+const INPUT_BG = '#fbfcfd';
+const HEADER_BG = '#fbfcfd';
 
 /* -- Types -- */
 interface ChatRoom {
@@ -373,7 +373,7 @@ export default function ChatsPage() {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          background: ''#f8f9fb'',
+          background: '#f8f9fb',
         }}
       >
         {activeRoom ? (
@@ -553,7 +553,7 @@ function ConversationItem({
         cursor: 'pointer',
       }}
       onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = ''#fbfcfd'';
+        if (!isActive) e.currentTarget.style.background = '#fbfcfd';
       }}
       onMouseLeave={(e) => {
         if (!isActive) e.currentTarget.style.background = 'transparent';

@@ -17,8 +17,8 @@ import {
 import { IconClock, IconUser } from '@tabler/icons-react';
 
 /* ── Dark theme tokens ── */
-const SURFACE = ''#ffffff'';
-const SURFACE_BORDER = ''#e6e9ee'';
+const SURFACE = '#ffffff';
+const SURFACE_BORDER = '#e6e9ee';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
 
 /* ── Types ── */

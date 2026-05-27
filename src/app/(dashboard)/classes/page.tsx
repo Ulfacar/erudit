@@ -23,8 +23,8 @@ import { notifications } from '@mantine/notifications';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 /* ── Dark theme tokens ── */
-const SURFACE = ''#ffffff'';
-const SURFACE_BORDER = ''#e6e9ee'';
+const SURFACE = '#ffffff';
+const SURFACE_BORDER = '#e6e9ee';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
 
 /* ── Types ── */

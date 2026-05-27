@@ -40,8 +40,8 @@ import {
 } from '@tabler/icons-react';
 
 /* ── Colors ── */
-const SURFACE = ''#ffffff'';
-const SURFACE_BORDER = ''#e6e9ee'';
+const SURFACE = '#ffffff';
+const SURFACE_BORDER = '#e6e9ee';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
 const TEXT_DIM = '#5c5f66';
 
@@ -255,7 +255,7 @@ function Card({ children, ...style }: { children: React.ReactNode } & React.CSSP
   return (
     <Box
       style={{
-        background: ''#fbfcfd'',
+        background: '#fbfcfd',
         borderRadius: 6,
         border: `1px solid ${SURFACE_BORDER}`,
         padding: 16,
@@ -611,7 +611,7 @@ export default function StudentProfilePage() {
                   <Box
                     key={subject.subjectId}
                     style={{
-                      background: ''#fbfcfd'',
+                      background: '#fbfcfd',
                       borderRadius: 6,
                       border: `1px solid ${SURFACE_BORDER}`,
                       overflow: 'hidden',
@@ -732,7 +732,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, mother: { ...f.mother, fullName: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={6}>
@@ -742,7 +742,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, mother: { ...f.mother, phone: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={6}>
@@ -752,7 +752,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, mother: { ...f.mother, education: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={6}>
@@ -762,7 +762,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, mother: { ...f.mother, profession: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                 </Grid>
@@ -779,7 +779,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, father: { ...f.father, fullName: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={6}>
@@ -789,7 +789,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, father: { ...f.father, phone: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={6}>
@@ -799,7 +799,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, father: { ...f.father, education: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={6}>
@@ -809,7 +809,7 @@ export default function StudentProfilePage() {
                       onChange={(e) => setFamilyForm((f) => ({
                         ...f, father: { ...f.father, profession: e.currentTarget.value },
                       }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                 </Grid>
@@ -844,7 +844,7 @@ export default function StudentProfilePage() {
                           setFamilyForm((f) => ({ ...f, siblings }));
                         }}
                         style={{ flex: 1 }}
-                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                       />
                       <TextInput
                         label="Возраст"
@@ -855,7 +855,7 @@ export default function StudentProfilePage() {
                           setFamilyForm((f) => ({ ...f, siblings }));
                         }}
                         w={80}
-                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                       />
                       <TextInput
                         label="Школа"
@@ -866,7 +866,7 @@ export default function StudentProfilePage() {
                           setFamilyForm((f) => ({ ...f, siblings }));
                         }}
                         style={{ flex: 1 }}
-                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                       />
                       <ActionIcon
                         variant="subtle"
@@ -915,7 +915,7 @@ export default function StudentProfilePage() {
                           setFamilyForm((f) => ({ ...f, authorizedPickup: list }));
                         }}
                         style={{ flex: 1 }}
-                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                       />
                       <TextInput
                         label="Кем приходится"
@@ -926,7 +926,7 @@ export default function StudentProfilePage() {
                           setFamilyForm((f) => ({ ...f, authorizedPickup: list }));
                         }}
                         w={160}
-                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                       />
                       <TextInput
                         label="Телефон"
@@ -937,7 +937,7 @@ export default function StudentProfilePage() {
                           setFamilyForm((f) => ({ ...f, authorizedPickup: list }));
                         }}
                         w={160}
-                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                        styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                       />
                       <ActionIcon
                         variant="subtle"
@@ -965,21 +965,21 @@ export default function StudentProfilePage() {
                     value={familyForm.interests}
                     onChange={(e) => setFamilyForm((f) => ({ ...f, interests: e.currentTarget.value }))}
                     minRows={2}
-                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                   />
                   <Textarea
                     label="Сильные стороны"
                     value={familyForm.strengths}
                     onChange={(e) => setFamilyForm((f) => ({ ...f, strengths: e.currentTarget.value }))}
                     minRows={2}
-                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                   />
                   <Textarea
                     label="Слабые стороны"
                     value={familyForm.weaknesses}
                     onChange={(e) => setFamilyForm((f) => ({ ...f, weaknesses: e.currentTarget.value }))}
                     minRows={2}
-                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                   />
                 </Stack>
               </Card>
@@ -1007,7 +1007,7 @@ export default function StudentProfilePage() {
                     value={medicalForm.drugAllergies}
                     onChange={(e) => setMedicalForm((f) => ({ ...f, drugAllergies: e.currentTarget.value }))}
                     minRows={2}
-                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                   />
                 </Stack>
               </Card>
@@ -1041,7 +1041,7 @@ export default function StudentProfilePage() {
                     value={medicalForm.chronicDiseases}
                     onChange={(e) => setMedicalForm((f) => ({ ...f, chronicDiseases: e.currentTarget.value }))}
                     minRows={2}
-                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                   />
                 </Stack>
               </Card>
@@ -1055,7 +1055,7 @@ export default function StudentProfilePage() {
                       data={HEALTH_OPTIONS}
                       value={medicalForm.vision}
                       onChange={(v) => setMedicalForm((f) => ({ ...f, vision: v || 'норма' }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={4}>
@@ -1064,7 +1064,7 @@ export default function StudentProfilePage() {
                       data={HEALTH_OPTIONS}
                       value={medicalForm.hearing}
                       onChange={(v) => setMedicalForm((f) => ({ ...f, hearing: v || 'норма' }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={4}>
@@ -1073,7 +1073,7 @@ export default function StudentProfilePage() {
                       data={HEALTH_OPTIONS}
                       value={medicalForm.gastrointestinal}
                       onChange={(v) => setMedicalForm((f) => ({ ...f, gastrointestinal: v || 'норма' }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={4}>
@@ -1082,7 +1082,7 @@ export default function StudentProfilePage() {
                       data={HEALTH_OPTIONS}
                       value={medicalForm.cardiovascular}
                       onChange={(v) => setMedicalForm((f) => ({ ...f, cardiovascular: v || 'норма' }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                   <Grid.Col span={4}>
@@ -1091,7 +1091,7 @@ export default function StudentProfilePage() {
                       data={HEALTH_OPTIONS}
                       value={medicalForm.cns}
                       onChange={(v) => setMedicalForm((f) => ({ ...f, cns: v || 'норма' }))}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   </Grid.Col>
                 </Grid>
@@ -1112,7 +1112,7 @@ export default function StudentProfilePage() {
                       value={medicalForm.speechTherapistAge}
                       onChange={(e) => setMedicalForm((f) => ({ ...f, speechTherapistAge: e.currentTarget.value }))}
                       w={160}
-                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                      styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                     />
                   )}
                 </Group>
@@ -1125,14 +1125,14 @@ export default function StudentProfilePage() {
                     value={medicalForm.sleepFeatures}
                     onChange={(e) => setMedicalForm((f) => ({ ...f, sleepFeatures: e.currentTarget.value }))}
                     minRows={2}
-                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                   />
                   <Textarea
                     label="Особенности поведения"
                     value={medicalForm.behaviorFeatures}
                     onChange={(e) => setMedicalForm((f) => ({ ...f, behaviorFeatures: e.currentTarget.value }))}
                     minRows={2}
-                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#ffffff'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                    styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                   />
                 </Stack>
               </Card>
@@ -1172,7 +1172,7 @@ export default function StudentProfilePage() {
                       <Box
                         key={inc.id}
                         style={{
-                          background: ''#fbfcfd'',
+                          background: '#fbfcfd',
                           borderRadius: 6,
                           border: `1px solid ${SURFACE_BORDER}`,
                           borderLeft: `4px solid ${sCfg.color}`,
@@ -1251,14 +1251,14 @@ export default function StudentProfilePage() {
                   data={INCIDENT_TYPES}
                   value={newIncidentType}
                   onChange={setNewIncidentType}
-                  styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#fbfcfd'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                  styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#fbfcfd', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                 />
                 <Textarea
                   label="Описание"
                   value={newIncidentDesc}
                   onChange={(e) => setNewIncidentDesc(e.currentTarget.value)}
                   minRows={3}
-                  styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: ''#fbfcfd'', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                  styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#fbfcfd', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
                 />
                 <Group justify="flex-end">
                   <Button variant="subtle" onClick={closeIncidentModal}>Отмена</Button>
@@ -1507,7 +1507,7 @@ function AnalyticsTab({
             <Grid.Col key={cat.key} span={{ base: 12, sm: 6, md: 4 }}>
               <Box
                 style={{
-                  background: ''#fbfcfd'',
+                  background: '#fbfcfd',
                   borderRadius: 6,
                   border: `1px solid ${SURFACE_BORDER}`,
                   cursor: 'pointer',
@@ -1554,7 +1554,7 @@ function StatBox({ label, value, color }: { label: string; value: number; color:
   return (
     <Box
       style={{
-        background: ''#fbfcfd'',
+        background: '#fbfcfd',
         borderRadius: 6,
         padding: '12px 20px',
         textAlign: 'center',

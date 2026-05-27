@@ -17,10 +17,10 @@ import {
 import { IconArrowLeft, IconEdit, IconSettings } from '@tabler/icons-react';
 
 /* ── Theme-aware colors ── */
-const SURFACE = ''#ffffff'';
-const SURFACE_BORDER = ''#e6e9ee'';
+const SURFACE = '#ffffff';
+const SURFACE_BORDER = '#e6e9ee';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
-const CELL_BG = ''#fbfcfd'';
+const CELL_BG = '#fbfcfd';
 
 /* ── Weight color map ── */
 function weightColor(w: number): string {
@@ -183,7 +183,7 @@ export default function GradeCategoriesPage() {
                     key={cat.id}
                     style={{ transition: 'background 0.15s' }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = ''#fbfcfd'';
+                      e.currentTarget.style.backgroundColor = '#fbfcfd';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
@@ -245,9 +245,9 @@ export default function GradeCategoriesPage() {
         centered
         size="sm"
         styles={{
-          content: { backgroundColor: ''#ffffff'', border: `1px solid ${SURFACE_BORDER}` },
-          header: { backgroundColor: ''#ffffff'' },
-          body: { backgroundColor: ''#ffffff'' },
+          content: { backgroundColor: '#ffffff', border: `1px solid ${SURFACE_BORDER}` },
+          header: { backgroundColor: '#ffffff' },
+          body: { backgroundColor: '#ffffff' },
         }}
       >
         <Stack gap="md">

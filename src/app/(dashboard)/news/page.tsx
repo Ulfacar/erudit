@@ -29,10 +29,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* -- Theme-aware colors -- */
-const SURFACE = ''#ffffff'';
-const SURFACE_BORDER = ''#e6e9ee'';
+const SURFACE = '#ffffff';
+const SURFACE_BORDER = '#e6e9ee';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
-const CELL_BG = ''#fbfcfd'';
+const CELL_BG = '#fbfcfd';
 
 /* -- Types -- */
 interface NewsItem {
@@ -388,11 +388,11 @@ export default function NewsPage() {
         size="lg"
         styles={{
           content: {
-            backgroundColor: ''#ffffff'',
+            backgroundColor: '#ffffff',
             border: `1px solid ${SURFACE_BORDER}`,
           },
-          header: { backgroundColor: ''#ffffff'' },
-          body: { backgroundColor: ''#ffffff'' },
+          header: { backgroundColor: '#ffffff' },
+          body: { backgroundColor: '#ffffff' },
         }}
       >
         <Stack gap="md">
