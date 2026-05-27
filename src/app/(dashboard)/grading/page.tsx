@@ -49,19 +49,19 @@ import { AddGradeForm } from '@/shared/components/grading/AddGradeForm';
 import { useMe } from '@/shared/hooks/useMe';
 
 /* ── Theme-aware color tokens ── */
-const SURFACE = 'var(--mantine-color-body)';
-const SURFACE_HOVER = 'var(--mantine-color-default-hover)';
-const SURFACE_BORDER = 'var(--mantine-color-default-border)';
-const TEXT_PRIMARY = 'var(--mantine-color-text)';
-const TEXT_SEC = 'var(--mantine-color-dimmed)';
+const SURFACE = '#ffffff';
+const SURFACE_HOVER = '#fbfcfd';
+const SURFACE_BORDER = '#e6e9ee';
+const TEXT_PRIMARY = '#0f172a';
+const TEXT_SEC = '#6b7280';
 
 /* ── Grade color map ── */
 const GRADE_COLORS: Record<number, { bg: string; color: string; border: string }> = {
-  5: { bg: '#40c057', color: '#fff', border: '#2f9e44' },
-  4: { bg: '#228be6', color: '#fff', border: '#1c7ed6' },
-  3: { bg: '#fab005', color: '#fff', border: '#f59f00' },
-  2: { bg: '#fa5252', color: '#fff', border: '#e03131' },
-  1: { bg: '#c92a2a', color: '#fff', border: '#a61e1e' },
+  5: { bg: '#d3f9d8', color: '#2f9e44', border: '#40c057' },
+  4: { bg: '#dbeafe', color: '#1864ab', border: '#228be6' },
+  3: { bg: '#fff3bf', color: '#f08c00', border: '#fab005' },
+  2: { bg: '#ffe3e3', color: '#e03131', border: '#fa5252' },
+  1: { bg: '#eef0f4', color: '#6b7280', border: '#9ba2ad' },
 };
 
 /* ── Performance badge colors ── */
