@@ -55,6 +55,22 @@ a {
   line-height: 1.15;
 }
 
+/* Mobile: prevent horizontal overflow on small screens */
+@media (max-width: 768px) {
+  .mantine-AppShell-main {
+    overflow-x: hidden;
+  }
+  .mantine-Paper-root {
+    overflow-x: auto;
+  }
+  .mantine-Table-root {
+    font-size: 12.5px;
+  }
+  .mantine-SimpleGrid-root {
+    gap: 10px !important;
+  }
+}
+
 /* Grade chips */
 .grade-chip {
   display: inline-grid;
