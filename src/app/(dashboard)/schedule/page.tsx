@@ -33,9 +33,9 @@ import Link from 'next/link';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 /* ── Dark theme tokens ── */
-const SURFACE = 'var(--mantine-color-default)';
-const SURFACE_BORDER = 'var(--mantine-color-default-border)';
-const TEXT_SEC = 'var(--mantine-color-dimmed)';
+const SURFACE = '#ffffff';
+const SURFACE_BORDER = '#e6e9ee';
+const TEXT_SEC = '#6b7280';
 
 /* ── Types ── */
 interface BellSlot {
