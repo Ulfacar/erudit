@@ -17,7 +17,7 @@ import {
   IconAward,
   IconBriefcase,
   IconChevronRight,
-  IconCheckCircle,
+  IconCircleCheck,
   IconDownload,
   IconPlus,
   IconUsers,
@@ -208,7 +208,7 @@ function DashboardContent() {
           sub={`${stats?.totalClasses ?? 0} классов`}
         />
         <KpiCard
-          icon={IconCheckCircle}
+          icon={IconCircleCheck}
           label="Посещаемость сегодня"
           value={`${weeklyAttendance}%`}
           delta="за неделю"
