@@ -86,8 +86,6 @@ const GRADE_COLORS: Record<number, string> = {
   1: '#868e96',
 };
 
-// Removed pageVariants — using clean renders without animation
-};
 
 const fetchJson = async (url: string) => {
   const res = await fetch(url);
