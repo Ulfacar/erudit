@@ -214,7 +214,7 @@ function PanelCard({
 }) {
   return (
     <Paper shadow="xs" radius="md" withBorder style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-      <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee' }}>
+      <Box p="sm" style={{ borderBottom: `1px solid #e6e9ee` }}>
         <Group justify="space-between">
           <Text size="sm" fw={600}>
             {title}
@@ -1085,7 +1085,7 @@ function SubstitutionsContent() {
           {/* Substitutions table */}
           {showSubsTable && (
             <Paper shadow="xs" radius="md" withBorder>
-              <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee' }}>
+              <Box p="sm" style={{ borderBottom: `1px solid #e6e9ee` }}>
                 <Group justify="space-between">
                   <Text size="sm" fw={600}>
                     {showAllDates ? 'Все замены' : `Активные замены на ${formatDateRu(selectedDate)}`}
@@ -1176,7 +1176,7 @@ function SubstitutionsContent() {
           {/* Weekly schedule grid with substitution overlays */}
           {showScheduleGrid && bellSlots.length > 0 && (
             <Paper shadow="xs" radius="md" withBorder>
-              <Box p="sm" style={{ borderBottom: '1px solid '#e6e9ee' }}>
+              <Box p="sm" style={{ borderBottom: `1px solid #e6e9ee` }}>
                 <Group justify="space-between" align="center">
                   <Text size="sm" fw={600}>
                     Расписание на неделю
