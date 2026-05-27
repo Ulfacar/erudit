@@ -26,13 +26,40 @@ export async function GET(request: NextRequest) {
         starLevel: true,
         teacher: { select: { id: true, firstName: true, lastName: true, middleName: true, position: true } },
         student: { select: { id: true, firstName: true, lastName: true, classId: true } },
-        parent: { select: { id: true, firstName: true, lastName: true } },
+        parent: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            children: {
+              select: {
+                student: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    classId: true,
+                    class: { select: { grade: true, letter: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     })
 
     if (!user) {
       return errorResponse('NOT_FOUND', 'Пользователь не найден', 404)
     }
+
+    const children = (user.parent?.children ?? []).map((c) => ({
+      studentId: c.student.id,
+      firstName: c.student.firstName,
+      lastName: c.student.lastName,
+      classId: c.student.classId,
+      className: c.student.class ? `${c.student.class.grade}${c.student.class.letter}` : null,
+    }))
 
     return successResponse({
       id: user.id,
@@ -45,7 +72,10 @@ export async function GET(request: NextRequest) {
       studentId: user.student?.id ?? null,
       student: user.student,
       parentId: user.parent?.id ?? null,
-      parent: user.parent,
+      parent: user.parent
+        ? { id: user.parent.id, firstName: user.parent.firstName, lastName: user.parent.lastName }
+        : null,
+      children,
     })
   } catch (error) {
     console.error('GET /api/v1/me error:', error)

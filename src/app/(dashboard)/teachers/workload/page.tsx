@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
@@ -25,8 +25,8 @@ import Link from 'next/link';
 import { useRole } from '@/shared/hooks/useRole';
 
 /* ── Colors ── */
-const SURFACE = 'var(--mantine-color-default)';
-const SURFACE_BORDER = 'var(--mantine-color-default-border)';
+const SURFACE = ''#ffffff'';
+const SURFACE_BORDER = ''#e6e9ee'';
 const TEXT_DIM = '#5c5f66';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
 const PINK = '#e91e8c';
@@ -38,7 +38,7 @@ const thStyle: React.CSSProperties = {
   borderBottom: `1px solid ${SURFACE_BORDER}`,
   borderRight: `1px solid ${SURFACE_BORDER}`,
   padding: '6px 8px',
-  background: 'var(--mantine-color-default-hover)',
+  background: ''#fbfcfd'',
   textAlign: 'center',
   whiteSpace: 'nowrap',
 };
@@ -286,7 +286,7 @@ export default function WorkloadPage() {
                     textAlign: 'left',
                     position: 'sticky',
                     left: 0,
-                    background: 'var(--mantine-color-default-hover)',
+                    background: ''#fbfcfd'',
                     zIndex: 2,
                     minWidth: 180,
                   }}
@@ -299,7 +299,7 @@ export default function WorkloadPage() {
                     {cls.letter}
                   </Table.Th>
                 ))}
-                <Table.Th style={{ ...thStyle, background: 'var(--mantine-color-default-border)' }}>Итого</Table.Th>
+                <Table.Th style={{ ...thStyle, background: ''#e6e9ee'' }}>Итого</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -383,7 +383,7 @@ export default function WorkloadPage() {
                     <Table.Td
                       style={{
                         ...tdStyle,
-                        background: 'var(--mantine-color-default-hover)',
+                        background: ''#fbfcfd'',
                         fontWeight: 600,
                       }}
                     >

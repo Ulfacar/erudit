@@ -1,0 +1,7 @@
+# E2E tests & artifacts — not needed for the production build
+e2e/
+playwright.config.ts
+.env.local.neon-bak
+
+# Docs & their generator (node_modules) — not part of the app
+docs/

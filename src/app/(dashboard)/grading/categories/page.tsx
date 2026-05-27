@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -17,10 +17,10 @@ import {
 import { IconArrowLeft, IconEdit, IconSettings } from '@tabler/icons-react';
 
 /* ── Theme-aware colors ── */
-const SURFACE = 'var(--mantine-color-default)';
-const SURFACE_BORDER = 'var(--mantine-color-default-border)';
+const SURFACE = ''#ffffff'';
+const SURFACE_BORDER = ''#e6e9ee'';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
-const CELL_BG = 'var(--mantine-color-default-hover)';
+const CELL_BG = ''#fbfcfd'';
 
 /* ── Weight color map ── */
 function weightColor(w: number): string {
@@ -183,7 +183,7 @@ export default function GradeCategoriesPage() {
                     key={cat.id}
                     style={{ transition: 'background 0.15s' }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--mantine-color-default-hover)';
+                      e.currentTarget.style.backgroundColor = ''#fbfcfd'';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
@@ -245,9 +245,9 @@ export default function GradeCategoriesPage() {
         centered
         size="sm"
         styles={{
-          content: { backgroundColor: 'var(--mantine-color-default)', border: `1px solid ${SURFACE_BORDER}` },
-          header: { backgroundColor: 'var(--mantine-color-default)' },
-          body: { backgroundColor: 'var(--mantine-color-default)' },
+          content: { backgroundColor: ''#ffffff'', border: `1px solid ${SURFACE_BORDER}` },
+          header: { backgroundColor: ''#ffffff'' },
+          body: { backgroundColor: ''#ffffff'' },
         }}
       >
         <Stack gap="md">

@@ -5,7 +5,9 @@ import { withAuth } from '@/shared/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await withAuth(request);
+    const auth = await withAuth(request, {
+      roles: ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator'],
+    });
     if (auth.response) return auth.response;
 
     // Get all classes with curator and student count

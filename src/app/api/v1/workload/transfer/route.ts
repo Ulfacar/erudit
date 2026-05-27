@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await withAuth(request)
     if (auth.response) return auth.response
+    const { role, id: userId } = auth.session.user
 
     const { searchParams } = new URL(request.url)
     const toTeacherId = searchParams.get('toTeacherId')
@@ -134,6 +135,21 @@ export async function GET(request: NextRequest) {
 
     if (!toTeacherId) {
       return errorResponse('VALIDATION_ERROR', 'Параметр toTeacherId обязателен')
+    }
+
+    // RBAC: admins/secretary may inspect any teacher's transfer history; a teacher
+    // (or curator) may only see transfers addressed to themselves. Anyone else is
+    // denied — otherwise any authenticated user could read other teachers' historical grades.
+    const ADMIN_VIEW: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary']
+    if (!ADMIN_VIEW.includes(role)) {
+      if (role === 'teacher' || role === 'curator') {
+        const self = await prisma.teacher.findFirst({ where: { userId }, select: { id: true } })
+        if (!self || self.id !== toTeacherId) {
+          return errorResponse('FORBIDDEN', 'Нет доступа к истории передачи нагрузки', 403)
+        }
+      } else {
+        return errorResponse('FORBIDDEN', 'Нет доступа к истории передачи нагрузки', 403)
+      }
     }
 
     const where: Record<string, unknown> = { toTeacherId }

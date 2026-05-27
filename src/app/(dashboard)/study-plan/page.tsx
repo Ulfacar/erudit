@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -122,7 +122,7 @@ function StudyPlanInner() {
           <Table striped highlightOnHover withColumnBorders>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ position: 'sticky', left: 0, background: 'var(--mantine-color-body)', zIndex: 2 }}>
+                <Table.Th style={{ position: 'sticky', left: 0, background: ''#f8f9fb'', zIndex: 2 }}>
                   Класс
                 </Table.Th>
                 {data.subjects.map((s) => (
@@ -138,7 +138,7 @@ function StudyPlanInner() {
                 const t = data.totals[c.id]
                 return (
                   <Table.Tr key={c.id}>
-                    <Table.Td style={{ position: 'sticky', left: 0, background: 'var(--mantine-color-body)', zIndex: 1, fontWeight: 600 }}>
+                    <Table.Td style={{ position: 'sticky', left: 0, background: ''#f8f9fb'', zIndex: 1, fontWeight: 600 }}>
                       {c.grade}{c.letter}
                     </Table.Td>
                     {data.subjects.map((s) => {

@@ -15,6 +15,7 @@ export interface MeProfile {
   teacher: { id: string; firstName: string; lastName: string; middleName: string | null; position: string | null } | null
   student: { id: string; firstName: string; lastName: string; classId: string | null } | null
   parent: { id: string; firstName: string; lastName: string } | null
+  children: { studentId: string; firstName: string; lastName: string; classId: string | null; className: string | null }[]
 }
 
 let cache: MeProfile | null = null

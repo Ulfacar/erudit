@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
@@ -29,10 +29,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* -- Theme-aware colors -- */
-const SURFACE = 'var(--mantine-color-default)';
-const SURFACE_BORDER = 'var(--mantine-color-default-border)';
+const SURFACE = ''#ffffff'';
+const SURFACE_BORDER = ''#e6e9ee'';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
-const CELL_BG = 'var(--mantine-color-default-hover)';
+const CELL_BG = ''#fbfcfd'';
 
 /* -- Types -- */
 interface NewsItem {
@@ -388,11 +388,11 @@ export default function NewsPage() {
         size="lg"
         styles={{
           content: {
-            backgroundColor: 'var(--mantine-color-default)',
+            backgroundColor: ''#ffffff'',
             border: `1px solid ${SURFACE_BORDER}`,
           },
-          header: { backgroundColor: 'var(--mantine-color-default)' },
-          body: { backgroundColor: 'var(--mantine-color-default)' },
+          header: { backgroundColor: ''#ffffff'' },
+          body: { backgroundColor: ''#ffffff'' },
         }}
       >
         <Stack gap="md">

@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const auth = await withAuth(request);
     if (auth.response) return auth.response;
     const role = auth.session.user.role;
+    const userId = auth.session.user.id;
 
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get('classId');
@@ -21,6 +22,27 @@ export async function GET(request: NextRequest) {
 
     if (!classId) {
       return errorResponse('VALIDATION_ERROR', 'Параметр classId обязателен');
+    }
+
+    // RBAC: staff may view any class; a student may only view their own class,
+    // a parent only their children's classes. Without this, anyone could read any
+    // class roster + grades by passing an arbitrary classId.
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
+    if (!STAFF.includes(role)) {
+      let owns = false;
+      if (role === 'student') {
+        const self = await prisma.student.findFirst({ where: { userId }, select: { classId: true } });
+        owns = self?.classId === classId;
+      } else if (role === 'parent') {
+        const parent = await prisma.parent.findFirst({
+          where: { userId },
+          select: { children: { select: { student: { select: { classId: true } } } } },
+        });
+        owns = !!parent?.children.some((c) => c.student.classId === classId);
+      }
+      if (!owns) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к журналу этого класса', 403);
+      }
     }
 
     // 1. Get class info

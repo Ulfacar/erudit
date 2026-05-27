@@ -1,5 +1,5 @@
 import { getServerSession as nextAuthGetServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/shared/lib/auth-options'
 import type { Role } from '@prisma/client'
 
 /** Extended session user with custom fields */

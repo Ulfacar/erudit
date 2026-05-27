@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -17,8 +17,8 @@ import {
 import { IconClock, IconUser } from '@tabler/icons-react';
 
 /* ── Dark theme tokens ── */
-const SURFACE = 'var(--mantine-color-default)';
-const SURFACE_BORDER = 'var(--mantine-color-default-border)';
+const SURFACE = ''#ffffff'';
+const SURFACE_BORDER = ''#e6e9ee'';
 const TEXT_SEC = 'var(--mantine-color-dimmed)';
 
 /* ── Types ── */

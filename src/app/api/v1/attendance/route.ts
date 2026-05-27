@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await withAuth(request);
     if (auth.response) return auth.response;
+    const role = auth.session.user.role;
+    const userId = auth.session.user.id;
 
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get('classId');
@@ -19,6 +21,38 @@ export async function GET(request: NextRequest) {
 
     if (studentId) where.studentId = studentId;
     if (classId) where.student = { classId };
+
+    // RBAC: staff видят любого; ученик — только себя; родитель — только своих детей.
+    // Без этого любой залогиненный мог бы вытащить посещаемость чужого ребёнка по studentId.
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator'];
+    if (!STAFF.includes(role)) {
+      if (role === 'student') {
+        const self = await prisma.student.findFirst({ where: { userId }, select: { id: true } });
+        if (!self) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+        if (studentId && studentId !== self.id) {
+          return errorResponse('FORBIDDEN', 'Нет доступа к посещаемости другого ученика', 403);
+        }
+        where.studentId = self.id;
+        delete where.student;
+      } else if (role === 'parent') {
+        const parent = await prisma.parent.findFirst({
+          where: { userId },
+          select: { children: { select: { studentId: true } } },
+        });
+        const ids = parent?.children.map((c) => c.studentId) ?? [];
+        if (studentId) {
+          if (!ids.includes(studentId)) {
+            return errorResponse('FORBIDDEN', 'Нет доступа к посещаемости этого ученика', 403);
+          }
+          where.studentId = studentId;
+        } else {
+          where.studentId = { in: ids };
+        }
+        delete where.student;
+      } else {
+        return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      }
+    }
 
     if (date) {
       const d = new Date(date);
