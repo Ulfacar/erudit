@@ -234,8 +234,8 @@ export default function HomeworkPage() {
             </Text>
           </Paper>
         ) : (
-          <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
-            <Table striped highlightOnHover>
+          <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee', overflow: 'auto' }}>
+            <Table striped highlightOnHover style={{ minWidth: 600 }}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Предмет</Table.Th>

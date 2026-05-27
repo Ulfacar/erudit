@@ -187,17 +187,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Group>
 
             <Group gap="md">
-              <UniversalSearch />
+              <Box visibleFrom="sm"><UniversalSearch /></Box>
               <ActionIcon
                 variant="subtle"
                 color="gray"
                 size="lg"
                 onClick={() => toggleColorScheme()}
                 title="Переключить тему"
+                visibleFrom="sm"
               >
                 {colorScheme === 'dark' ? <IconSun size={20} stroke={1.5} /> : <IconMoon size={20} stroke={1.5} />}
               </ActionIcon>
-              <ActionIcon variant="subtle" color="gray" size="lg">
+              <ActionIcon variant="subtle" color="gray" size="lg" visibleFrom="sm">
                 <IconBell size={20} stroke={1.5} />
               </ActionIcon>
               <Menu shadow="md" width={220} position="bottom-end" withArrow>
@@ -206,11 +207,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Avatar size={32} radius="xl" color="eruditBlue" variant="filled">
                       {getInitials(login)}
                     </Avatar>
-                    <Box>
+                    <Box visibleFrom="sm">
                       <Text size="xs" fw={500} lh={1.2}>{login ?? '—'}</Text>
                       <Text size="xs" c="dimmed" lh={1.2}>{role ? ROLE_LABEL[role] ?? role : '—'}</Text>
                     </Box>
-                    <IconChevronDown size={14} stroke={1.5} style={{ color: 'var(--mantine-color-dimmed)' }} />
+                    <IconChevronDown size={14} stroke={1.5} style={{ color: 'var(--mantine-color-dimmed)' }} visibleFrom="sm" />
                   </Group>
                 </Menu.Target>
                 <Menu.Dropdown>
