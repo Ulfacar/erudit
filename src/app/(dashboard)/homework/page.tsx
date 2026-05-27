@@ -192,7 +192,7 @@ export default function HomeworkPage() {
 
         {/* ── Filters (staff only) ── */}
         {isStaff && (
-          <Paper p="md" radius="md" withBorder>
+          <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
             <Group grow>
               <Select
                 label="Класс"
@@ -226,7 +226,7 @@ export default function HomeworkPage() {
             <Loader size="lg" />
           </Group>
         ) : homework.length === 0 ? (
-          <Paper p="xl" radius="md" withBorder>
+          <Paper p="xl" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
             <Text ta="center" c="dimmed" size="lg">
               {effectiveClassId || isStaff
                 ? 'Нет домашних заданий'
@@ -234,7 +234,7 @@ export default function HomeworkPage() {
             </Text>
           </Paper>
         ) : (
-          <Paper p="md" radius="md" withBorder>
+          <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
             <Table striped highlightOnHover>
               <Table.Thead>
                 <Table.Tr>

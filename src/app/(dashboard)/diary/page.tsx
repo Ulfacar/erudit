@@ -163,7 +163,7 @@ function DiaryContent() {
     <Stack gap="lg">
       {/* ── Parent child switcher ── */}
       {isParent && me && me.children.length > 1 && (
-        <Paper p="sm" radius="lg" withBorder style={{ border: '1px solid #e6e9ee', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Paper p="sm" radius="lg" withBorder style={{ border: '1px solid #e6e9ee', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Text size="sm" fw={600} c="dimmed" mr={8}>Ребёнок:</Text>
           {me.children.map((c) => (
             <Box

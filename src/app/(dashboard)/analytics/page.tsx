@@ -31,8 +31,6 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { motion } from 'framer-motion';
-
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 /* ── Types ── */
@@ -88,9 +86,7 @@ const GRADE_COLORS: Record<number, string> = {
   1: '#868e96',
 };
 
-const pageVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
+// Removed pageVariants — using clean renders without animation
 };
 
 const fetchJson = async (url: string) => {
@@ -121,9 +117,13 @@ export default function AnalyticsPage() {
 
   return (
     <RoleGate roles={['super_admin', 'analyst', 'zavuch']}>
-      <motion.div variants={pageVariants} initial="hidden" animate="visible">
-        <Stack gap="lg">
-          <Title order={2}>Аналитика</Title>
+      <Stack gap="lg">
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Text fw={700} style={{ fontSize: 24, letterSpacing: '-0.02em' }}>Аналитика школы</Text>
+            <Text size="sm" c="dimmed" mt={4}>Текущий период · обновлено сегодня</Text>
+          </div>
+        </Group>
 
           {isLoading ? (
             <Group justify="center" py="xl">
@@ -134,7 +134,7 @@ export default function AnalyticsPage() {
               {/* ── Row 1: Class averages + Weekly attendance ── */}
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
                 {/* Bar chart: average grade per class */}
-                <Paper withBorder p="md" radius="md">
+                <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
                   <Group gap={8} mb="md">
                     <IconChartBar size={20} color="var(--mantine-color-blue-6)" />
                     <Text fw={600}>Средняя успеваемость по классам</Text>
@@ -165,7 +165,7 @@ export default function AnalyticsPage() {
                 </Paper>
 
                 {/* Weekly attendance */}
-                <Paper withBorder p="md" radius="md">
+                <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
                   <Group gap={8} mb="md">
                     <IconUsers size={20} color="var(--mantine-color-teal-6)" />
                     <Text fw={600}>Посещаемость за неделю</Text>
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
               {/* ── Row 2: Grade distribution + Trimester dynamics ── */}
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
                 {/* Grade distribution */}
-                <Paper withBorder p="md" radius="md">
+                <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
                   <Group gap={8} mb="md">
                     <IconChartPie size={20} color="var(--mantine-color-violet-6)" />
                     <Text fw={600}>Распределение оценок</Text>
@@ -252,7 +252,7 @@ export default function AnalyticsPage() {
                 </Paper>
 
                 {/* Trimester dynamics */}
-                <Paper withBorder p="md" radius="md">
+                <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
                   <Group gap={8} mb="md">
                     <IconTrendingUp size={20} color="var(--mantine-color-orange-6)" />
                     <Text fw={600}>Динамика по триместрам</Text>
@@ -286,7 +286,7 @@ export default function AnalyticsPage() {
               {/* ── Row 3: Teacher ratings + Low students ── */}
               <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
                 {/* Teacher ratings */}
-                <Paper withBorder p="md" radius="md">
+                <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
                   <Group gap={8} mb="md">
                     <IconUserStar size={20} color="var(--mantine-color-indigo-6)" />
                     <Text fw={600}>Рейтинг учителей по успеваемости</Text>
@@ -320,7 +320,7 @@ export default function AnalyticsPage() {
                 </Paper>
 
                 {/* Low-performing students */}
-                <Paper withBorder p="md" radius="md">
+                <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
                   <Group gap={8} mb="md">
                     <IconAlertTriangle size={20} color="var(--mantine-color-red-6)" />
                     <Text fw={600}>Ученики с низкой успеваемостью</Text>
@@ -356,7 +356,7 @@ export default function AnalyticsPage() {
             </>
           )}
         </Stack>
-      </motion.div>
+      </Stack>
     </RoleGate>
   );
 }

@@ -173,7 +173,7 @@ export default function GradesReportPage() {
           </Group>
 
           {/* ── Filters ── */}
-          <Paper p="md" radius="md" withBorder>
+          <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
             <Group grow>
               <Select
                 label="Класс"
@@ -210,7 +210,7 @@ export default function GradesReportPage() {
 
           {/* ── Content ── */}
           {!classId || !subjectId || !periodId ? (
-            <Paper p="xl" radius="md" withBorder>
+            <Paper p="xl" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
               <Text ta="center" c="dimmed" size="lg">
                 Выберите класс, предмет и период для формирования отчёта
               </Text>
@@ -220,13 +220,13 @@ export default function GradesReportPage() {
               <Loader size="lg" />
             </Group>
           ) : !report || report.rows.length === 0 ? (
-            <Paper p="xl" radius="md" withBorder>
+            <Paper p="xl" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
               <Text ta="center" c="dimmed" size="lg">
                 Нет данных по выбранным параметрам
               </Text>
             </Paper>
           ) : (
-            <Paper p="md" radius="md" withBorder>
+            <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
               <ScrollArea>
                 <Table striped highlightOnHover>
                   <Table.Thead>

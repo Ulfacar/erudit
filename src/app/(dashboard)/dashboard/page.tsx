@@ -187,7 +187,7 @@ function DashboardContent() {
           </Text>
           <Text size="sm" c="dimmed" mt={4} style={{ textTransform: 'capitalize' }}>{today}</Text>
         </div>
-        <Group gap={8}>
+        <Group gap={8} visibleFrom="sm">
           <Box component="button" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 38, padding: '0 16px', borderRadius: 8, fontWeight: 600, fontSize: 13.5, border: '1px solid #dde1e8', background: 'white', cursor: 'pointer' }}>
             <IconDownload size={16} /> Экспорт отчёта
           </Box>
