@@ -735,7 +735,9 @@ function CommentsPopup({
    MAIN GRADING PAGE
    ════════════════════════════════════════════════════════════════ */
 
-export default function GradingPage() {
+import { RoleGate } from '@/shared/components/auth/RoleGate';
+
+function GradingContent() {
   // ── Current user (teacherId/role) ──
   const { me } = useMe();
   const teacherId = me?.teacherId ?? null;
@@ -1588,5 +1590,13 @@ export default function GradingPage() {
         }}
       />
     </Stack>
+  );
+}
+
+export default function GradingPage() {
+  return (
+    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'teacher', 'curator']}>
+      <GradingContent />
+    </RoleGate>
   );
 }
