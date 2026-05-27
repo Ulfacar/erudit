@@ -88,6 +88,11 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/urgent-issues', label: 'Срочные вопросы', roles: STAFF_PLUS_SPECIALIST },
   { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist') },
   { href: '/analytics', label: 'Аналитика', roles: ADMIN_AND_VICE },
+  // Workspace (специалисты)
+  { href: '/workspace/speech', label: 'Логопед', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
+  { href: '/workspace/psychologist', label: 'Психолог', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
+  { href: '/workspace/medical', label: 'Медкабинет', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
+  { href: '/workspace/parents', label: 'Родители', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'curator'] },
   // Дорожная карта — видны staff-ролям с меткой «Скоро»
   { href: '/calendar', label: 'Календарь', roles: STAFF_TIER, badge: 'Скоро' },
   { href: '/curriculum-plan', label: 'КТП', roles: STAFF_TIER, badge: 'Скоро' },

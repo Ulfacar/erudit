@@ -17,7 +17,6 @@ import {
   Menu,
   NavLink,
   ScrollArea,
-  Tabs,
   Text,
   useMantineColorScheme,
 } from '@mantine/core';
@@ -26,7 +25,6 @@ import { UniversalSearch } from '@/shared/components/ui/UniversalSearch';
 import { useRole } from '@/shared/hooks/useRole';
 import {
   SIDEBAR_NAV,
-  TOP_TABS,
   filterNavByRole,
   type NavRoute,
 } from '@/shared/lib/nav-config';
@@ -45,7 +43,6 @@ import {
   IconClipboardList,
   IconFile,
   IconFolder,
-  IconGridDots,
   IconHome,
   IconId,
   IconMedal,
@@ -103,20 +100,12 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?
   '/incidents': IconFlame,
   '/library': IconBooks,
   '/analytics': IconChartDots,
+  '/workspace/speech': IconSpeakerphone,
+  '/workspace/psychologist': IconBrain,
+  '/workspace/medical': IconMedicalCross,
+  '/workspace/parents': IconUsers,
 };
 
-const TOP_TAB_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
-  schedule: IconCalendar,
-  classes: IconSchool,
-  teachers: IconUsersGroup,
-  logoped: IconSpeakerphone,
-  psychologist: IconBrain,
-  medical: IconMedicalCross,
-  parents: IconUsers,
-  accounting: IconCalculator,
-  maintenance: IconTool,
-  kitchen: IconToolsKitchen2,
-};
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: 'Суперадмин',
@@ -165,17 +154,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [role, pathname, router]);
 
   const visibleSidebar = useMemo(() => filterNavByRole(SIDEBAR_NAV, role), [role]);
-  const visibleTabs = useMemo(() => filterNavByRole(TOP_TABS, role), [role]);
-
-  const initialTab = visibleTabs.find((t) => pathname.startsWith(t.href))?.value ?? visibleTabs[0]?.value ?? '';
-  const [activeTab, setActiveTab] = useState(initialTab);
-
-  const handleTabChange = (value: string | null) => {
-    if (!value) return;
-    setActiveTab(value);
-    const tab = visibleTabs.find((t) => t.value === value);
-    if (tab) router.push(tab.href);
-  };
 
   const today = formatToday();
 
