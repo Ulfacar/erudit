@@ -145,5 +145,5 @@ html { scroll-behavior: smooth; }
   border-color: #e0d3c0;
 }
 
-.landing-dark { background: linear-gradient(135deg, #228be6 0%, #1864ab 100%); }
+.landing-dark { background: #211c17; }
 .landing-rule { border: none; border-top: 1px solid #ece3d6; }

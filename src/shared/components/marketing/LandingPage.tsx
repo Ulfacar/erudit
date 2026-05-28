@@ -22,7 +22,7 @@ import {
   IconTable,
 } from '@tabler/icons-react';
 
-const INK = '#3b352c';
+const INK = '#211c17';
 const PAPER = '#faf6f0';
 const MUTED = '#7a7068';
 const LINE = '#ece3d6';
