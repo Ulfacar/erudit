@@ -141,7 +141,7 @@ async function buildKP() {
     numbered('Пилот на одном-двух классах с вашими данными.'),
     numbered('Запуск на школу и обучение персонала.'),
     P([txt('Демо-доступ: '), new ExternalHyperlink({ link: URL, children: [new TextRun({ text: URL, size: 22, color: ACCENT, underline: {} })] }), txt('   ·   пароль: '), accent(PWD)]),
-    new Paragraph({ spacing: { before: 240 }, children: [new TextRun({ text: 'Контакт: Даткайым Аскарова · [телефон / почта]   ·   Разработано Asystem', size: 20, color: GREY })] }),
+    new Paragraph({ spacing: { before: 240 }, children: [new TextRun({ text: 'Контакт: +996 700 144 043 · Asystem@gmail.com   ·   Разработано Asystem', size: 20, color: GREY })] }),
   );
   await build('../Bilim_OS_КП.docx', 'Bilim OS — коммерческое предложение', c);
 }

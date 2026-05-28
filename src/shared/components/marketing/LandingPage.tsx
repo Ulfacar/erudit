@@ -318,7 +318,12 @@ export default function LandingPage() {
           <Text size="xs" c="dimmed" ta="right">© 2026 Bilim OS · Разработано Asystem</Text>
         </Group>
         <Divider my="md" color="#eef0f4" />
-        <Text size="xs" c="dimmed">Контакт для школ: [телефон / почта]</Text>
+        <Group gap={8} mt={2}>
+          <Text size="xs" c="dimmed">Контакт для школ:</Text>
+          <Anchor href="tel:+996700144043" size="xs" c="dimmed" underline="hover">+996 700 144 043</Anchor>
+          <Text size="xs" c="dimmed">·</Text>
+          <Anchor href="mailto:Asystem@gmail.com" size="xs" c="dimmed" underline="hover">Asystem@gmail.com</Anchor>
+        </Group>
       </Container>
     </Box>
   );
