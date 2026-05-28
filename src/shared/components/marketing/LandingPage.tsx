@@ -184,7 +184,7 @@ export default function LandingPage() {
 
       {/* ===== FEATURE ROWS ===== */}
       <Container size="lg" py={{ base: 24, md: 40 }} id="features">
-        <Stack gap={{ base: 56, md: 100 }} py={{ base: 32, md: 48 }}>
+        <Stack gap={80} py={{ base: 32, md: 48 }}>
           {FEATURES.map((f, i) => {
             const imageFirst = i % 2 === 0;
             const photo = (
