@@ -78,6 +78,15 @@ const SECURITY = [
   'Хостинг Vercel · база Neon Postgres',
 ];
 
+const MODULES: Array<{ group: string; items: string[] }> = [
+  { group: 'Учебный процесс', items: ['Электронный журнал', 'Оценивание (4 шкалы)', 'Модерация оценок', 'Периоды и категории', 'Домашние задания', 'Посещаемость'] },
+  { group: 'Расписание и нагрузка', items: ['Расписание и звонки', 'Авто-генерация + конфликты', 'Замены уроков', 'Нагрузка педагогов', 'Передача нагрузки'] },
+  { group: 'Люди и доступ', items: ['Классы, группы, переводы', 'Карточки учеников', 'Дескрипторы педагогов', '9 ролей + изоляция данных'] },
+  { group: 'Дневник и общение', items: ['Дневник ученика и родителя', 'Происшествия', 'Срочные вопросы', 'Новости', 'Чаты'] },
+  { group: 'Специалисты', items: ['Психолог', 'Логопед', 'Медкабинет', 'Кабинет родителей'] },
+  { group: 'Аналитика и отчёты', items: ['Дашборд', 'Отчёты + экспорт в Excel', 'Аналитика с графиками', 'Поиск'] },
+];
+
 function NavLinkA({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Anchor href={href} c="dimmed" fw={500} size="sm" underline="never" style={{ letterSpacing: '-0.01em' }}>
@@ -99,6 +108,7 @@ export default function LandingPage() {
             </Group>
             <Group gap={28} visibleFrom="sm">
               <NavLinkA href="#features">Возможности</NavLinkA>
+              <NavLinkA href="#modules">Модули</NavLinkA>
               <NavLinkA href="#how">Как это работает</NavLinkA>
               <NavLinkA href="#security">Безопасность</NavLinkA>
               <NavLinkA href="#pricing">Цена</NavLinkA>
@@ -190,6 +200,34 @@ export default function LandingPage() {
               </ThemeIcon>
               <Text fw={700} size="lg" mb={6} style={{ letterSpacing: '-0.01em' }}>{f.title}</Text>
               <Text c="dimmed" size="sm" style={{ lineHeight: 1.55 }}>{f.text}</Text>
+            </Card>
+          ))}
+        </SimpleGrid>
+      </Container>
+
+      {/* ===== MODULES ===== */}
+      <Container size="lg" py={{ base: 56, md: 84 }} id="modules">
+        <Stack gap={8} align="center" mb={44}>
+          <Badge variant="light" color="eruditBlue" radius="sm">Модули</Badge>
+          <Title order={2} ta="center" style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', letterSpacing: '-0.025em' }}>
+            Более 20 рабочих модулей
+          </Title>
+          <Text c="dimmed" ta="center" style={{ maxWidth: 580 }}>
+            Всё перечисленное работает уже сегодня — это не дорожная карта.
+          </Text>
+        </Stack>
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+          {MODULES.map((m) => (
+            <Card key={m.group} className="landing-card" padding="lg" radius="lg" withBorder style={{ borderColor: '#e6e9ee' }}>
+              <Text fw={700} mb="sm" style={{ letterSpacing: '-0.01em' }}>{m.group}</Text>
+              <Stack gap={8}>
+                {m.items.map((it) => (
+                  <Group key={it} gap={8} wrap="nowrap" align="center">
+                    <IconCheck size={15} color={BLUE} style={{ flexShrink: 0 }} />
+                    <Text size="sm" c="dimmed">{it}</Text>
+                  </Group>
+                ))}
+              </Stack>
             </Card>
           ))}
         </SimpleGrid>
