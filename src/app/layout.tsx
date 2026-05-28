@@ -42,7 +42,7 @@ export default function RootLayout({
       <body>
         <SessionProvider>
           <QueryProvider>
-            <MantineProvider theme={eruditTheme} defaultColorScheme="light">
+            <MantineProvider theme={eruditTheme} forceColorScheme="light">
               <Notifications position="top-right" />
               {children}
             </MantineProvider>

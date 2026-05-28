@@ -18,7 +18,6 @@ import {
   NavLink,
   ScrollArea,
   Text,
-  useMantineColorScheme,
 } from '@mantine/core';
 import { EruditeLogo } from '@/shared/components/ui/EruditeLogo';
 import { UniversalSearch } from '@/shared/components/ui/UniversalSearch';
@@ -47,14 +46,12 @@ import {
   IconId,
   IconMedal,
   IconMessage,
-  IconMoon,
   IconNews,
   IconNotebook,
   IconPalette,
   IconSchool,
   IconShield,
   IconStar,
-  IconSun,
   IconTable,
   IconTrophy,
   IconUsers,
@@ -143,7 +140,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { role, login } = useRole();
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure();
 
   // Student/parent → redirect to diary instead of dashboard
@@ -188,16 +184,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <Group gap="md">
               <Box visibleFrom="sm"><UniversalSearch /></Box>
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                size="lg"
-                onClick={() => toggleColorScheme()}
-                title="Переключить тему"
-                visibleFrom="sm"
-              >
-                {colorScheme === 'dark' ? <IconSun size={20} stroke={1.5} /> : <IconMoon size={20} stroke={1.5} />}
-              </ActionIcon>
               <ActionIcon variant="subtle" color="gray" size="lg" visibleFrom="sm">
                 <IconBell size={20} stroke={1.5} />
               </ActionIcon>
