@@ -182,7 +182,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Group gap="md">
               <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
               <Text size="lg" fw={600} c="var(--mantine-color-gray-9)" style={{ letterSpacing: '-0.01em' }}>
-                {visibleSidebar.find((s) => pathname === s.href || pathname.startsWith(s.href + '/'))?.label ?? 'ERUDIT'}
+                {visibleSidebar.find((s) => pathname === s.href || pathname.startsWith(s.href + '/'))?.label ?? 'Bilim OS'}
               </Text>
             </Group>
 
@@ -235,9 +235,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Brand */}
           <Box px="sm" py="md" mb="xs" style={{ borderBottom: '1px solid #eef0f4' }}>
             <Group gap={10}>
-              <div className="brand-mark">E</div>
+              <div className="brand-mark">B</div>
               <div>
-                <Text fw={700} size="sm" lh={1.2} style={{ letterSpacing: '-0.02em' }}>ERUDIT</Text>
+                <Text fw={700} size="sm" lh={1.2} style={{ letterSpacing: '-0.02em' }}>Bilim OS</Text>
                 <Text size="xs" c="dimmed" lh={1.2} fw={500}>Система управления школой</Text>
               </div>
             </Group>

@@ -16,8 +16,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'ERUDIT - School ERP System',
-  description: 'ERUDIT - Система управления образовательным процессом',
+  title: 'Bilim OS - School ERP System',
+  description: 'Bilim OS - Система управления образовательным процессом',
   icons: { icon: '/favicon.ico' },
 };
 

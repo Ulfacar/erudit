@@ -100,9 +100,9 @@ export default function LoginPage() {
       <Box style={{ display: 'flex', flexDirection: 'column', padding: '40px 64px', justifyContent: 'space-between', maxWidth: 560, margin: '0 auto', width: '100%' }}>
         {/* Brand */}
         <Group gap={12}>
-          <div className="brand-mark" style={{ width: 40, height: 40, fontSize: 18, borderRadius: 10 }}>E</div>
+          <div className="brand-mark" style={{ width: 40, height: 40, fontSize: 18, borderRadius: 10 }}>B</div>
           <div>
-            <Text fw={700} size="lg" style={{ letterSpacing: '-0.02em' }}>ERUDIT</Text>
+            <Text fw={700} size="lg" style={{ letterSpacing: '-0.02em' }}>Bilim OS</Text>
             <Text size="xs" c="dimmed" fw={500}>Школьная ERP-система</Text>
           </div>
         </Group>
@@ -191,7 +191,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <Group justify="space-between" style={{ fontSize: 12, color: '#9ba2ad' }}>
-          <span>© 2026 ERUDIT · Разработано Asystem</span>
+          <span>© 2026 Bilim OS · Разработано Asystem</span>
         </Group>
       </Box>
 

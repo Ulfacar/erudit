@@ -780,7 +780,7 @@ function PersonalDataTab({
                   <Paper bg="var(--mantine-color-dark-6)" radius="sm" p="sm">
                     <Text size="sm">
                       Общий стаж: {getYearsLabel(personalData.totalExperience)}.
-                      В школе Эрудит: {getYearsLabel(personalData.schoolExperience)}.
+                      В школе Bilim OS: {getYearsLabel(personalData.schoolExperience)}.
                     </Text>
                   </Paper>
                 ) : (

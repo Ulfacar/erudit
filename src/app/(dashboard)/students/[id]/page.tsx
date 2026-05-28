@@ -539,7 +539,7 @@ export default function StudentProfilePage() {
               <Box>
                 <Text size="xs" c={TEXT_DIM}>В школе</Text>
                 <Text size="sm" c="var(--mantine-color-text)">
-                  Учится в Эрудите {years} {years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}
+                  Учится в Bilim OS {years} {years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}
                 </Text>
               </Box>
             </Group>
@@ -1468,7 +1468,7 @@ function AnalyticsTab({
       <Group justify="space-between">
         <Title order={5} c="var(--mantine-color-text)">Аналитика</Title>
         <Badge variant="light" color="blue" size="md" radius="sm">
-          Учится в Эрудите {years} {years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}
+          Учится в Bilim OS {years} {years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}
         </Badge>
       </Group>
 
