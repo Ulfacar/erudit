@@ -116,7 +116,7 @@ export default function LandingPage() {
               <Anchor href="#pricing" c="#46403a" fw={600} size="sm" underline="never">Цена</Anchor>
             </Group>
             <Group gap={8}>
-              <Button component={Link} href="/login" variant="default" size="sm" visibleFrom="xs" styles={{ label: { color: INK } }}>Войти</Button>
+              <Button component={Link} href="/login" variant="default" size="sm" visibleFrom="xs" styles={{ label: { color: ACCENT } }}>Войти</Button>
               <Button component={Link} href="/login" size="sm" color="eruditBlue" rightSection={<IconArrowRight size={16} />}>Смотреть демо</Button>
             </Group>
           </Group>
@@ -143,7 +143,7 @@ export default function LandingPage() {
               <Button component={Link} href="/login" size="md" color="eruditBlue" rightSection={<IconArrowRight size={18} />}>
                 Смотреть демо
               </Button>
-              <Button component="a" href="#pricing" size="md" variant="white" styles={{ label: { color: INK, fontWeight: 600 } }}>
+              <Button component="a" href="#pricing" size="md" variant="white" styles={{ label: { color: ACCENT, fontWeight: 600 } }}>
                 Цена и условия
               </Button>
             </Group>
@@ -342,7 +342,7 @@ export default function LandingPage() {
             </Text>
             <Group gap="sm">
               <Button component={Link} href="/login" size="md" color="eruditBlue" rightSection={<IconArrowRight size={18} />}>Открыть демо</Button>
-              <Button component="a" href="#features" size="md" variant="white" styles={{ label: { color: INK, fontWeight: 600 } }}>Узнать больше</Button>
+              <Button component="a" href="#features" size="md" variant="white" styles={{ label: { color: ACCENT, fontWeight: 600 } }}>Узнать больше</Button>
             </Group>
           </Stack>
         </Container>
