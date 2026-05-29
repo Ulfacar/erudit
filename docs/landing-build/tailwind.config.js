@@ -6,25 +6,36 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Manrope', 'sans-serif'],
+        sans: ['Nunito', 'sans-serif'],
+        display: ['Nunito', 'sans-serif'],
       },
       colors: {
-        primary: {
-          DEFAULT: '#1971C2',
-          light: '#228be6',
-          dark: '#1864AB',
-        },
-        bg: '#FAFBFD',
-        graphite: {
-          900: '#1a1d20',
-          800: '#2d3136',
-          600: '#4a5056',
-        },
+        // Warm "Edukids" palette
+        cream: '#FBF7F0',
+        sand: '#F3EADB',
+        ink: '#2B2A28',
+        inksoft: '#5A554E',
+        brandorange: '#F2994A',
+        brandorangedk: '#E07B2E',
+        brandgreen: '#7FB069',
+        brandyellow: '#F6C453',
+        brandteal: '#4FA3B0',
+        brandred: '#EB6A5A',
+        // soft tints for card backgrounds
+        peach: '#FCE9D6',
+        mint: '#E7F1DC',
+        butter: '#FBEFC9',
+        softblue: '#DDEEF1',
+        blush: '#FBE2DC',
       },
       boxShadow: {
-        soft: '0 10px 40px -10px rgba(0,0,0,0.05)',
-        glow: '0 0 20px rgba(25, 113, 194, 0.3)',
+        soft: '0 18px 50px -22px rgba(43,42,40,0.25)',
+        card: '0 10px 30px -12px rgba(43,42,40,0.18)',
+        pop: '0 14px 0 0 rgba(43,42,40,0.08)',
+      },
+      borderRadius: {
+        '4xl': '2.5rem',
+        '5xl': '3rem',
       },
     },
   },

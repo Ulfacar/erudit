@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bilim OS — Система управления школой</title>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- Self-hosted Tailwind build (no runtime CDN). Compiled from docs/landing-build/. -->
     <link rel="stylesheet" href="/landing.css">
@@ -15,658 +15,413 @@
     <!-- Self-hosted JS (no runtime CDN). Sourced into public/vendor/. -->
     <script src="/vendor/gsap.min.js"></script>
     <script src="/vendor/ScrollTrigger.min.js"></script>
-
     <script src="/vendor/lucide.min.js"></script>
 
     <style>
         body {
-            background-color: #FAFBFD;
-            color: #2d3136;
+            background-color: #FBF7F0;
+            color: #2B2A28;
             overflow-x: hidden;
+            font-family: 'Nunito', sans-serif;
+        }
+        h1, h2, h3, h4 { font-family: 'Nunito', sans-serif; letter-spacing: -0.01em; }
+
+        /* reveal-up blocks are VISIBLE by default; GSAP only animates them in via gsap.from(),
+           so the page is never blank even if scripts/CDN fail. */
+
+        .tilt-l { transform: rotate(-3deg); }
+        .tilt-r { transform: rotate(3deg); }
+
+        .lift { transition: transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .35s ease; }
+        .lift:hover { transform: translateY(-8px); }
+
+        .nav-link { transition: color .2s ease; }
+        .nav-link:hover { color: #E07B2E; }
+
+        .underline-doodle {
+            position: absolute; left: -4%; right: -4%; bottom: -0.28em;
+            height: 0.42em; color: #F2994A; pointer-events: none;
         }
 
-        /* Glassmorphism utilities */
-        .glass {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        
-        .glass-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+        .blob { border-radius: 42% 58% 60% 40% / 45% 45% 55% 55%; }
 
-        .glass-card:hover {
-            transform: translateY(-8px) scale(1.01);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-            border-color: rgba(25, 113, 194, 0.1);
-        }
+        .counter { font-variant-numeric: tabular-nums; }
 
-        /* Animated Aurora Background */
-        .aurora-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            z-index: -1;
-            opacity: 0.6;
-        }
+        .frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-        .aurora-blob {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(100px);
-            animation: float 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        .marquee { display: flex; gap: 1.25rem; animation: marquee 28s linear infinite; width: max-content; }
+        .marquee:hover { animation-play-state: paused; }
+        @keyframes marquee { to { transform: translateX(-50%); } }
 
-        .blob-1 {
-            top: -10%;
-            left: -10%;
-            width: 600px;
-            height: 600px;
-            background: rgba(25, 113, 194, 0.3);
-            animation-delay: 0s;
-        }
-
-        .blob-2 {
-            top: 40%;
-            right: -20%;
-            width: 500px;
-            height: 500px;
-            background: rgba(34, 139, 230, 0.2);
-            animation-delay: -5s;
-        }
-        
-        .blob-3 {
-            bottom: -20%;
-            left: 20%;
-            width: 700px;
-            height: 700px;
-            background: rgba(230, 243, 255, 0.8);
-            animation-delay: -10s;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-            100% { transform: translate(0, 0) scale(1); }
-        }
-
-        /* Button Shimmer */
-        .btn-shimmer {
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-        .btn-shimmer::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
-            transform: rotate(45deg);
-            animation: shimmer 3s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { transform: translateX(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) rotate(45deg); }
-        }
-
-        /* Typography tweaks */
-        h1, h2, h3, h4, h5, h6, .font-display {
-            color: #1a1d20;
-            letter-spacing: -0.02em;
-        }
-
-        p {
-            color: #4a5056;
-            line-height: 1.7;
-        }
-
-        .text-gradient {
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-image: linear-gradient(90deg, #1971C2, #228be6);
-        }
-
-        /* Respect prefers-reduced-motion */
         @media (prefers-reduced-motion: reduce) {
-            .aurora-blob, .btn-shimmer::after, .glass-card:hover {
-                animation: none;
-                transform: none;
-                transition: none;
-            }
-            html {
-                scroll-behavior: auto;
-            }
+            .marquee { animation: none; }
+            html { scroll-behavior: auto; }
         }
-
-        /* reveal-up blocks are VISIBLE by default; GSAP animates them in via gsap.from(), so content is never blank even if scripts/CDN fail */
     </style>
 </head>
-<body class="antialiased selection:bg-primary-light selection:text-white">
+<body class="antialiased selection:bg-brandorange selection:text-white">
 
-    <nav class="fixed w-full z-50 glass border-b border-white/50 transition-all duration-300" id="navbar">
+    <!-- NAV -->
+    <nav class="fixed w-full z-50 transition-all duration-300" id="navbar">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
-                <div class="flex-shrink-0 flex items-center">
-                    <img src="/landing/logo.jpg" alt="Bilim OS" class="h-9 md:h-10 w-auto">
+                <a href="#" class="flex-shrink-0 flex items-center bg-white rounded-full pl-2 pr-4 py-1.5 shadow-card">
+                    <img src="/landing/logo.jpg" alt="Bilim OS" class="h-8 md:h-9 w-auto rounded-full">
+                </a>
+                <div class="hidden lg:flex items-center gap-8 text-[15px] font-bold text-inksoft">
+                    <a href="#features" class="nav-link">Возможности</a>
+                    <a href="#audience" class="nav-link">Кому подходит</a>
+                    <a href="#modules" class="nav-link">Модули</a>
+                    <a href="#pricing" class="nav-link">Цена</a>
+                    <a href="#faq" class="nav-link">FAQ</a>
                 </div>
-
-                <div class="hidden md:flex space-x-8 items-center">
-                    <a href="#features" class="text-sm font-medium text-graphite-600 hover:text-primary transition-colors">Возможности</a>
-                    <a href="#modules" class="text-sm font-medium text-graphite-600 hover:text-primary transition-colors">Модули</a>
-                    <a href="#how-it-works" class="text-sm font-medium text-graphite-600 hover:text-primary transition-colors">Как это работает</a>
-                    <a href="#audience" class="text-sm font-medium text-graphite-600 hover:text-primary transition-colors">Кому подходит</a>
-                    <a href="#security" class="text-sm font-medium text-graphite-600 hover:text-primary transition-colors">Безопасность</a>
-                    <a href="#pricing" class="text-sm font-medium text-graphite-600 hover:text-primary transition-colors">Цена</a>
-                    <a href="#faq" class="text-sm font-medium text-graphite-600 hover:text-primary transition-colors">FAQ</a>
-                </div>
-
-                <div class="hidden md:flex items-center space-x-4">
-                    <a href="/login" class="text-sm font-medium text-graphite-800 hover:text-primary transition-colors">Войти</a>
-                    <a href="/login" class="btn-shimmer bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-full text-sm font-medium shadow-soft">Смотреть демо</a>
-                </div>
-
-                <div class="md:hidden flex items-center">
-                    <button class="text-graphite-800 hover:text-primary">
-                        <i data-lucide="menu" class="w-6 h-6"></i>
-                    </button>
+                <div class="flex items-center gap-3">
+                    <a href="/login" class="hidden sm:inline-flex items-center font-bold text-ink px-4 py-2 rounded-full hover:bg-sand transition">Войти</a>
+                    <a href="/login" class="inline-flex items-center gap-2 font-extrabold text-white bg-ink px-5 py-2.5 rounded-full shadow-card hover:bg-brandorangedk transition">
+                        Смотреть демо <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <section class="relative min-h-[100vh] flex items-center pt-20 overflow-hidden" id="hero">
-        <div class="aurora-bg">
-            <div class="aurora-blob blob-1"></div>
-            <div class="aurora-blob blob-2"></div>
-            <div class="aurora-blob blob-3"></div>
-        </div>
-        
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full" id="hero-content">
-            <div class="max-w-4xl mx-auto text-center reveal-up">
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-xs tracking-wider mb-8 border border-primary/20 uppercase">
-                    <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                    Школьная ERP · Бишкек
+    <!-- HERO -->
+    <header class="relative pt-32 pb-16 md:pt-40 md:pb-24 overflow-hidden">
+        <!-- doodles -->
+        <svg class="absolute top-28 left-[6%] w-10 h-10 text-brandyellow hidden md:block" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c.7 6.2 2.6 8.4 8 9-5.4.6-7.3 2.8-8 9-.7-6.2-2.6-8.4-8-9 5.4-.6 7.3-2.8 8-9z"/></svg>
+        <svg class="absolute top-44 right-[8%] w-14 h-8 text-brandteal hidden md:block" viewBox="0 0 80 40" fill="none"><path d="M2 38C2 10 78 10 78 38" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 11"/></svg>
+        <svg class="absolute bottom-10 left-[12%] w-12 h-12 text-brandred hidden lg:block" viewBox="0 0 60 60" fill="none"><path d="M30 5c14 0 25 11 25 25S44 55 30 55 5 44 5 30c0-9 5-17 14-21" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-[0.85fr_1.3fr_0.85fr] items-center gap-6 lg:gap-4">
+
+                <!-- left photo -->
+                <div class="hidden lg:block reveal-up">
+                    <div class="frame tilt-l bg-brandgreen p-2 rounded-[2.2rem] shadow-soft lift">
+                        <div class="rounded-[1.7rem] overflow-hidden h-64"><img src="/landing/teacher.jpg" alt="Учитель и класс"></div>
+                    </div>
                 </div>
-                
-                <h1 class="font-display text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
-                    Вся школа — <br class="hidden md:block"/>
-                    <span class="text-gradient">в одной системе</span>
-                </h1>
-                
-                <p class="text-lg md:text-xl text-graphite-600 mb-10 max-w-2xl mx-auto font-medium">
-                    Журнал, оценки, расписание, аналитика и общение — в одном месте, с доступом строго по ролям. Рабочее ядро работает уже сегодня.
-                </p>
-                
-                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <a href="/login" class="btn-shimmer w-full sm:w-auto bg-primary hover:bg-primary-dark text-white px-8 py-4 rounded-full text-base font-semibold shadow-glow hover:-translate-y-1 transition-transform">
-                        Смотреть демо
-                    </a>
-                    <a href="#pricing" class="w-full sm:w-auto bg-white hover:bg-gray-50 text-graphite-900 border border-gray-200 px-8 py-4 rounded-full text-base font-semibold shadow-sm hover:-translate-y-1 transition-transform">
-                        Цена и условия
-                    </a>
+
+                <!-- center -->
+                <div class="text-center reveal-up">
+                    <span class="inline-flex items-center gap-2 bg-white text-ink font-bold text-sm px-4 py-2 rounded-full shadow-card mb-7">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-brandorange"></i> Цифровая платформа для школ
+                    </span>
+                    <h1 class="font-display text-4xl sm:text-5xl md:text-6xl font-black leading-[1.05] text-ink mb-6">
+                        Вся школа —<br>
+                        <span class="relative inline-block">в одной системе
+                            <svg class="underline-doodle" viewBox="0 0 220 16" fill="none" preserveAspectRatio="none"><path d="M3 11C40 3 78 3 112 9s78 5 105-4" stroke="currentColor" stroke-width="6" stroke-linecap="round"/></svg>
+                        </span>
+                    </h1>
+                    <p class="text-lg text-inksoft font-medium max-w-xl mx-auto mb-9">
+                        Журнал, оценки, расписание, аналитика и общение — в одном месте.
+                        Доступ по ролям: директор, учитель, родитель и ученик видят только своё.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+                        <a href="/login" class="inline-flex items-center justify-center gap-2 font-extrabold text-white bg-brandorange px-8 py-4 rounded-full shadow-card hover:bg-brandorangedk transition text-lg">
+                            Смотреть демо <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </a>
+                        <a href="/login" class="inline-flex items-center justify-center gap-2 font-extrabold text-ink bg-white border-2 border-ink/10 px-8 py-4 rounded-full hover:border-ink/25 transition text-lg">
+                            Войти
+                        </a>
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                        <span class="bg-mint text-ink font-bold text-sm px-4 py-2 rounded-full">9 ролей доступа</span>
+                        <span class="bg-peach text-ink font-bold text-sm px-4 py-2 rounded-full">20+ модулей</span>
+                        <span class="bg-softblue text-ink font-bold text-sm px-4 py-2 rounded-full">Модерация оценок</span>
+                    </div>
+                </div>
+
+                <!-- right photo -->
+                <div class="hidden lg:block reveal-up">
+                    <div class="frame tilt-r bg-brandyellow p-2 rounded-[2.2rem] shadow-soft lift">
+                        <div class="rounded-[1.7rem] overflow-hidden h-64"><img src="/landing/students.jpg" alt="Ученики"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- STATS BAR -->
+    <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 mb-20">
+        <div class="bg-ink rounded-4xl px-6 py-10 md:px-12 md:py-12 shadow-soft reveal-up">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-brandred flex items-center justify-center text-white shrink-0"><i data-lucide="users" class="w-6 h-6"></i></div>
+                    <div><div class="text-3xl font-extrabold text-white"><span class="counter" data-target="9">0</span></div><div class="text-sm text-white/60 font-semibold">ролей доступа</div></div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-brandyellow flex items-center justify-center text-ink shrink-0"><i data-lucide="layout-grid" class="w-6 h-6"></i></div>
+                    <div><div class="text-3xl font-extrabold text-white"><span class="counter" data-target="20">0</span>+</div><div class="text-sm text-white/60 font-semibold">рабочих модулей</div></div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-brandgreen flex items-center justify-center text-white shrink-0"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
+                    <div><div class="text-3xl font-extrabold text-white"><span class="counter" data-target="2">0</span></div><div class="text-sm text-white/60 font-semibold">уровня модерации</div></div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-brandteal flex items-center justify-center text-white shrink-0"><i data-lucide="cloud" class="w-6 h-6"></i></div>
+                    <div><div class="text-3xl font-extrabold text-white"><span class="counter" data-target="100">0</span>%</div><div class="text-sm text-white/60 font-semibold">онлайн, из браузера</div></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="py-12 border-y border-gray-100 bg-white/50 backdrop-blur-sm relative z-20">
+    <!-- FEATURES -->
+    <section id="features" class="py-12 md:py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-gray-100">
-                <div class="text-center px-4 reveal-up">
-                    <div class="font-display text-4xl md:text-5xl font-bold text-primary mb-2 flex justify-center">
-                        <span class="counter" data-target="9">0</span>
-                    </div>
-                    <div class="text-sm font-medium text-graphite-600">ролей с разграничением</div>
+            <div class="text-center max-w-2xl mx-auto mb-14 reveal-up">
+                <h2 class="font-display text-3xl md:text-5xl font-extrabold text-ink mb-4">Возможности платформы</h2>
+                <p class="text-lg text-inksoft font-medium">Всё, что нужно школе для ежедневной работы — без таблиц, бумаги и хаоса.</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-peach rounded-4xl p-8 lift reveal-up">
+                    <div class="w-14 h-14 rounded-2xl bg-brandorange flex items-center justify-center text-white mb-5 shadow-card"><i data-lucide="book-open" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Электронный журнал и оценки</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Выставление оценок, средний балл, дескрипторы — всё считается автоматически.</p>
                 </div>
-                <div class="text-center px-4 reveal-up">
-                    <div class="font-display text-4xl md:text-5xl font-bold text-primary mb-2 flex justify-center">
-                        <span class="counter" data-target="20">0</span>+
-                    </div>
-                    <div class="text-sm font-medium text-graphite-600">рабочих модулей</div>
+                <div class="bg-mint rounded-4xl p-8 lift reveal-up">
+                    <div class="w-14 h-14 rounded-2xl bg-brandgreen flex items-center justify-center text-white mb-5 shadow-card"><i data-lucide="calendar-days" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Расписание и нагрузка</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Расписание классов и учителей, контроль нагрузки и замен.</p>
                 </div>
-                <div class="text-center px-4 reveal-up">
-                    <div class="font-display text-4xl md:text-5xl font-bold text-primary mb-2 flex justify-center">
-                        <span class="counter" data-target="2">0</span>
-                    </div>
-                    <div class="text-sm font-medium text-graphite-600">уровня модерации оценок</div>
+                <div class="bg-softblue rounded-4xl p-8 lift reveal-up">
+                    <div class="w-14 h-14 rounded-2xl bg-brandteal flex items-center justify-center text-white mb-5 shadow-card"><i data-lucide="bar-chart-3" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Аналитика и отчёты</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Успеваемость по классам и предметам, динамика, готовые отчёты для директора.</p>
                 </div>
-                <div class="text-center px-4 reveal-up">
-                    <div class="font-display text-4xl md:text-5xl font-bold text-primary mb-2 flex justify-center">
-                        <span class="counter" data-target="100">0</span>%
-                    </div>
-                    <div class="text-sm font-medium text-graphite-600">доступ проверен тестами</div>
+                <div class="bg-butter rounded-4xl p-8 lift reveal-up">
+                    <div class="w-14 h-14 rounded-2xl bg-brandyellow flex items-center justify-center text-ink mb-5 shadow-card"><i data-lucide="check-circle" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Посещаемость</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Отметки посещаемости урок за уроком, сводка прогулов и опозданий.</p>
+                </div>
+                <div class="bg-blush rounded-4xl p-8 lift reveal-up">
+                    <div class="w-14 h-14 rounded-2xl bg-brandred flex items-center justify-center text-white mb-5 shadow-card"><i data-lucide="notebook-pen" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Домашние задания</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Учитель выдаёт ДЗ, ученик и родитель видят задания и сроки.</p>
+                </div>
+                <div class="bg-sand rounded-4xl p-8 lift reveal-up">
+                    <div class="w-14 h-14 rounded-2xl bg-ink flex items-center justify-center text-white mb-5 shadow-card"><i data-lucide="shield-check" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Двухуровневая модерация</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Оценки проходят проверку — защита от ошибок и накруток.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="features" class="py-24 md:py-32 relative">
+    <!-- AUDIENCE -->
+    <section id="audience" class="py-12 md:py-20 bg-sand/60">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center max-w-3xl mx-auto mb-20 reveal-up">
-                <h2 class="font-display text-3xl md:text-5xl font-bold mb-6">Возможности платформы</h2>
-                <p class="text-lg text-graphite-600">Ключевые инструменты, которые делают управление школой прозрачным и эффективным.</p>
+            <div class="text-center max-w-2xl mx-auto mb-14 reveal-up">
+                <h2 class="font-display text-3xl md:text-5xl font-extrabold text-ink mb-4">Кому подходит</h2>
+                <p class="text-lg text-inksoft font-medium">Одна система — у каждого свой вход и свои данные.</p>
             </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="book-open-check" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Электронный журнал и оценивание</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Категории, средневзвешенный балл. Полный контроль успеваемости в реальном времени.</p>
-                </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="shield-check" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Двухуровневая модерация</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Модерация оценок + журнал аудита. Маршрут: учитель → завуч → публикация.</p>
-                </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="calendar-clock" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Расписание и звонки</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Удобное составление расписания, управление звонками и оперативные замены уроков.</p>
-                </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="users" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Нагрузка педагогов</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Контроль и передача нагрузки (декрет/болезнь) с сохранением полной истории изменений.</p>
-                </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="smartphone" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Дневник для учеников</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Ученики и родители видят только свои данные. Прозрачная связь со школой.</p>
-                </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="bar-chart-3" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Аналитика по школе</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Мощные инструменты для руководства: детальные отчёты с возможностью экспорта.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="modules" class="py-24 md:py-32 bg-white/40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="mb-16 reveal-up">
-                <h2 class="font-display text-3xl md:text-5xl font-bold mb-4">Более 20 рабочих модулей</h2>
-                <p class="text-lg text-graphite-600">Всё это работает уже сегодня.</p>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8">
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow reveal-up">
-                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                        <div class="p-3 bg-blue-50 rounded-xl text-primary"><i data-lucide="graduation-cap"></i></div>
-                        <h3 class="font-display text-xl font-bold">Учебный процесс</h3>
-                    </div>
-                    <ul class="space-y-3 text-sm text-graphite-600">
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Журнал и оценивание (4 шкалы)</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Модерация оценок</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Учебные периоды и категории</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Домашние задания</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Контроль посещаемости</li>
-                    </ul>
-                </div>
-
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow reveal-up">
-                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                        <div class="p-3 bg-blue-50 rounded-xl text-primary"><i data-lucide="clock"></i></div>
-                        <h3 class="font-display text-xl font-bold">Расписание и нагрузка</h3>
-                    </div>
-                    <ul class="space-y-3 text-sm text-graphite-600">
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Расписание и звонки</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Авто-генерация</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Замены уроков</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Управление нагрузкой</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Передача нагрузки</li>
-                    </ul>
-                </div>
-
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow reveal-up">
-                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                        <div class="p-3 bg-blue-50 rounded-xl text-primary"><i data-lucide="user-cog"></i></div>
-                        <h3 class="font-display text-xl font-bold">Люди и доступ</h3>
-                    </div>
-                    <ul class="space-y-3 text-sm text-graphite-600">
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Классы, группы, переводы</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Карточки учеников</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Дескрипторы педагогов</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> 9 ролей доступа</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Полная изоляция данных</li>
-                    </ul>
-                </div>
-
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow reveal-up">
-                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                        <div class="p-3 bg-blue-50 rounded-xl text-primary"><i data-lucide="message-square"></i></div>
-                        <h3 class="font-display text-xl font-bold">Дневник и общение</h3>
-                    </div>
-                    <ul class="space-y-3 text-sm text-graphite-600">
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Дневник ученика и родителя</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Фиксация происшествий</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Срочные вопросы</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Школьные новости</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Внутренние чаты</li>
-                    </ul>
-                </div>
-                
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow reveal-up">
-                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                        <div class="p-3 bg-blue-50 rounded-xl text-primary"><i data-lucide="heart-pulse"></i></div>
-                        <h3 class="font-display text-xl font-bold">Специалисты</h3>
-                    </div>
-                    <ul class="space-y-3 text-sm text-graphite-600">
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Кабинет психолога</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Кабинет логопеда</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Медкабинет</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Кабинет родителей</li>
-                    </ul>
-                </div>
-
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg transition-shadow reveal-up">
-                    <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                        <div class="p-3 bg-blue-50 rounded-xl text-primary"><i data-lucide="pie-chart"></i></div>
-                        <h3 class="font-display text-xl font-bold">Аналитика и отчёты</h3>
-                    </div>
-                    <ul class="space-y-3 text-sm text-graphite-600">
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Главный дашборд руководителя</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Отчёты + экспорт в Excel</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Аналитика с графиками</li>
-                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-green-500"></i> Глобальный поиск по системе</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="how-it-works" class="py-24 md:py-32 relative">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-display text-3xl md:text-5xl font-bold text-center mb-16 reveal-up">Как это работает</h2>
-            
-            <div class="flex flex-col md:flex-row gap-8 relative z-10">
-                <div class="flex-1 bg-white p-10 rounded-[2.5rem] shadow-soft border border-gray-50 reveal-up text-center relative overflow-hidden group">
-                    <div class="absolute -right-6 -top-6 text-9xl font-display font-black text-gray-50 opacity-50 group-hover:scale-110 transition-transform duration-500">01</div>
-                    <div class="relative z-10">
-                        <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-primary">
-                            <i data-lucide="monitor-play" class="w-8 h-8"></i>
-                        </div>
-                        <h3 class="font-display text-2xl font-bold mb-4">Демонстрация</h3>
-                        <p class="text-graphite-600">Встреча на ≈30 минут, где мы показываем систему вживую и отвечаем на вопросы.</p>
-                    </div>
-                </div>
-
-                <div class="hidden md:flex items-center justify-center text-gray-300 reveal-up">
-                    <i data-lucide="arrow-right" class="w-8 h-8"></i>
-                </div>
-
-                <div class="flex-1 bg-white p-10 rounded-[2.5rem] shadow-soft border border-gray-50 reveal-up text-center relative overflow-hidden group">
-                    <div class="absolute -right-6 -top-6 text-9xl font-display font-black text-gray-50 opacity-50 group-hover:scale-110 transition-transform duration-500">02</div>
-                    <div class="relative z-10">
-                        <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-primary">
-                            <i data-lucide="rocket" class="w-8 h-8"></i>
-                        </div>
-                        <h3 class="font-display text-2xl font-bold mb-4">Пилотный запуск</h3>
-                        <p class="text-graphite-600">Внедрение и тестирование системы на 1–2 классах для проверки всех процессов.</p>
-                    </div>
-                </div>
-
-                <div class="hidden md:flex items-center justify-center text-gray-300 reveal-up">
-                    <i data-lucide="arrow-right" class="w-8 h-8"></i>
-                </div>
-
-                <div class="flex-1 bg-primary text-white p-10 rounded-[2.5rem] shadow-glow reveal-up text-center relative overflow-hidden group">
-                    <div class="absolute -right-6 -top-6 text-9xl font-display font-black text-white/10 opacity-50 group-hover:scale-110 transition-transform duration-500">03</div>
-                    <div class="relative z-10">
-                        <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                            <i data-lucide="check-circle-2" class="w-8 h-8 text-white"></i>
-                        </div>
-                        <h3 class="font-display text-2xl font-bold mb-4 text-white">Запуск на школу</h3>
-                        <p class="text-blue-100">Полноценное внедрение во всех классах + полное обучение персонала.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="audience" class="py-24 md:py-32 bg-white/40 relative">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center max-w-3xl mx-auto mb-20 reveal-up">
-                <h2 class="font-display text-3xl md:text-5xl font-bold mb-6">Кому подходит</h2>
-                <p class="text-lg text-graphite-600">Каждая роль получает ровно то, что нужно для работы — без лишнего.</p>
-            </div>
-
             <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="layout-dashboard" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Директор</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Общая картина школы, аналитика, отчёты и контроль качества.</p>
+                <div class="bg-white rounded-4xl overflow-hidden shadow-card lift reveal-up">
+                    <div class="bg-brandteal p-2.5"><div class="frame rounded-3xl overflow-hidden h-44"><img src="/landing/classroom.jpg" alt="Директор"></div></div>
+                    <div class="p-6"><h3 class="font-display text-xl font-extrabold text-ink mb-1">Директор</h3><p class="text-inksoft font-medium text-[15px]">Общая картина школы, аналитика и контроль качества.</p></div>
                 </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="graduation-cap" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Учитель и куратор</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Журнал, выставление оценок, ДЗ и расписание — меньше рутины.</p>
+                <div class="bg-white rounded-4xl overflow-hidden shadow-card lift reveal-up">
+                    <div class="bg-brandgreen p-2.5"><div class="frame rounded-3xl overflow-hidden h-44"><img src="/landing/teacher.jpg" alt="Учитель"></div></div>
+                    <div class="p-6"><h3 class="font-display text-xl font-extrabold text-ink mb-1">Учитель и куратор</h3><p class="text-inksoft font-medium text-[15px]">Журнал, оценки, ДЗ и расписание — меньше рутины.</p></div>
                 </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="shield-check" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Завуч и аналитик</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Двухуровневая модерация оценок, нагрузка и дескрипторы.</p>
+                <div class="bg-white rounded-4xl overflow-hidden shadow-card lift reveal-up">
+                    <div class="bg-brandorange p-2.5"><div class="frame rounded-3xl overflow-hidden h-44"><img src="/landing/hero.jpg" alt="Завуч"></div></div>
+                    <div class="p-6"><h3 class="font-display text-xl font-extrabold text-ink mb-1">Завуч и аналитик</h3><p class="text-inksoft font-medium text-[15px]">Модерация оценок, нагрузка и дескрипторы.</p></div>
                 </div>
-                <div class="glass-card p-8 rounded-[2rem] reveal-up">
-                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-white mb-6 shadow-glow">
-                        <i data-lucide="users" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-display text-xl font-bold mb-3">Родитель и ученик</h3>
-                    <p class="text-graphite-600 text-sm leading-relaxed">Дневник, успеваемость и посещаемость — видят только своё.</p>
+                <div class="bg-white rounded-4xl overflow-hidden shadow-card lift reveal-up">
+                    <div class="bg-brandyellow p-2.5"><div class="frame rounded-3xl overflow-hidden h-44"><img src="/landing/students.jpg" alt="Родитель и ученик"></div></div>
+                    <div class="p-6"><h3 class="font-display text-xl font-extrabold text-ink mb-1">Родитель и ученик</h3><p class="text-inksoft font-medium text-[15px]">Дневник, успеваемость и посещаемость — видят только своё.</p></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="security" class="py-24 md:py-32 bg-graphite-900 text-white rounded-[3rem] mx-4 sm:mx-6 lg:mx-8 relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-96 h-96 bg-primary rounded-full filter blur-[150px] opacity-20 pointer-events-none"></div>
-        <div class="absolute bottom-0 left-0 w-96 h-96 bg-blue-400 rounded-full filter blur-[150px] opacity-10 pointer-events-none"></div>
-        
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="grid lg:grid-cols-2 gap-16 items-center">
-                <div class="reveal-up">
-                    <h2 class="font-display text-4xl md:text-5xl font-bold mb-6 text-white">Безопасность данных — приоритет</h2>
-                    <p class="text-lg text-gray-400 mb-10">Система спроектирована с учетом строгих требований к конфиденциальности образовательных данных.</p>
-                    <ul class="space-y-6">
-                        <li class="flex items-start gap-4">
-                            <div class="mt-1 p-2 bg-white/10 rounded-lg text-primary-light"><i data-lucide="lock"></i></div>
-                            <div>
-                                <h4 class="font-display font-bold text-lg text-white">9 ролей с разграничением</h4>
-                                <p class="text-gray-400 text-sm mt-1">Четкое распределение прав доступа для каждого типа пользователя.</p>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-4">
-                            <div class="mt-1 p-2 bg-white/10 rounded-lg text-primary-light"><i data-lucide="eye-off"></i></div>
-                            <div>
-                                <h4 class="font-display font-bold text-lg text-white">Изоляция данных</h4>
-                                <p class="text-gray-400 text-sm mt-1">Ученик и родитель видят строго только свои данные и оценки.</p>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-4">
-                            <div class="mt-1 p-2 bg-white/10 rounded-lg text-primary-light"><i data-lucide="test-tube"></i></div>
-                            <div>
-                                <h4 class="font-display font-bold text-lg text-white">Тестирование</h4>
-                                <p class="text-gray-400 text-sm mt-1">Корректность работы проверена автоматическими тестами.</p>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-4">
-                            <div class="mt-1 p-2 bg-white/10 rounded-lg text-primary-light"><i data-lucide="file-search"></i></div>
-                            <div>
-                                <h4 class="font-display font-bold text-lg text-white">Журнал аудита</h4>
-                                <p class="text-gray-400 text-sm mt-1">Полная история действий: кто, когда и что изменил.</p>
-                            </div>
-                        </li>
-                        <li class="flex items-start gap-4">
-                            <div class="mt-1 p-2 bg-white/10 rounded-lg text-primary-light"><i data-lucide="cloud-shield"></i></div>
-                            <div>
-                                <h4 class="font-display font-bold text-lg text-white">Облачный хостинг</h4>
-                                <p class="text-gray-400 text-sm mt-1">Работает на защищённых облачных серверах с регулярным резервным копированием.</p>
-                            </div>
-                        </li>
+    <!-- MODULES -->
+    <section id="modules" class="py-12 md:py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-14 reveal-up">
+                <h2 class="font-display text-3xl md:text-5xl font-extrabold text-ink mb-4">Более 20 рабочих модулей</h2>
+                <p class="text-lg text-inksoft font-medium">Всё ядро школы уже внутри — и продолжает расти.</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-4xl p-7 shadow-card lift reveal-up">
+                    <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-peach flex items-center justify-center text-brandorange"><i data-lucide="graduation-cap" class="w-5 h-5"></i></div><h3 class="font-display text-lg font-extrabold text-ink">Учебный процесс</h3></div>
+                    <ul class="space-y-2 text-inksoft font-semibold text-[15px]"><li>Журнал и оценки</li><li>Домашние задания</li><li>Дескрипторы и критерии</li><li>Учебные периоды</li></ul>
+                </div>
+                <div class="bg-white rounded-4xl p-7 shadow-card lift reveal-up">
+                    <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-mint flex items-center justify-center text-brandgreen"><i data-lucide="calendar-days" class="w-5 h-5"></i></div><h3 class="font-display text-lg font-extrabold text-ink">Расписание и нагрузка</h3></div>
+                    <ul class="space-y-2 text-inksoft font-semibold text-[15px]"><li>Расписание классов</li><li>Нагрузка учителей</li><li>Замены</li><li>Кабинеты</li></ul>
+                </div>
+                <div class="bg-white rounded-4xl p-7 shadow-card lift reveal-up">
+                    <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-softblue flex items-center justify-center text-brandteal"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></div><h3 class="font-display text-lg font-extrabold text-ink">Аналитика</h3></div>
+                    <ul class="space-y-2 text-inksoft font-semibold text-[15px]"><li>Успеваемость</li><li>Посещаемость</li><li>Отчёты директору</li><li>Динамика по классам</li></ul>
+                </div>
+                <div class="bg-white rounded-4xl p-7 shadow-card lift reveal-up">
+                    <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-butter flex items-center justify-center text-brandyellow"><i data-lucide="users" class="w-5 h-5"></i></div><h3 class="font-display text-lg font-extrabold text-ink">Люди и роли</h3></div>
+                    <ul class="space-y-2 text-inksoft font-semibold text-[15px]"><li>Ученики и классы</li><li>Педагоги</li><li>Родители</li><li>9 ролей доступа</li></ul>
+                </div>
+                <div class="bg-white rounded-4xl p-7 shadow-card lift reveal-up">
+                    <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-blush flex items-center justify-center text-brandred"><i data-lucide="message-circle" class="w-5 h-5"></i></div><h3 class="font-display text-lg font-extrabold text-ink">Дневник и общение</h3></div>
+                    <ul class="space-y-2 text-inksoft font-semibold text-[15px]"><li>Дневник ученика</li><li>Кабинет родителя</li><li>Объявления</li><li>Переводы и переходы</li></ul>
+                </div>
+                <div class="bg-white rounded-4xl p-7 shadow-card lift reveal-up">
+                    <div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl bg-sand flex items-center justify-center text-ink"><i data-lucide="shield-check" class="w-5 h-5"></i></div><h3 class="font-display text-lg font-extrabold text-ink">Контроль качества</h3></div>
+                    <ul class="space-y-2 text-inksoft font-semibold text-[15px]"><li>Модерация оценок</li><li>Журнал аудита</li><li>Права доступа</li><li>Изоляция данных</li></ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="py-12 md:py-20 bg-sand/60">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-14 reveal-up">
+                <h2 class="font-display text-3xl md:text-5xl font-extrabold text-ink mb-4">Как это работает</h2>
+                <p class="text-lg text-inksoft font-medium">От первого звонка до рабочей школы — за пару дней.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-4xl p-8 shadow-card reveal-up relative overflow-hidden">
+                    <span class="absolute -top-4 -right-2 text-8xl font-black text-peach select-none">1</span>
+                    <div class="relative"><div class="w-14 h-14 rounded-2xl bg-brandorange text-white flex items-center justify-center mb-5 shadow-card"><i data-lucide="phone-call" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Демо и заявка</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Показываем систему вживую, отвечаем на вопросы директора.</p></div>
+                </div>
+                <div class="bg-white rounded-4xl p-8 shadow-card reveal-up relative overflow-hidden">
+                    <span class="absolute -top-4 -right-2 text-8xl font-black text-mint select-none">2</span>
+                    <div class="relative"><div class="w-14 h-14 rounded-2xl bg-brandgreen text-white flex items-center justify-center mb-5 shadow-card"><i data-lucide="settings-2" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Настройка</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Заводим классы, педагогов, расписание и периоды. Обучаем команду.</p></div>
+                </div>
+                <div class="bg-white rounded-4xl p-8 shadow-card reveal-up relative overflow-hidden">
+                    <span class="absolute -top-4 -right-2 text-8xl font-black text-softblue select-none">3</span>
+                    <div class="relative"><div class="w-14 h-14 rounded-2xl bg-brandteal text-white flex items-center justify-center mb-5 shadow-card"><i data-lucide="rocket" class="w-7 h-7"></i></div>
+                    <h3 class="font-display text-xl font-extrabold text-ink mb-2">Запуск</h3>
+                    <p class="text-inksoft font-medium text-[15px]">Школа работает онлайн. Сопровождение и новые модули — включены.</p></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECURITY -->
+    <section class="py-12 md:py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-ink rounded-5xl p-8 md:p-14 shadow-soft relative overflow-hidden reveal-up">
+                <svg class="absolute top-6 right-8 w-12 h-12 text-brandyellow/50 hidden md:block" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c.7 6.2 2.6 8.4 8 9-5.4.6-7.3 2.8-8 9-.7-6.2-2.6-8.4-8-9 5.4-.6 7.3-2.8 8-9z"/></svg>
+                <div class="grid lg:grid-cols-2 gap-10 items-center">
+                    <div>
+                        <h2 class="font-display text-3xl md:text-4xl font-extrabold text-white mb-4">Данные под защитой</h2>
+                        <p class="text-white/60 font-medium mb-8">Система спроектирована под строгие требования к школьным данным.</p>
+                        <div class="grid sm:grid-cols-2 gap-5">
+                            <div class="flex items-start gap-3"><div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-brandyellow shrink-0"><i data-lucide="lock" class="w-5 h-5"></i></div><div><div class="font-extrabold text-white">9 ролей доступа</div><div class="text-white/55 text-sm font-medium">Каждый видит только своё.</div></div></div>
+                            <div class="flex items-start gap-3"><div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-brandgreen shrink-0"><i data-lucide="eye-off" class="w-5 h-5"></i></div><div><div class="font-extrabold text-white">Изоляция данных</div><div class="text-white/55 text-sm font-medium">Ученик и родитель — только свои оценки.</div></div></div>
+                            <div class="flex items-start gap-3"><div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-brandteal shrink-0"><i data-lucide="file-search" class="w-5 h-5"></i></div><div><div class="font-extrabold text-white">Журнал аудита</div><div class="text-white/55 text-sm font-medium">Кто, когда и что изменил.</div></div></div>
+                            <div class="flex items-start gap-3"><div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-brandorange shrink-0"><i data-lucide="cloud" class="w-5 h-5"></i></div><div><div class="font-extrabold text-white">Облако и бэкапы</div><div class="text-white/55 text-sm font-medium">Защищённые серверы, регулярные копии.</div></div></div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:flex justify-center">
+                        <div class="w-56 h-56 rounded-5xl bg-white/5 border border-white/10 flex items-center justify-center">
+                            <i data-lucide="shield-check" class="w-28 h-28 text-brandgreen"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" class="py-12 md:py-20 bg-sand/60">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 reveal-up">
+                <h2 class="font-display text-3xl md:text-5xl font-extrabold text-ink mb-4">Прозрачная цена</h2>
+                <p class="text-lg text-inksoft font-medium">Единый тариф для школы. Без скрытых платежей.</p>
+            </div>
+            <div class="bg-white rounded-5xl p-8 md:p-12 shadow-soft text-center reveal-up relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-2 bg-brandorange"></div>
+                <span class="inline-flex items-center gap-2 bg-mint text-ink font-bold text-sm px-4 py-2 rounded-full mb-8">Всё рабочее ядро включено</span>
+                <div class="flex flex-col md:flex-row justify-center items-center gap-6 md:gap-10 mb-9">
+                    <div><div class="text-sm font-bold text-inksoft uppercase tracking-wide mb-1">Установка (разово)</div><div class="font-display text-5xl font-extrabold text-ink">$1000</div></div>
+                    <div class="hidden md:block w-px h-14 bg-sand"></div>
+                    <div><div class="text-sm font-bold text-inksoft uppercase tracking-wide mb-1">Подписка</div><div class="font-display text-5xl font-extrabold text-brandorange">30 000<span class="text-xl text-inksoft font-bold"> сом/мес</span></div></div>
+                </div>
+                <ul class="text-left max-w-md mx-auto space-y-3 mb-9">
+                    <li class="flex items-center gap-3 font-semibold text-ink"><i data-lucide="check" class="w-5 h-5 text-brandgreen shrink-0"></i> Все 20+ модулей и 9 ролей</li>
+                    <li class="flex items-center gap-3 font-semibold text-ink"><i data-lucide="check" class="w-5 h-5 text-brandgreen shrink-0"></i> Настройка, перенос данных и обучение</li>
+                    <li class="flex items-center gap-3 font-semibold text-ink"><i data-lucide="check" class="w-5 h-5 text-brandgreen shrink-0"></i> Сопровождение и обновления</li>
+                    <li class="flex items-center gap-3 font-semibold text-ink"><i data-lucide="check" class="w-5 h-5 text-brandgreen shrink-0"></i> Ранний партнёр — новые модули без доплат</li>
+                </ul>
+                <a href="/login" class="inline-flex items-center justify-center gap-2 font-extrabold text-white bg-brandorange px-8 py-4 rounded-full shadow-card hover:bg-brandorangedk transition text-lg">Смотреть демо <i data-lucide="arrow-right" class="w-5 h-5"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="py-12 md:py-20">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 reveal-up">
+                <h2 class="font-display text-3xl md:text-5xl font-extrabold text-ink mb-4">Частые вопросы</h2>
+            </div>
+            <div class="space-y-4">
+                <div class="bg-white rounded-3xl p-6 md:p-7 shadow-card reveal-up">
+                    <h3 class="font-display text-lg font-extrabold text-ink mb-2">Чем отличаетесь от Кундолюка?</h3>
+                    <p class="text-inksoft font-medium">Кундолюк — обязательный гос-реестр для отчётности, мы его не заменяем и не конкурируем. Берём ежедневную работу и аналитику, которых там нет; интеграцию планируем.</p>
+                </div>
+                <div class="bg-white rounded-3xl p-6 md:p-7 shadow-card reveal-up">
+                    <h3 class="font-display text-lg font-extrabold text-ink mb-2">Сколько стоит?</h3>
+                    <p class="text-inksoft font-medium">Установка $1000 разово + 30 000 сом/месяц — всё рабочее ядро. Ранний партнёр получает новые модули без доплат.</p>
+                </div>
+                <div class="bg-white rounded-3xl p-6 md:p-7 shadow-card reveal-up">
+                    <h3 class="font-display text-lg font-extrabold text-ink mb-2">Безопасны ли данные?</h3>
+                    <p class="text-inksoft font-medium">Доступ по 9 ролям, ученик и родитель видят только своё, корректность проверена автотестами, журнал аудита фиксирует изменения.</p>
+                </div>
+                <div class="bg-white rounded-3xl p-6 md:p-7 shadow-card reveal-up">
+                    <h3 class="font-display text-lg font-extrabold text-ink mb-2">Как быстро запуститься?</h3>
+                    <p class="text-inksoft font-medium">Базовая настройка за 1–2 дня: периоды, классы, педагоги, расписание. Сопровождение и обучение включены.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-12 md:py-20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-brandorange rounded-5xl p-10 md:p-16 text-center shadow-soft relative overflow-hidden reveal-up">
+                <svg class="absolute top-8 left-10 w-12 h-12 text-white/40 hidden md:block" viewBox="0 0 60 60" fill="none"><path d="M30 5c14 0 25 11 25 25S44 55 30 55 5 44 5 30c0-9 5-17 14-21" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+                <svg class="absolute bottom-8 right-12 w-14 h-9 text-white/40 hidden md:block" viewBox="0 0 80 40" fill="none"><path d="M2 38C2 10 78 10 78 38" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 11"/></svg>
+                <h2 class="font-display text-3xl md:text-5xl font-extrabold text-white mb-4">Покажем вашу школу в Bilim OS</h2>
+                <p class="text-white/90 font-semibold text-lg max-w-xl mx-auto mb-8">Живое демо на ваших классах и предметах — за 20 минут. Без обязательств.</p>
+                <a href="/login" class="inline-flex items-center justify-center gap-2 font-extrabold text-ink bg-white px-8 py-4 rounded-full shadow-card hover:bg-cream transition text-lg">Записаться на демо <i data-lucide="arrow-right" class="w-5 h-5"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-ink pt-16 pb-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-3 gap-10 mb-10">
+                <div>
+                    <span class="inline-flex items-center bg-white rounded-full pl-2 pr-4 py-1.5 mb-4"><img src="/landing/logo.jpg" alt="Bilim OS" class="h-8 w-auto rounded-full"></span>
+                    <p class="text-white/55 font-medium max-w-xs">Система управления школой: журнал, оценки, расписание и аналитика — в одном месте.</p>
+                </div>
+                <div>
+                    <h4 class="font-display font-extrabold text-white mb-4">Разделы</h4>
+                    <ul class="space-y-2 text-white/55 font-semibold">
+                        <li><a href="#features" class="hover:text-white transition">Возможности</a></li>
+                        <li><a href="#audience" class="hover:text-white transition">Кому подходит</a></li>
+                        <li><a href="#modules" class="hover:text-white transition">Модули</a></li>
+                        <li><a href="#pricing" class="hover:text-white transition">Цена</a></li>
                     </ul>
                 </div>
-                
-                <div class="relative reveal-up hidden lg:block">
-                    <div class="glass border border-white/10 bg-white/5 rounded-3xl p-8 aspect-square relative flex items-center justify-center overflow-hidden">
-                        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,139,230,0.1)_0,transparent_100%)]"></div>
-                        <i data-lucide="shield" class="w-48 h-48 text-primary-light opacity-80 drop-shadow-[0_0_30px_rgba(34,139,230,0.4)]"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="pricing" class="py-24 md:py-32">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center max-w-3xl mx-auto mb-16 reveal-up">
-                <h2 class="font-display text-3xl md:text-5xl font-bold mb-6">Прозрачная цена</h2>
-                <p class="text-lg text-graphite-600">Единый тариф для школы. Без скрытых платежей.</p>
-            </div>
-
-            <div class="max-w-3xl mx-auto glass-card rounded-[3rem] p-10 md:p-14 text-center reveal-up border-2 border-primary/10">
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-primary font-medium text-sm mb-8">
-                    Всё рабочее ядро включено
-                </div>
-                
-                <div class="flex flex-col md:flex-row justify-center items-center gap-6 md:gap-12 mb-10">
-                    <div>
-                        <div class="text-sm font-medium text-graphite-600 uppercase tracking-wide mb-2">Установка (разово)</div>
-                        <div class="font-display text-5xl font-extrabold text-graphite-900">$1000</div>
-                    </div>
-                    <div class="hidden md:block w-px h-16 bg-gray-200"></div>
-                    <div class="md:hidden w-16 h-px bg-gray-200"></div>
-                    <div>
-                        <div class="text-sm font-medium text-graphite-600 uppercase tracking-wide mb-2">Подписка</div>
-                        <div class="font-display text-5xl font-extrabold text-primary">
-                            30 000 <span class="text-2xl text-graphite-600 font-medium">сом / мес</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 rounded-2xl p-6 mb-10 inline-block text-left border border-gray-100">
-                    <div class="flex items-center gap-3">
-                        <i data-lucide="gift" class="text-primary w-6 h-6"></i>
-                        <div>
-                            <div class="font-bold text-graphite-900">Бонус для ранних партнёров</div>
-                            <div class="text-sm text-graphite-600">Все новые модули будут добавляться без доплат.</div>
-                        </div>
-                    </div>
-                </div>
-
                 <div>
-                    <a href="/login" class="btn-shimmer inline-flex items-center justify-center bg-primary hover:bg-primary-dark text-white px-10 py-5 rounded-full text-lg font-semibold shadow-glow hover:-translate-y-1 transition-transform w-full sm:w-auto">
-                        Смотреть демо
-                    </a>
+                    <h4 class="font-display font-extrabold text-white mb-4">Контакты</h4>
+                    <ul class="space-y-2 text-white/55 font-semibold">
+                        <li class="flex items-center gap-2"><i data-lucide="phone" class="w-4 h-4"></i> +996 700 144 043</li>
+                        <li class="flex items-center gap-2"><i data-lucide="mail" class="w-4 h-4"></i> Asystem@gmail.com</li>
+                        <li><a href="/login" class="inline-flex items-center gap-2 mt-2 font-extrabold text-ink bg-brandyellow px-5 py-2.5 rounded-full hover:bg-white transition">Смотреть демо</a></li>
+                    </ul>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section id="faq" class="py-24 md:py-32 relative">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center max-w-3xl mx-auto mb-16 reveal-up">
-                <h2 class="font-display text-3xl md:text-5xl font-bold mb-6">Частые вопросы</h2>
-                <p class="text-lg text-graphite-600">Коротко и честно о том, что чаще всего спрашивают.</p>
-            </div>
-
-            <div class="max-w-3xl mx-auto grid gap-6">
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 reveal-up">
-                    <div class="flex items-start gap-4">
-                        <div class="p-2.5 bg-blue-50 rounded-xl text-primary shrink-0"><i data-lucide="help-circle" class="w-5 h-5"></i></div>
-                        <div>
-                            <h3 class="font-display text-lg font-bold mb-2">Чем отличаетесь от Кундолюка?</h3>
-                            <p class="text-graphite-600 text-sm leading-relaxed">Кундолюк — обязательный гос-реестр для отчётности, мы его не заменяем и не конкурируем. Берём ежедневную работу и аналитику, которых там нет; интеграцию планируем.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 reveal-up">
-                    <div class="flex items-start gap-4">
-                        <div class="p-2.5 bg-blue-50 rounded-xl text-primary shrink-0"><i data-lucide="wallet" class="w-5 h-5"></i></div>
-                        <div>
-                            <h3 class="font-display text-lg font-bold mb-2">Сколько стоит?</h3>
-                            <p class="text-graphite-600 text-sm leading-relaxed">Установка $1000 разово + 30 000 сом/месяц — всё рабочее ядро. Ранний партнёр: новые модули без доплат.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 reveal-up">
-                    <div class="flex items-start gap-4">
-                        <div class="p-2.5 bg-blue-50 rounded-xl text-primary shrink-0"><i data-lucide="shield-check" class="w-5 h-5"></i></div>
-                        <div>
-                            <h3 class="font-display text-lg font-bold mb-2">Безопасны ли данные?</h3>
-                            <p class="text-graphite-600 text-sm leading-relaxed">Доступ по 9 ролям, ученик и родитель видят только своё, корректность проверена автотестами; журнал аудита фиксирует изменения.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 reveal-up">
-                    <div class="flex items-start gap-4">
-                        <div class="p-2.5 bg-blue-50 rounded-xl text-primary shrink-0"><i data-lucide="rocket" class="w-5 h-5"></i></div>
-                        <div>
-                            <h3 class="font-display text-lg font-bold mb-2">Как быстро запуститься?</h3>
-                            <p class="text-graphite-600 text-sm leading-relaxed">Базовая настройка за 1–2 дня (периоды, классы, педагоги, расписание), сопровождение и обучение включены.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-24 bg-graphite-900 relative overflow-hidden">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(25,113,194,0.3)_0,transparent_60%)]"></div>
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 reveal-up">
-            <h2 class="font-display text-4xl md:text-5xl font-bold text-white mb-10">Посмотрите, как это работает в вашей школе</h2>
-            <a href="/login" class="btn-shimmer inline-flex items-center justify-center bg-white text-graphite-900 px-10 py-5 rounded-full text-lg font-bold shadow-soft hover:-translate-y-1 transition-transform">
-                Открыть демо
-            </a>
-        </div>
-    </section>
-
-    <footer class="bg-white border-t border-gray-100 py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex items-center">
-                <img src="/landing/logo.jpg" alt="Bilim OS" class="h-8 w-auto">
-            </div>
-            
-            <div class="text-sm font-medium text-graphite-600 flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-                <a href="tel:+996700144043" class="hover:text-primary transition-colors">+996 700 144 043</a>
-                <span class="hidden sm:inline">·</span>
-                <a href="mailto:Asystem@gmail.com" class="hover:text-primary transition-colors">Asystem@gmail.com</a>
-            </div>
-
-            <div class="text-sm text-gray-400">
-                © 2026 Bilim OS · Разработано Asystem
+            <div class="border-t border-white/10 pt-6 text-center text-white/40 font-semibold text-sm">
+                © 2026 Bilim OS · Система управления школой
             </div>
         </div>
     </footer>
@@ -675,82 +430,41 @@
         // Initialize Lucide Icons (don't break the page if its CDN fails)
         try { if (window.lucide) lucide.createIcons(); } catch (e) {}
 
-        // If GSAP/ScrollTrigger didn't load (CDN blocked) — show content without animation, stop here.
+        // If GSAP/ScrollTrigger didn't load — show content + set counters, stop.
         if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
-            document.documentElement.classList.remove('js-reveal');
             document.querySelectorAll('.counter').forEach((c) => { c.innerHTML = c.getAttribute('data-target'); });
         } else {
-        // Register GSAP ScrollTrigger
-        gsap.registerPlugin(ScrollTrigger);
+            gsap.registerPlugin(ScrollTrigger);
+            document.addEventListener('DOMContentLoaded', () => {
+                // Navbar background on scroll
+                const navbar = document.getElementById('navbar');
+                const onScroll = () => {
+                    if (window.scrollY > 16) { navbar.style.background = 'rgba(251,247,240,0.85)'; navbar.style.backdropFilter = 'blur(10px)'; navbar.classList.add('shadow-card'); }
+                    else { navbar.style.background = 'transparent'; navbar.style.backdropFilter = 'none'; navbar.classList.remove('shadow-card'); }
+                };
+                window.addEventListener('scroll', onScroll); onScroll();
 
-        // Wait for DOM to load
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // Navbar Blur and Shadow on scroll
-            const navbar = document.getElementById('navbar');
-            window.addEventListener('scroll', () => {
-                if (window.scrollY > 20) {
-                    navbar.classList.add('shadow-sm');
-                    navbar.style.background = 'rgba(255, 255, 255, 0.85)';
-                } else {
-                    navbar.classList.remove('shadow-sm');
-                    navbar.style.background = 'rgba(255, 255, 255, 0.7)';
-                }
-            });
+                const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            // Reveal animations
-            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            
-            if (!prefersReducedMotion) {
-                // Initial setup for reveal elements
-                // Reveal-fade removed: content is always fully visible (no opacity tricks).
-                // Motion still comes from aurora background, animated counters, hero parallax, hovers.
-
-                // Hero Parallax effect
-                gsap.to('#hero-content', {
-                    yPercent: 30,
-                    ease: "none",
-                    scrollTrigger: {
-                        trigger: "#hero",
-                        start: "top top",
-                        end: "bottom top",
-                        scrub: true
-                    }
-                });
-
-                // Animated Counters
-                const counters = document.querySelectorAll('.counter');
-                counters.forEach(counter => {
+                // Animated counters (always finish at target)
+                document.querySelectorAll('.counter').forEach(counter => {
                     const target = parseFloat(counter.getAttribute('data-target'));
-                    
+                    if (prefersReduced) { counter.innerHTML = target; return; }
                     ScrollTrigger.create({
-                        trigger: counter,
-                        start: "top 85%",
-                        once: true,
+                        trigger: counter, start: 'top 92%', once: true,
                         onEnter: () => {
-                            let dummy = { val: 0 };
-                            gsap.to(dummy, {
-                                val: target,
-                                duration: 2,
-                                ease: "power2.out",
-                                onUpdate: () => {
-                                    counter.innerHTML = Math.floor(dummy.val);
-                                }
-                            });
+                            const d = { v: 0 };
+                            gsap.to(d, { v: target, duration: 1.6, ease: 'power2.out', onUpdate: () => { counter.innerHTML = Math.floor(d.v); }, onComplete: () => { counter.innerHTML = target; } });
                         }
                     });
+                    // Failsafe: if it never enters, show target after 2.5s
+                    setTimeout(() => { if (counter.innerHTML === '0') counter.innerHTML = target; }, 2500);
                 });
-            } else {
-                // If reduced motion, just show elements
-                document.querySelectorAll('.reveal-up').forEach(el => {
-                    el.style.opacity = '1';
-                    el.style.visibility = 'visible';
-                });
-                document.querySelectorAll('.counter').forEach(el => {
-                    el.innerHTML = el.getAttribute('data-target');
-                });
-            }
-        });
+
+                // NOTE: no opacity-based reveal. Content is ALWAYS visible (hard lesson:
+                // hiding blocks behind a scroll-reveal made the page look blank). Motion
+                // comes from animated counters, hover lifts and the navbar transition.
+            });
         }
     </script>
 </body>
