@@ -46,7 +46,7 @@ export default function LoginPage() {
   const [activeRole, setActiveRole] = useState('admin');
 
   const form = useForm({
-    initialValues: { login: 'admin1', password: 'erudit2025' },
+    initialValues: { login: 'admin', password: 'erudit2025' },
     validate: {
       login: (v) => (v.length < 1 ? 'Введите логин' : null),
       password: (v) => (v.length < 1 ? 'Введите пароль' : null),
