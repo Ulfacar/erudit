@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   Badge,
   Box,
-  Card,
   Group,
   Loader,
   Paper,
@@ -14,7 +13,9 @@ import {
   Text,
   Title,
 } from '@mantine/core';
-import { IconBrain, IconAlertTriangle, IconNotes } from '@tabler/icons-react';
+import { IconBrain, IconAlertTriangle } from '@tabler/icons-react';
+import { ResourcePage } from '@/shared/components/ui/ResourcePage';
+import { fmtDate, studentField, studentLookup } from '@/shared/components/ui/resource-helpers';
 
 interface StudentItem {
   id: string;
@@ -248,15 +249,47 @@ export default function PsychologistWorkspacePage() {
         )}
       </Paper>
 
-      <Card withBorder radius="sm" p="md">
-        <Group gap="sm" mb="md">
-          <IconNotes size={20} stroke={1.5} />
-          <Title order={4}>Рекомендации</Title>
-        </Group>
-        <Text c="dimmed" size="sm">
-          Раздел рекомендаций психолога будет доступен в следующем обновлении.
-        </Text>
-      </Card>
+      <ResourcePage
+        title="Рекомендации психолога"
+        endpoint="/api/v1/specialist-recommendations"
+        query={{ kind: 'psych' }}
+        createLabel="Добавить рекомендацию"
+        canDelete
+        lookups={[studentLookup]}
+        transformPayload={(f) => ({ ...f, kind: 'psych' })}
+        columns={[
+          { key: 'date', label: 'Дата', render: (r) => fmtDate(r.date), width: 110 },
+          { key: 'studentId', label: 'Ученик', render: (r, m) => m.students?.[String(r.studentId)] ?? '—' },
+          { key: 'text', label: 'Рекомендация' },
+        ]}
+        fields={[
+          studentField,
+          { name: 'text', label: 'Рекомендация', type: 'textarea', required: true },
+          { name: 'date', label: 'Дата', type: 'date', required: true },
+        ]}
+      />
+
+      <ResourcePage
+        title="Консультации и занятия"
+        endpoint="/api/v1/specialist-sessions"
+        query={{ kind: 'psych' }}
+        createLabel="Записать консультацию"
+        canDelete
+        lookups={[studentLookup]}
+        transformPayload={(f) => ({ ...f, kind: 'psych' })}
+        columns={[
+          { key: 'date', label: 'Дата', render: (r) => fmtDate(r.date), width: 110 },
+          { key: 'studentId', label: 'Ученик', render: (r, m) => m.students?.[String(r.studentId)] ?? '—' },
+          { key: 'startTime', label: 'Время', render: (r) => (r.startTime ? String(r.startTime) : '—') },
+          { key: 'note', label: 'Заметка' },
+        ]}
+        fields={[
+          studentField,
+          { name: 'date', label: 'Дата', type: 'date', required: true },
+          { name: 'startTime', label: 'Время', type: 'text', placeholder: '11:00' },
+          { name: 'note', label: 'Заметка', type: 'textarea' },
+        ]}
+      />
     </Stack>
   );
 }

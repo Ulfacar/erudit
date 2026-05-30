@@ -349,11 +349,7 @@ function CompareCard() {
         color="blue"
         size="xs"
         onClick={() => {
-          notifications.show({
-            color: 'blue',
-            title: 'Информация',
-            message: 'Функция в разработке',
-          });
+          window.location.assign('/reports/grades');
         }}
       >
         Сравнить

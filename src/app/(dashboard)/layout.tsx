@@ -101,6 +101,9 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?
   '/workspace/psychologist': IconBrain,
   '/workspace/medical': IconMedicalCross,
   '/workspace/parents': IconUsers,
+  '/workspace/accounting': IconCalculator,
+  '/workspace/kitchen': IconToolsKitchen2,
+  '/workspace/maintenance': IconTool,
 };
 
 

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response;
 
     const body = await request.json();
-    const { studentId, date, status } = body;
+    const { studentId, date, status, reason } = body;
 
     if (!studentId || !date || !status) {
       return errorResponse(
@@ -122,11 +122,12 @@ export async function POST(request: NextRequest) {
           date: new Date(date),
         },
       },
-      update: { status },
+      update: { status, reason: reason ?? null },
       create: {
         studentId,
         date: new Date(date),
         status,
+        reason: reason ?? null,
       },
     });
 
@@ -145,7 +146,7 @@ export async function PUT(request: NextRequest) {
     if (auth.response) return auth.response;
 
     const body = await request.json();
-    const { id, status } = body;
+    const { id, status, reason } = body;
 
     if (!id || !status) {
       return errorResponse('VALIDATION_ERROR', 'Поля id и status обязательны');
@@ -158,7 +159,7 @@ export async function PUT(request: NextRequest) {
 
     const updated = await prisma.attendance.update({
       where: { id },
-      data: { status },
+      data: { status, ...(reason !== undefined ? { reason } : {}) },
     });
 
     return successResponse(updated);

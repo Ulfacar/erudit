@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import {
   Badge,
   Box,
-  Card,
   Group,
   Loader,
   Paper,
@@ -14,7 +13,9 @@ import {
   Text,
   Title,
 } from '@mantine/core';
-import { IconSpeakerphone, IconCalendar, IconNotes } from '@tabler/icons-react';
+import { IconSpeakerphone } from '@tabler/icons-react';
+import { ResourcePage } from '@/shared/components/ui/ResourcePage';
+import { fmtDate, studentField, studentLookup } from '@/shared/components/ui/resource-helpers';
 
 interface MedicalData {
   logoped?: boolean;
@@ -118,27 +119,54 @@ export default function SpeechWorkspacePage() {
         </ScrollArea>
       </Paper>
 
-      <Group grow align="stretch">
-        <Card withBorder radius="sm" p="md">
-          <Group gap="sm" mb="md">
-            <IconCalendar size={20} stroke={1.5} />
-            <Title order={4}>Расписание занятий</Title>
-          </Group>
-          <Text c="dimmed" size="sm">
-            Расписание индивидуальных и групповых занятий будет доступно в следующем обновлении.
-          </Text>
-        </Card>
+      <ResourcePage
+        title="Расписание занятий"
+        endpoint="/api/v1/specialist-sessions"
+        query={{ kind: 'speech' }}
+        createLabel="Записать занятие"
+        canDelete
+        lookups={[studentLookup]}
+        transformPayload={(f) => ({ ...f, kind: 'speech' })}
+        columns={[
+          { key: 'date', label: 'Дата', render: (r) => fmtDate(r.date), width: 110 },
+          { key: 'studentId', label: 'Ученик', render: (r, m) => m.students?.[String(r.studentId)] ?? '—' },
+          { key: 'startTime', label: 'Время', render: (r) => (r.startTime ? `${r.startTime}${r.endTime ? '–' + r.endTime : ''}` : '—') },
+          { key: 'groupName', label: 'Группа' },
+          { key: 'note', label: 'Заметка' },
+        ]}
+        fields={[
+          studentField,
+          { name: 'date', label: 'Дата', type: 'date', required: true },
+          { name: 'startTime', label: 'Начало', type: 'text', placeholder: '10:00' },
+          { name: 'endTime', label: 'Конец', type: 'text', placeholder: '10:30' },
+          { name: 'groupName', label: 'Группа (если групповое)', type: 'text' },
+          { name: 'note', label: 'Заметка', type: 'textarea' },
+        ]}
+      />
 
-        <Card withBorder radius="sm" p="md">
-          <Group gap="sm" mb="md">
-            <IconNotes size={20} stroke={1.5} />
-            <Title order={4}>Заметки и прогресс</Title>
-          </Group>
-          <Text c="dimmed" size="sm">
-            Отслеживание прогресса учеников будет доступно в следующем обновлении.
-          </Text>
-        </Card>
-      </Group>
+      <ResourcePage
+        title="Прогресс учеников"
+        endpoint="/api/v1/specialist-progress"
+        query={{ kind: 'speech' }}
+        createLabel="Отметить прогресс"
+        canDelete
+        lookups={[studentLookup]}
+        transformPayload={(f) => ({ ...f, kind: 'speech' })}
+        columns={[
+          { key: 'date', label: 'Дата', render: (r) => fmtDate(r.date), width: 110 },
+          { key: 'studentId', label: 'Ученик', render: (r, m) => m.students?.[String(r.studentId)] ?? '—' },
+          { key: 'metric', label: 'Показатель' },
+          { key: 'value', label: 'Прогресс', render: (r) => `${r.value ?? 0}%` },
+          { key: 'note', label: 'Заметка' },
+        ]}
+        fields={[
+          studentField,
+          { name: 'metric', label: 'Показатель', type: 'text', required: true, placeholder: 'Звук «Р»' },
+          { name: 'value', label: 'Прогресс, %', type: 'number', required: true },
+          { name: 'date', label: 'Дата', type: 'date', required: true },
+          { name: 'note', label: 'Заметка', type: 'textarea' },
+        ]}
+      />
     </Stack>
   );
 }

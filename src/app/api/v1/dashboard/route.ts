@@ -155,30 +155,29 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Group by student, count days
+    // Group by student, count days, keep latest known reason
     const absenceByStudent: Record<
       string,
-      { student: (typeof excusedAbsences)[0]['student']; count: number }
+      { student: (typeof excusedAbsences)[0]['student']; count: number; reason: string | null }
     > = {};
     for (const a of excusedAbsences) {
       if (!absenceByStudent[a.studentId]) {
-        absenceByStudent[a.studentId] = { student: a.student, count: 0 };
+        absenceByStudent[a.studentId] = { student: a.student, count: 0, reason: null };
       }
       absenceByStudent[a.studentId].count++;
+      // последняя непустая причина из отметок посещаемости
+      if (a.reason) absenceByStudent[a.studentId].reason = a.reason;
     }
-
-    // Mock reasons since we don't store reason in Attendance model
-    const mockReasons = ['ОРВИ', 'Ветрянка', 'Грипп', 'Бронхит', 'ОРВИ'];
 
     const medicalIssues = Object.values(absenceByStudent)
       .filter((entry) => entry.count >= 3)
       .sort((a, b) => b.count - a.count)
       .slice(0, 10)
-      .map((entry, idx) => ({
+      .map((entry) => ({
         studentName: `${entry.student.lastName} ${entry.student.firstName}`,
         role: 'Ученик' as const,
         daysAbsent: entry.count,
-        reason: mockReasons[idx % mockReasons.length],
+        reason: entry.reason ?? 'Причина не указана',
       }));
 
     return successResponse({

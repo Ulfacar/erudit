@@ -88,17 +88,29 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/urgent-issues', label: 'Срочные вопросы', roles: STAFF_PLUS_SPECIALIST },
   { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist') },
   { href: '/analytics', label: 'Аналитика', roles: ADMIN_AND_VICE },
+  // Учебные модули
+  { href: '/calendar', label: 'Календарь', roles: STAFF_TIER },
+  { href: '/curriculum-plan', label: 'КТП', roles: STAFF_TIER },
+  { href: '/achievements', label: 'Достижения', roles: STAFF_AND_SECRETARY },
+  { href: '/portfolio', label: 'Портфолио', roles: STAFF_AND_SECRETARY },
+  { href: '/library', label: 'Библиотека', roles: STAFF_AND_SECRETARY },
+  { href: '/olympiads', label: 'Олимпиады и проекты', roles: ALL_AUTH },
+  { href: '/events', label: 'Мероприятия', roles: ALL_AUTH },
+  { href: '/studios', label: 'Студии', roles: ALL_AUTH },
+  { href: '/trips', label: 'Выезды', roles: ALL_AUTH },
+  // Администрирование
+  { href: '/staff', label: 'Персонал', roles: STAFF_AND_SECRETARY },
+  { href: '/documents', label: 'Документы', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
+  { href: '/roles', label: 'Роли', roles: ['super_admin'] },
   // Workspace (специалисты)
   { href: '/workspace/speech', label: 'Логопед', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
   { href: '/workspace/psychologist', label: 'Психолог', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
   { href: '/workspace/medical', label: 'Медкабинет', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
   { href: '/workspace/parents', label: 'Родители', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'curator'] },
-  // Дорожная карта — видны staff-ролям с меткой «Скоро»
-  { href: '/calendar', label: 'Календарь', roles: STAFF_TIER, badge: 'Скоро' },
-  { href: '/curriculum-plan', label: 'КТП', roles: STAFF_TIER, badge: 'Скоро' },
-  { href: '/achievements', label: 'Достижения', roles: STAFF_TIER, badge: 'Скоро' },
-  { href: '/portfolio', label: 'Портфолио', roles: STAFF_TIER, badge: 'Скоро' },
-  { href: '/library', label: 'Библиотека', roles: STAFF_TIER, badge: 'Скоро' },
+  // Хозчасть / бизнес
+  { href: '/workspace/accounting', label: 'Бухгалтерия', roles: ADMIN_AND_VICE },
+  { href: '/workspace/kitchen', label: 'Кухня', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
+  { href: '/workspace/maintenance', label: 'АХЧ', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
 ]
 
 /**

@@ -367,6 +367,7 @@ model Attendance {
   studentId String
   date      DateTime
   status    AttendanceStatus
+  reason    String?          @db.VarChar(300) // причина отсутствия/освобождения (болезнь, справка и т.п.)
 
   student Student @relation(fields: [studentId], references: [id])
 
@@ -529,4 +530,432 @@ model ChatMessage {
   content   String
   fileUrl   String?
   createdAt DateTime @default(now())
+}
+
+// ============ CALENDAR ============
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(1000)
+  date        DateTime
+  endDate     DateTime?
+  type        String   @default("event") // event | holiday | exam | meeting | deadline
+  classId     String?  // null = общешкольное
+  audience    String[] @default([]) // роли, для кого видно; пусто = все
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+// ============ CURRICULUM PLAN (КТП) ============
+
+model CurriculumPlan {
+  id        String   @id @default(cuid())
+  subjectId String
+  classId   String
+  periodId  String?
+  teacherId String?
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topics CurriculumTopic[]
+
+  @@index([subjectId, classId])
+}
+
+model CurriculumTopic {
+  id        String   @id @default(cuid())
+  planId    String
+  plan      CurriculumPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  order     Int
+  title     String
+  hours     Int      @default(1)
+  plannedAt DateTime?
+  done      Boolean  @default(false)
+
+  @@index([planId, order])
+}
+
+// ============ ACHIEVEMENTS ============
+
+model Achievement {
+  id          String   @id @default(cuid())
+  studentId   String
+  title       String
+  description String?  @db.VarChar(1000)
+  category    String   @default("academic") // academic | sport | art | social | other
+  level       String   @default("school")   // school | district | city | republic | international
+  place       String?  // 1 место, призёр, участник и т.п.
+  date        DateTime
+  authorId    String
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
+}
+
+// ============ PORTFOLIO ============
+
+model PortfolioEntry {
+  id          String   @id @default(cuid())
+  studentId   String
+  type        String   @default("work") // work | certificate | project | reflection
+  title       String
+  description String?  @db.VarChar(1000)
+  fileUrl     String?
+  fileName    String?
+  date        DateTime
+  authorId    String
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
+}
+
+// ============ LIBRARY ============
+
+model LibraryItem {
+  id        String   @id @default(cuid())
+  title     String
+  author    String?
+  isbn      String?
+  category  String?  // учебник | художественная | методическая
+  total     Int      @default(1)
+  available Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  loans LibraryLoan[]
+}
+
+model LibraryLoan {
+  id         String   @id @default(cuid())
+  itemId     String
+  item       LibraryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  studentId  String?
+  teacherId  String?
+  borrowerName String? // на случай ручной выдачи
+  takenAt    DateTime @default(now())
+  dueAt      DateTime
+  returnedAt DateTime?
+
+  @@index([itemId])
+  @@index([studentId])
+}
+
+// ============ SPECIALIST CABINETS ============
+
+enum SpecialistKind {
+  speech
+  psych
+  medical
+}
+
+model SpecialistSession {
+  id           String   @id @default(cuid())
+  kind         SpecialistKind
+  studentId    String
+  specialistId String   // user.id специалиста
+  date         DateTime
+  startTime    String?  // HH:mm
+  endTime      String?
+  groupName    String?  // для групповых занятий
+  note         String?  @db.VarChar(1000)
+  createdAt    DateTime @default(now())
+
+  @@index([kind, date])
+  @@index([studentId])
+}
+
+model SpecialistRecommendation {
+  id           String   @id @default(cuid())
+  kind         SpecialistKind @default(psych)
+  studentId    String
+  specialistId String
+  text         String   @db.VarChar(2000)
+  date         DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([studentId])
+}
+
+model SpecialistProgress {
+  id           String   @id @default(cuid())
+  kind         SpecialistKind @default(speech)
+  studentId    String
+  specialistId String
+  metric       String   // что измеряем (звук «Р», тревожность и т.п.)
+  value        Int      // 0..100 прогресс
+  note         String?  @db.VarChar(500)
+  date         DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([studentId, metric])
+}
+
+// ============ STAFF / HR ============
+
+model StaffMember {
+  id        String   @id @default(cuid())
+  userId    String?  // если есть учётка
+  firstName String
+  lastName  String
+  middleName String?
+  position  String
+  department String?  // АХЧ, бухгалтерия, охрана, кухня и т.п.
+  phone     String?
+  email     String?
+  hireDate  DateTime?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ DOCUMENTS (полиморфно) ============
+
+enum DocumentOwnerType {
+  student
+  teacher
+  staff
+  school
+}
+
+model DocumentRecord {
+  id        String   @id @default(cuid())
+  ownerType DocumentOwnerType
+  ownerId   String?  // null для общешкольных
+  kind      String   // СНИЛС, полис ОМС, приказ, договор и т.п.
+  title     String
+  number    String?
+  issuedAt  DateTime?
+  expiresAt DateTime?
+  fileUrl   String?
+  fileName  String?
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerType, ownerId])
+}
+
+// ============ OLYMPIADS & PROJECTS ============
+
+model Olympiad {
+  id        String   @id @default(cuid())
+  name      String
+  subjectId String?
+  level     String   @default("school") // school | district | city | republic | international
+  stage     String?  // отборочный | финал
+  date      DateTime
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participations OlympiadParticipation[]
+}
+
+model OlympiadParticipation {
+  id         String   @id @default(cuid())
+  olympiadId String
+  olympiad   Olympiad @relation(fields: [olympiadId], references: [id], onDelete: Cascade)
+  studentId  String
+  result     String?  // балл / место / диплом
+  createdAt  DateTime @default(now())
+
+  @@index([olympiadId])
+  @@index([studentId])
+}
+
+// ============ SCHOOL EVENTS ============
+
+model SchoolEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(2000)
+  date        DateTime
+  endDate     DateTime?
+  location    String?
+  organizerId String?  // user.id
+  audience    String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+// ============ STUDIOS / CLUBS ============
+
+model Studio {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.VarChar(1000)
+  leaderId    String?  // teacher/user id
+  leaderName  String?
+  schedule    String?  // "Пн/Ср 15:00"
+  capacity    Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollments StudioEnrollment[]
+}
+
+model StudioEnrollment {
+  id         String   @id @default(cuid())
+  studioId   String
+  studio     Studio   @relation(fields: [studioId], references: [id], onDelete: Cascade)
+  studentId  String
+  enrolledAt DateTime @default(now())
+
+  @@unique([studioId, studentId])
+}
+
+// ============ TRIPS ============
+
+model Trip {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(1000)
+  destination String?
+  date        DateTime
+  returnDate  DateTime?
+  classId     String?
+  responsibleId String? // user.id
+  cost        Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participants TripParticipant[]
+}
+
+model TripParticipant {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  studentId String
+  consent   Boolean  @default(false) // согласие родителей
+  paid      Boolean  @default(false)
+
+  @@unique([tripId, studentId])
+}
+
+// ============ ACCOUNTING ============
+
+enum InvoiceStatus {
+  pending
+  partial
+  paid
+  cancelled
+}
+
+model FeeInvoice {
+  id        String   @id @default(cuid())
+  studentId String
+  title     String   // "Обучение, сентябрь" и т.п.
+  period    String?  // месяц/триместр
+  amount    Int      // в сомах
+  status    InvoiceStatus @default(pending)
+  dueDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([studentId])
+  @@index([status])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  invoiceId String
+  invoice   FeeInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount    Int
+  method    String?  // нал | карта | банк
+  paidAt    DateTime @default(now())
+  note      String?
+
+  @@index([invoiceId])
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  category  String   // зарплата | коммуналка | закуп | ремонт
+  title     String
+  amount    Int
+  date      DateTime
+  authorId  String
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@index([date])
+}
+
+// ============ KITCHEN / MEALS ============
+
+enum MealType {
+  breakfast
+  lunch
+  snack
+}
+
+model MealMenu {
+  id        String   @id @default(cuid())
+  date      DateTime
+  meal      MealType
+  dish      String
+  calories  Int?
+  cost      Int?
+  createdAt DateTime @default(now())
+
+  @@index([date, meal])
+}
+
+model MealPlan {
+  id        String   @id @default(cuid())
+  classId   String
+  date      DateTime
+  meal      MealType
+  count     Int      @default(0) // сколько питается
+  createdAt DateTime @default(now())
+
+  @@unique([classId, date, meal])
+}
+
+// ============ MAINTENANCE / АХЧ ============
+
+enum MaintenanceStatus {
+  open
+  in_progress
+  done
+  cancelled
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  name      String
+  inventoryNo String?
+  location  String?  // кабинет/этаж
+  category  String?  // мебель | техника | инвентарь
+  quantity  Int      @default(1)
+  condition String?  // новое | рабочее | требует ремонта | списано
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MaintenanceRequest {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(1000)
+  location    String?
+  priority    IssuePriority @default(medium)
+  status      MaintenanceStatus @default(open)
+  assigneeId  String?  // staff/user id
+  assigneeName String?
+  authorId    String
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
 }

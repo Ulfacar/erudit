@@ -14,6 +14,8 @@ import {
   Title,
 } from '@mantine/core';
 import { IconMedicalCross, IconShieldCheck } from '@tabler/icons-react';
+import { ResourcePage } from '@/shared/components/ui/ResourcePage';
+import { fmtDate, studentField, studentLookup } from '@/shared/components/ui/resource-helpers';
 
 interface MedicalData {
   allergies?: string;
@@ -178,6 +180,28 @@ export default function MedicalWorkspacePage() {
           </Table>
         )}
       </Paper>
+
+      <ResourcePage
+        title="Журнал визитов в медкабинет"
+        endpoint="/api/v1/specialist-sessions"
+        query={{ kind: 'medical' }}
+        createLabel="Записать визит"
+        canDelete
+        lookups={[studentLookup]}
+        transformPayload={(f) => ({ ...f, kind: 'medical' })}
+        columns={[
+          { key: 'date', label: 'Дата', render: (r) => fmtDate(r.date), width: 110 },
+          { key: 'studentId', label: 'Ученик', render: (r, m) => m.students?.[String(r.studentId)] ?? '—' },
+          { key: 'startTime', label: 'Время', render: (r) => (r.startTime ? String(r.startTime) : '—') },
+          { key: 'note', label: 'Жалоба / помощь' },
+        ]}
+        fields={[
+          studentField,
+          { name: 'date', label: 'Дата', type: 'date', required: true },
+          { name: 'startTime', label: 'Время', type: 'text', placeholder: '12:30' },
+          { name: 'note', label: 'Жалоба / оказанная помощь', type: 'textarea' },
+        ]}
+      />
     </Stack>
   );
 }
