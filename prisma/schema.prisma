@@ -1102,3 +1102,77 @@ model LostFoundItem {
   authorId    String
   createdAt   DateTime @default(now())
 }
+
+// ============ ТЕСТЫ С АВТОПРОВЕРКОЙ (Модуль 8, EduPage e-learning) ============
+
+enum TestStatus {
+  draft
+  published
+  closed
+}
+
+enum QuestionType {
+  single    // один правильный вариант
+  multiple  // несколько правильных
+  number    // числовой ответ
+  text      // открытый (проверяет учитель, авто-0)
+}
+
+model Test {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(1000)
+  subjectId   String?
+  classId     String?
+  authorId    String
+  status      TestStatus @default(published)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions TestQuestion[]
+  attempts  TestAttempt[]
+
+  @@index([classId])
+  @@index([authorId])
+}
+
+model TestQuestion {
+  id             String   @id @default(cuid())
+  testId         String
+  test           Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  order          Int
+  text           String   @db.VarChar(1000)
+  type           QuestionType @default(single)
+  options        String[] @default([])    // варианты (для single/multiple)
+  correctAnswers String[] @default([])    // правильные: индексы вариантов или значение (number)
+  points         Int      @default(1)
+
+  @@index([testId, order])
+}
+
+model TestAttempt {
+  id          String   @id @default(cuid())
+  testId      String
+  test        Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  studentId   String
+  score       Int      @default(0)
+  maxScore    Int      @default(0)
+  submittedAt DateTime @default(now())
+
+  answers TestAnswer[]
+
+  @@unique([testId, studentId])
+  @@index([testId])
+}
+
+model TestAnswer {
+  id            String   @id @default(cuid())
+  attemptId     String
+  attempt       TestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId    String
+  answer        String[] @default([])
+  isCorrect     Boolean  @default(false)
+  pointsAwarded Int      @default(0)
+
+  @@index([attemptId])
+}

@@ -96,6 +96,7 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?
   '/news': IconNews,
   '/applications': IconFile,
   '/surveys': IconClipboardList,
+  '/tests': IconClipboardList,
   '/meals': IconToolsKitchen2,
   '/consents': IconId,
   '/lost-found': IconFolder,

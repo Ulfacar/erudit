@@ -89,6 +89,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     ],
   },
   { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH },
+  { href: '/tests', label: 'Тесты', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst', 'student'] },
   { href: '/chats', label: 'Чаты', roles: ALL_AUTH },
   { href: '/news', label: 'Новости', roles: ALL_AUTH },
   { href: '/applications', label: 'Заявления', roles: ['parent', 'student', 'teacher', 'curator', 'zavuch', 'super_admin', 'secretary', 'analyst'] },

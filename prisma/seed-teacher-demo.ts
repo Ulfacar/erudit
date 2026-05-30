@@ -43,6 +43,7 @@ async function main() {
   if (existing?.teacher) {
     await prisma.scheduleEntry.deleteMany({ where: { teacherId: existing.teacher.id } });
     await prisma.teacherSubject.deleteMany({ where: { teacherId: existing.teacher.id } });
+    await prisma.gradeAuditLog.deleteMany({ where: { grade: { teacherId: existing.teacher.id } } });
     await prisma.grade.deleteMany({ where: { teacherId: existing.teacher.id } });
     await prisma.teacher.delete({ where: { id: existing.teacher.id } });
   }
@@ -98,7 +99,28 @@ async function main() {
     }).catch(() => {});
   }
 
+  // 6) Демо-тест с автопроверкой (для класса первого урока)
+  await prisma.test.deleteMany({ where: { authorId: user.id } });
+  await prisma.test.create({
+    data: {
+      title: 'Математика: проверочная',
+      description: 'Короткий тест по теме «Квадратные уравнения».',
+      subjectId: subject.id,
+      classId: classes[0].id,
+      authorId: user.id,
+      status: 'published',
+      questions: {
+        create: [
+          { order: 0, text: 'Сколько корней у уравнения x² = 9?', type: 'single', options: ['1', '2', '0'], correctAnswers: ['1'], points: 1 },
+          { order: 1, text: 'Какие из чисел — корни x² − 5x + 6 = 0?', type: 'multiple', options: ['2', '3', '5', '6'], correctAnswers: ['0', '1'], points: 2 },
+          { order: 2, text: 'Чему равен дискриминант x² − 4x + 4?', type: 'number', options: [], correctAnswers: ['0'], points: 1 },
+        ],
+      },
+    },
+  });
+
   console.log(`  учитель: ${LOGIN} / erudit2025 (роль teacher)`);
+  console.log('  + демо-тест с автопроверкой создан');
   console.log(`  предмет: ${subject.name}; классов: ${classes.length}; уроков сегодня (день ${todayDow}): ${todaysLessons}`);
   console.log('Готово.');
 }
