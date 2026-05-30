@@ -33,6 +33,10 @@ const ADMIN_AND_VICE: Role[] = ['super_admin', 'analyst', 'zavuch']
 const STAFF_TIER: Role[] = ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator']
 const STAFF_AND_SECRETARY: Role[] = [...STAFF_TIER, 'secretary']
 const STAFF_PLUS_SPECIALIST: Role[] = [...STAFF_TIER, 'specialist']
+// Управленческие/админ-разделы — без учителя/куратора (у педагога простое EduPage-меню)
+const ADMIN_SECRETARY: Role[] = ['super_admin', 'analyst', 'zavuch', 'secretary']
+// «Общественные» модули — видны всем, КРОМЕ учителя/куратора (чтобы не засорять их меню)
+const NON_TEACHING_AUTH: Role[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist', 'student', 'parent']
 
 /**
  * ── Active pages only ──
@@ -41,8 +45,10 @@ const STAFF_PLUS_SPECIALIST: Role[] = [...STAFF_TIER, 'specialist']
  */
 export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/diary', label: 'Дневник', roles: ['student', 'parent'] },
-  { href: '/dashboard', label: 'Главная', roles: STAFF_PLUS_SPECIALIST.concat('secretary') },
-  { href: '/classes', label: 'Классы', roles: STAFF_AND_SECRETARY },
+  { href: '/today', label: 'Сегодня', roles: ['teacher', 'curator', 'super_admin', 'zavuch'] },
+  // Админская «Главная» — всешкольная статистика; учителю не показываем (у него «Сегодня»)
+  { href: '/dashboard', label: 'Главная', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
+  { href: '/classes', label: 'Классы', roles: ADMIN_SECRETARY },
   { href: '/academic-periods', label: 'Учебные периоды', roles: ADMIN_AND_VICE },
   { href: '/substitutions', label: 'Замены', roles: STAFF_TIER },
   { href: '/study-plan', label: 'Учебный план', roles: ADMIN_AND_VICE },
@@ -85,21 +91,26 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH },
   { href: '/chats', label: 'Чаты', roles: ALL_AUTH },
   { href: '/news', label: 'Новости', roles: ALL_AUTH },
-  { href: '/urgent-issues', label: 'Срочные вопросы', roles: STAFF_PLUS_SPECIALIST },
+  { href: '/applications', label: 'Заявления', roles: ['parent', 'student', 'teacher', 'curator', 'zavuch', 'super_admin', 'secretary', 'analyst'] },
+  { href: '/surveys', label: 'Опросы', roles: ALL_AUTH },
+  { href: '/meals', label: 'Столовая', roles: ['student', 'parent', 'super_admin', 'analyst', 'zavuch', 'secretary'] },
+  { href: '/consents', label: 'Согласия', roles: ['parent', 'super_admin', 'analyst', 'zavuch', 'secretary', 'curator'] },
+  { href: '/lost-found', label: 'Бюро находок', roles: NON_TEACHING_AUTH },
+  { href: '/urgent-issues', label: 'Срочные вопросы', roles: ['super_admin', 'analyst', 'zavuch', 'specialist'] },
   { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist') },
   { href: '/analytics', label: 'Аналитика', roles: ADMIN_AND_VICE },
   // Учебные модули
-  { href: '/calendar', label: 'Календарь', roles: STAFF_TIER },
-  { href: '/curriculum-plan', label: 'КТП', roles: STAFF_TIER },
-  { href: '/achievements', label: 'Достижения', roles: STAFF_AND_SECRETARY },
-  { href: '/portfolio', label: 'Портфолио', roles: STAFF_AND_SECRETARY },
-  { href: '/library', label: 'Библиотека', roles: STAFF_AND_SECRETARY },
-  { href: '/olympiads', label: 'Олимпиады и проекты', roles: ALL_AUTH },
-  { href: '/events', label: 'Мероприятия', roles: ALL_AUTH },
-  { href: '/studios', label: 'Студии', roles: ALL_AUTH },
-  { href: '/trips', label: 'Выезды', roles: ALL_AUTH },
+  { href: '/calendar', label: 'Календарь', roles: ADMIN_SECRETARY },
+  { href: '/curriculum-plan', label: 'КТП', roles: ADMIN_AND_VICE },
+  { href: '/achievements', label: 'Достижения', roles: ADMIN_SECRETARY },
+  { href: '/portfolio', label: 'Портфолио', roles: ADMIN_SECRETARY },
+  { href: '/library', label: 'Библиотека', roles: ADMIN_SECRETARY },
+  { href: '/olympiads', label: 'Олимпиады и проекты', roles: NON_TEACHING_AUTH },
+  { href: '/events', label: 'Мероприятия', roles: NON_TEACHING_AUTH },
+  { href: '/studios', label: 'Студии', roles: NON_TEACHING_AUTH },
+  { href: '/trips', label: 'Выезды', roles: NON_TEACHING_AUTH },
   // Администрирование
-  { href: '/staff', label: 'Персонал', roles: STAFF_AND_SECRETARY },
+  { href: '/staff', label: 'Персонал', roles: ADMIN_SECRETARY },
   { href: '/documents', label: 'Документы', roles: ['super_admin', 'analyst', 'zavuch', 'secretary'] },
   { href: '/roles', label: 'Роли', roles: ['super_admin'] },
   // Workspace (специалисты)

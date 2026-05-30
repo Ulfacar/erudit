@@ -5,6 +5,7 @@ import {
   Avatar,
   Badge,
   Box,
+  Button,
   Card,
   Center,
   Group,
@@ -21,6 +22,7 @@ import {
 import {
   IconCalendar,
   IconCalendarStats,
+  IconCheck,
   IconChevronLeft,
   IconChevronRight,
   IconMoodEmpty,
@@ -59,7 +61,7 @@ interface SubjectGrades {
 }
 
 interface AttendanceRec { date: string; status: string }
-interface Homework { id: string; description: string; dueDate: string; subject: { id: string; name: string }; teacher: { firstName: string; lastName: string }; class: { grade: number; letter: string } }
+interface Homework { id: string; description: string; dueDate: string; subject: { id: string; name: string }; teacher: { firstName: string; lastName: string }; class: { grade: number; letter: string }; done?: boolean }
 
 interface ScheduleEntry {
   id: string;
@@ -104,7 +106,7 @@ function DiaryContent() {
     Promise.all([
       fetch(`/api/v1/students/${studentId}/grades`).then((r) => r.json()).catch(() => null),
       fetch(`/api/v1/attendance?studentId=${studentId}&${range}`).then((r) => r.json()).catch(() => null),
-      classId ? fetch(`/api/v1/homework?classId=${classId}`).then((r) => r.json()).catch(() => null) : Promise.resolve(null),
+      classId ? fetch(`/api/v1/homework?classId=${classId}&studentId=${studentId}`).then((r) => r.json()).catch(() => null) : Promise.resolve(null),
       classId ? fetch(`/api/v1/schedule?classId=${classId}`).then((r) => r.json()).catch(() => null) : Promise.resolve(null),
     ]).then(([g, a, h, s]) => {
       if (cancelled) return;
@@ -119,6 +121,16 @@ function DiaryContent() {
 
   const ready = dataKey === studentId;
   const loading = !!studentId && !ready;
+
+  async function toggleHw(h: Homework) {
+    if (!studentId) return;
+    const next = !h.done;
+    setHomework((hw) => (hw ?? []).map((x) => (x.id === h.id ? { ...x, done: next } : x)));
+    await fetch('/api/v1/homework/complete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ homeworkId: h.id, studentId, done: next }),
+    }).catch(() => {});
+  }
 
   const attSummary = useMemo(() => {
     const s: Record<string, number> = { absent: 0, late: 0, excused: 0, present: 0 };
@@ -301,7 +313,13 @@ function DiaryContent() {
                     <Badge variant="light" color="blue">до {fmtDate(h.dueDate)}</Badge>
                   </Group>
                   <Text size="sm">{h.description}</Text>
-                  <Text size="xs" c="dimmed" mt={4}>{h.teacher.lastName} {h.teacher.firstName}</Text>
+                  <Group justify="space-between" mt={6}>
+                    <Text size="xs" c="dimmed">{h.teacher.lastName} {h.teacher.firstName}</Text>
+                    <Button size="xs" radius="md" variant={h.done ? 'light' : 'filled'} color={h.done ? 'green' : 'eruditBlue'}
+                      leftSection={<IconCheck size={14} />} onClick={() => toggleHw(h)}>
+                      {h.done ? 'Выполнено' : 'Отметить выполнено'}
+                    </Button>
+                  </Group>
                 </Paper>
               ))}
             </Stack>

@@ -69,6 +69,7 @@ import {
 
 const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
   '/diary': IconNotebook,
+  '/today': IconCalendarEvent,
   '/dashboard': IconHome,
   '/calendar': IconCalendar,
   '/classes': IconSchool,
@@ -93,6 +94,11 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?
   '/staff': IconId,
   '/documents': IconFile,
   '/news': IconNews,
+  '/applications': IconFile,
+  '/surveys': IconClipboardList,
+  '/meals': IconToolsKitchen2,
+  '/consents': IconId,
+  '/lost-found': IconFolder,
   '/urgent-issues': IconAlertTriangle,
   '/incidents': IconFlame,
   '/library': IconBooks,

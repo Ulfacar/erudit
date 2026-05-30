@@ -5,8 +5,9 @@ import { withAuth } from '@/shared/lib/api-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Всешкольная статистика — только админ-тир/спец/секретарь. Учитель видит «Сегодня», не школьный дашборд.
     const auth = await withAuth(request, {
-      roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'],
+      roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist'],
     });
     if (auth.response) return auth.response;
 

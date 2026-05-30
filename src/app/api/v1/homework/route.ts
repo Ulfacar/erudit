@@ -63,7 +63,29 @@ export async function GET(request: NextRequest) {
       orderBy: { dueDate: 'desc' },
     });
 
-    return successResponse(homework);
+    // Статус «выполнено» (EduPage): счётчик по каждому ДЗ + отметка текущего ученика
+    const hwIds = homework.map((h) => h.id);
+    const completions = hwIds.length
+      ? await prisma.homeworkCompletion.findMany({ where: { homeworkId: { in: hwIds } }, select: { homeworkId: true, studentId: true } })
+      : [];
+    const countByHw: Record<string, number> = {};
+    for (const c of completions) countByHw[c.homeworkId] = (countByHw[c.homeworkId] ?? 0) + 1;
+
+    // студентский id (для doneByMe) — только если роль student
+    let myStudentId: string | null = null;
+    if (role === 'student') {
+      const self = await prisma.student.findFirst({ where: { userId }, select: { id: true } });
+      myStudentId = self?.id ?? null;
+    }
+    // ?studentId= — флаг «выполнено» для конкретного ученика (дневник родителя/ученика)
+    const sid = new URL(request.url).searchParams.get('studentId') ?? myStudentId;
+    const result = homework.map((h) => ({
+      ...h,
+      completedCount: countByHw[h.id] ?? 0,
+      done: sid ? completions.some((c) => c.homeworkId === h.id && c.studentId === sid) : false,
+    }));
+
+    return successResponse(result);
   } catch (error) {
     console.error('GET /api/v1/homework error:', error);
     return errorResponse('INTERNAL_ERROR', 'Не удалось загрузить домашние задания', 500);

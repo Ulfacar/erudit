@@ -27,7 +27,7 @@ const DEMO_PASSWORD = 'erudit2025';
 
 const ROLE_TABS = [
   { id: 'admin', label: 'Школа', login: 'admin' },
-  { id: 'teacher', label: 'Учитель', login: 'azhibaeva' },
+  { id: 'teacher', label: 'Учитель', login: 'matematik' },
   { id: 'student', label: 'Ученик', login: 'student1' },
   { id: 'parent', label: 'Родитель', login: 'parent1' },
 ];
@@ -37,6 +37,13 @@ const FEATURES = [
   { icon: IconMessageCircle, title: 'Прямая связь с родителями', desc: 'Уведомления в Telegram и WhatsApp', ml: 32 },
   { icon: IconSchool, title: 'Адаптировано для школ КР', desc: '5-балльная шкала, двуязычие, ЕГСУ', ml: 64 },
 ];
+
+/** Куда направлять после входа: у каждой роли свой «дом». */
+function landingForRole(role?: string): string {
+  if (role === 'student' || role === 'parent') return '/diary';
+  if (role === 'teacher' || role === 'curator') return '/today';
+  return '/dashboard';
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -55,7 +62,7 @@ export default function LoginPage() {
 
   if (status === 'authenticated') {
     const role = (session?.user as { role?: string })?.role;
-    router.push(role === 'student' || role === 'parent' ? '/diary' : '/dashboard');
+    router.push(landingForRole(role));
     return null;
   }
 
@@ -68,7 +75,7 @@ export default function LoginPage() {
       const res = await fetch('/api/v1/me');
       const me = await res.json().catch(() => null);
       const role = me?.data?.role;
-      router.push(role === 'student' || role === 'parent' ? '/diary' : '/dashboard');
+      router.push(landingForRole(role));
     }
   }
 

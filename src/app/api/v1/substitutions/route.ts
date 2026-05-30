@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getTeacherScope } from '@/shared/lib/teacher-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,8 @@ export async function GET(request: NextRequest) {
       roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator'],
     });
     if (auth.response) return auth.response;
+    const role = auth.session.user.role;
+    const userId = auth.session.user.id;
 
     const { searchParams } = request.nextUrl;
     const date = searchParams.get('date');
@@ -28,7 +31,16 @@ export async function GET(request: NextRequest) {
       where.classId = classId;
     }
 
-    if (teacherId) {
+    // Privacy: учитель/куратор видит ТОЛЬКО свои замены (где он отсутствующий или замещающий).
+    // teacherId из query для них игнорируем — берём из сессии.
+    if (role === 'teacher' || role === 'curator') {
+      const scope = await getTeacherScope(userId);
+      if (!scope) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      where.OR = [
+        { originalTeacherId: scope.teacherId },
+        { substituteTeacherId: scope.teacherId },
+      ];
+    } else if (teacherId) {
       where.OR = [
         { originalTeacherId: teacherId },
         { substituteTeacherId: teacherId },

@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { checkConflicts } from '@/modules/schedule/services/conflict-checker';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getTeacherScope } from '@/shared/lib/teacher-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +18,18 @@ export async function GET(request: NextRequest) {
     const periodStart = searchParams.get('periodStart');
     const periodEnd = searchParams.get('periodEnd');
     const dayOfWeek = searchParams.get('dayOfWeek');
+
+    // Privacy учителя: видит только свои классы. teacherId из query игнорируем —
+    // берём собственный из сессии. Чужой classId → 403 (не пустой массив, чтобы не маскировать).
+    let scopedTeacherId: string | null = null;
+    if (role === 'teacher' || role === 'curator') {
+      const scope = await getTeacherScope(userId);
+      if (!scope) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      if (classId && !scope.classIds.includes(classId)) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к расписанию этого класса', 403);
+      }
+      if (!classId) scopedTeacherId = scope.teacherId; // по умолчанию — своё расписание
+    }
 
     // Student/parent: принудительно ограничиваем classId своим/детским классом
     if (role === 'student') {
@@ -34,14 +47,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (!classId && !teacherId) {
+    if (!classId && !scopedTeacherId && !teacherId) {
       return errorResponse('VALIDATION_ERROR', 'Необходимо указать classId или teacherId');
     }
 
     const where: Record<string, unknown> = {};
 
     if (classId) where.classId = classId;
-    if (teacherId) where.teacherId = teacherId;
+    if (scopedTeacherId) {
+      // учитель без явного класса — только своё расписание (query teacherId игнорируем)
+      where.teacherId = scopedTeacherId;
+    } else if (teacherId) {
+      where.teacherId = teacherId;
+    }
     if (dayOfWeek) where.dayOfWeek = Number(dayOfWeek);
     if (periodStart && periodEnd) {
       where.periodStart = { lte: new Date(periodEnd) };

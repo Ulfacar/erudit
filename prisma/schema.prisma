@@ -320,6 +320,9 @@ model Grade {
   comment    String?     @db.VarChar(500)
   date       DateTime
   status     GradeStatus @default(draft)
+  // EduPage: родитель/ученик «подписывает» оценку (подтверждает, что видел)
+  parentSignedAt DateTime?
+  parentSignedBy String?  // user.id родителя/ученика
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
@@ -958,4 +961,144 @@ model MaintenanceRequest {
   updatedAt   DateTime @updatedAt
 
   @@index([status])
+}
+
+// ============ LESSON TOPIC (тема урока, EduPage) ============
+
+model LessonTopic {
+  id        String   @id @default(cuid())
+  classId   String
+  subjectId String
+  teacherId String?
+  date      DateTime
+  topic     String   @db.VarChar(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([classId, subjectId, date])
+  @@index([classId, subjectId])
+}
+
+// ============ HOMEWORK COMPLETION (отметка «выполнено») ============
+
+model HomeworkCompletion {
+  id         String   @id @default(cuid())
+  homeworkId String
+  studentId  String
+  doneAt     DateTime @default(now())
+
+  @@unique([homeworkId, studentId])
+  @@index([homeworkId])
+}
+
+// ============ ЗАЯВЛЕНИЯ / ЗАПИСКА ОБ ОТСУТСТВИИ (Модуль 4) ============
+
+enum ApplicationType {
+  absence   // отпросить / записка об отсутствии
+  leave     // отпуск
+  other
+}
+
+enum ApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+model Application {
+  id         String   @id @default(cuid())
+  type       ApplicationType   @default(absence)
+  studentId  String
+  classId    String?
+  authorId   String   // user.id родителя/ученика, подавшего заявление
+  reason     String   @db.VarChar(1000)
+  fromDate   DateTime
+  toDate     DateTime?
+  status     ApplicationStatus @default(pending)
+  reviewedBy String?  // user.id завуча/учителя
+  reviewNote String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status])
+  @@index([studentId])
+}
+
+// ============ ОПРОСЫ / ГОЛОСОВАНИЯ (Модуль 5) ============
+
+model Survey {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(1000)
+  options     String[] // варианты ответа
+  audience    String[] @default([]) // роли; пусто = все
+  authorId    String
+  closesAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  votes SurveyVote[]
+}
+
+model SurveyVote {
+  id          String   @id @default(cuid())
+  surveyId    String
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  userId      String
+  optionIndex Int
+  createdAt   DateTime @default(now())
+
+  @@unique([surveyId, userId])
+  @@index([surveyId])
+}
+
+// ============ ЗАКАЗ СТОЛОВОЙ (Модуль 6, поверх MealMenu) ============
+
+model MealOrder {
+  id        String   @id @default(cuid())
+  date      DateTime
+  meal      MealType
+  studentId String
+  status    String   @default("ordered") // ordered | cancelled
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, date, meal])
+  @@index([date])
+}
+
+// ============ СОГЛАСИЯ РОДИТЕЛЕЙ + БЮРО НАХОДОК (Модуль 7) ============
+
+model Consent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(1000)
+  eventDate   DateTime?
+  classId     String?
+  authorId    String
+  createdAt   DateTime @default(now())
+
+  responses ConsentResponse[]
+}
+
+model ConsentResponse {
+  id        String   @id @default(cuid())
+  consentId String
+  consent   Consent  @relation(fields: [consentId], references: [id], onDelete: Cascade)
+  studentId String
+  agreed    Boolean
+  signedBy  String   // user.id родителя
+  signedAt  DateTime @default(now())
+
+  @@unique([consentId, studentId])
+}
+
+model LostFoundItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.VarChar(500)
+  location    String?
+  status      String   @default("found") // found | claimed | returned
+  foundAt     DateTime @default(now())
+  authorId    String
+  createdAt   DateTime @default(now())
 }
