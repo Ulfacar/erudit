@@ -1196,3 +1196,25 @@ model Presentation {
 
   @@index([authorId])
 }
+
+/// Поурочный план (план конкретного урока: цели, этапы со временем, ДЗ).
+/// Может ссылаться на тему КТП. Поддерживает ИИ-генерацию черновика.
+model LessonPlan {
+  id         String   @id @default(cuid())
+  teacherId  String
+  subjectId  String?
+  classId    String?
+  topicId    String?
+  title      String
+  date       DateTime?
+  duration   Int      @default(45)
+  objectives String?  @db.VarChar(2000)
+  /// Этапы урока: [{ title, minutes, activity }]
+  stages     Json
+  homework   String?  @db.VarChar(2000)
+  model      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([teacherId])
+}

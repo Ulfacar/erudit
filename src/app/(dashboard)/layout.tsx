@@ -98,6 +98,8 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?
   '/applications': IconFile,
   '/surveys': IconClipboardList,
   '/tests': IconClipboardList,
+  '/curriculum-plan/my': IconNotebook,
+  '/lesson-plans': IconChalkboard,
   '/presentations': IconPresentation,
   '/meals': IconToolsKitchen2,
   '/consents': IconId,

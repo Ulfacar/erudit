@@ -24,6 +24,13 @@ interface Lesson {
 }
 interface Student { id: string; firstName: string; lastName: string; middleName?: string | null }
 interface Category { id: string; name: string; weight: number }
+
+type AttStatus = 'present' | 'absent' | 'late';
+const ATT_BTN: { status: AttStatus; label: string; color: string }[] = [
+  { status: 'present', label: 'П', color: 'green' },
+  { status: 'absent', label: 'Н', color: 'red' },
+  { status: 'late', label: 'О', color: 'yellow' },
+];
 interface Grade {
   id: string; studentId: string; value: number; date: string;
   category: { id: string; name: string; weight: number };
@@ -51,6 +58,11 @@ function Cockpit() {
   const [gridLoading, setGridLoading] = useState(false);
   const [topicDraft, setTopicDraft] = useState('');
   const [topicSaved, setTopicSaved] = useState(false);
+
+  // быстрая посещаемость
+  const [attendance, setAttendance] = useState<Record<string, AttStatus>>({});
+  const [attSaving, setAttSaving] = useState<string | null>(null);
+  const [attAllSaving, setAttAllSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -92,19 +104,65 @@ function Cockpit() {
     if (!periodId) return;
     setGridLoading(true);
     setDrafts({});
+    setAttendance({});
     try {
-      const [sRes, gRes] = await Promise.all([
+      const [sRes, gRes, aRes] = await Promise.all([
         fetch(`/api/v1/students?classId=${lesson.classId}`),
         fetch(`/api/v1/grading?classId=${lesson.classId}&subjectId=${lesson.subjectId}&periodId=${periodId}`),
+        fetch(`/api/v1/attendance?classId=${lesson.classId}&date=${todayISO()}`),
       ]);
       const s = await sRes.json();
       const g = await gRes.json();
+      const a = await aRes.json();
       if (s.success) setStudents(s.data);
       if (g.success) setGrades(g.data);
+      if (a.success) {
+        const map: Record<string, AttStatus> = {};
+        for (const rec of a.data as { studentId: string; status: string }[]) {
+          if (rec.status === 'present' || rec.status === 'absent' || rec.status === 'late') {
+            map[rec.studentId] = rec.status;
+          }
+        }
+        setAttendance(map);
+      }
     } finally {
       setGridLoading(false);
     }
   }, [periodId]);
+
+  async function markAttendance(studentId: string, status: AttStatus) {
+    setAttSaving(studentId);
+    // оптимистично
+    setAttendance((m) => ({ ...m, [studentId]: status }));
+    try {
+      await fetch('/api/v1/attendance', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, date: todayISO(), status }),
+      });
+    } finally {
+      setAttSaving(null);
+    }
+  }
+
+  async function markAllPresent() {
+    if (!students.length) return;
+    setAttAllSaving(true);
+    const next: Record<string, AttStatus> = { ...attendance };
+    try {
+      // отметить присутствующими только тех, у кого статус ещё не выставлен
+      const toMark = students.filter((st) => !attendance[st.id]);
+      for (const st of toMark) {
+        next[st.id] = 'present';
+        await fetch('/api/v1/attendance', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId: st.id, date: todayISO(), status: 'present' }),
+        });
+      }
+      setAttendance(next);
+    } finally {
+      setAttAllSaving(false);
+    }
+  }
 
   function openLesson(l: Lesson) {
     setOpen(l);
@@ -244,13 +302,23 @@ function Cockpit() {
                         {topicSaved ? 'Сохранено' : 'Сохранить тему'}
                       </Button>
                     </Group>
-                    <Group justify="space-between" mb="sm">
+                    <Group justify="space-between" mb="sm" wrap="nowrap">
                       <Text fw={600} c="var(--mantine-color-text)">Журнал · {l.className} · {l.subjectName}</Text>
-                      <Select
-                        label={undefined} size="xs" w={240}
-                        data={catOptions} value={categoryId} onChange={setCategoryId}
-                        placeholder="Тип работы (вес)" searchable
-                      />
+                      <Group gap="xs" wrap="nowrap">
+                        <Button
+                          size="xs" variant="light" color="green"
+                          loading={attAllSaving}
+                          onClick={markAllPresent}
+                          leftSection={<IconCircleCheck size={14} />}
+                        >
+                          Все были
+                        </Button>
+                        <Select
+                          label={undefined} size="xs" w={220}
+                          data={catOptions} value={categoryId} onChange={setCategoryId}
+                          placeholder="Тип работы (вес)" searchable
+                        />
+                      </Group>
                     </Group>
                     {gridLoading ? (
                       <Group justify="center" p="md"><Loader size="sm" color="blue" /></Group>
@@ -260,6 +328,7 @@ function Cockpit() {
                           <Table.Thead>
                             <Table.Tr>
                               <Table.Th style={{ color: SEC, fontSize: 12 }}>Ученик</Table.Th>
+                              <Table.Th style={{ color: SEC, fontSize: 12, width: 130 }}>Был</Table.Th>
                               <Table.Th style={{ color: SEC, fontSize: 12 }}>Оценки</Table.Th>
                               <Table.Th style={{ color: SEC, fontSize: 12, width: 70 }}>Итог</Table.Th>
                               <Table.Th style={{ color: SEC, fontSize: 12, width: 150 }}>Поставить балл</Table.Th>
@@ -269,6 +338,24 @@ function Cockpit() {
                             {students.map((st, idx) => (
                               <Table.Tr key={st.id}>
                                 <Table.Td><Text size="sm">{st.lastName} {st.firstName}</Text></Table.Td>
+                                <Table.Td>
+                                  <Button.Group>
+                                    {ATT_BTN.map((b) => (
+                                      <Button
+                                        key={b.status}
+                                        size="compact-xs"
+                                        px={8}
+                                        variant={attendance[st.id] === b.status ? 'filled' : 'default'}
+                                        color={b.color}
+                                        loading={attSaving === st.id && attendance[st.id] === b.status}
+                                        onClick={() => markAttendance(st.id, b.status)}
+                                        title={b.status === 'present' ? 'Присутствовал' : b.status === 'absent' ? 'Отсутствовал' : 'Опоздал'}
+                                      >
+                                        {b.label}
+                                      </Button>
+                                    ))}
+                                  </Button.Group>
+                                </Table.Td>
                                 <Table.Td>
                                   <Group gap={4}>
                                     {(gradesByStudent[st.id] ?? []).map((gr) => (
