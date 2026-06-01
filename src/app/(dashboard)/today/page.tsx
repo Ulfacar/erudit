@@ -12,6 +12,8 @@ import {
 } from '@mantine/core';
 import { IconClock, IconChevronRight, IconCircleCheck } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { useRole } from '@/shared/hooks/useRole';
+import { EditableGradeBadge } from '@/shared/components/grading/EditableGradeBadge';
 
 const SURFACE = '#ffffff';
 const BORDER = '#e6e9ee';
@@ -34,6 +36,7 @@ const ATT_BTN: { status: AttStatus; label: string; color: string }[] = [
 interface Grade {
   id: string; studentId: string; value: number; date: string;
   category: { id: string; name: string; weight: number };
+  editWindowExpired?: boolean;
 }
 
 function todayISO() {
@@ -42,6 +45,8 @@ function todayISO() {
 }
 
 function Cockpit() {
+  const { role } = useRole();
+  const canDelete = role === 'zavuch' || role === 'super_admin' || role === 'analyst';
   const [loading, setLoading] = useState(true);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [teacherId, setTeacherId] = useState<string | null>(null);
@@ -208,6 +213,12 @@ function Cockpit() {
     return map;
   }, [grades]);
 
+  const reloadGrades = useCallback(async () => {
+    if (!open || !periodId) return;
+    const g = await (await fetch(`/api/v1/grading?classId=${open.classId}&subjectId=${open.subjectId}&periodId=${periodId}`)).json();
+    if (g.success) setGrades(g.data);
+  }, [open, periodId]);
+
   async function saveGrade(studentId: string) {
     const value = drafts[studentId];
     if (value === '' || value === undefined || !open || !teacherId || !periodId || !categoryId) return;
@@ -359,10 +370,7 @@ function Cockpit() {
                                 <Table.Td>
                                   <Group gap={4}>
                                     {(gradesByStudent[st.id] ?? []).map((gr) => (
-                                      <Badge key={gr.id} variant="light" color="gray" radius="sm"
-                                        title={`${gr.category.name} ×${gr.category.weight}`}>
-                                        {gr.value}{gr.category.weight > 1 ? `·${gr.category.weight}` : ''}
-                                      </Badge>
+                                      <EditableGradeBadge key={gr.id} grade={gr} canDelete={canDelete} onChanged={reloadGrades} />
                                     ))}
                                     {!(gradesByStudent[st.id]?.length) && <Text size="xs" c={SEC}>—</Text>}
                                   </Group>

@@ -7,17 +7,19 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Badge, Button, Group, Loader, NumberInput, Paper, ScrollArea, Select,
+  Button, Group, Loader, NumberInput, Paper, ScrollArea, Select,
   Stack, Table, Text, TextInput, Title,
 } from '@mantine/core';
 import { IconBook2, IconCircleCheck } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { useRole } from '@/shared/hooks/useRole';
+import { EditableGradeBadge } from '@/shared/components/grading/EditableGradeBadge';
 
 interface Pair { subjectId: string; subjectName: string; classId: string; className: string }
 interface Period { id: string; name: string; isActive: boolean }
 interface Student { id: string; firstName: string; lastName: string; middleName?: string | null }
 interface Category { id: string; name: string; weight: number }
-interface Grade { id: string; studentId: string; value: number; category: { id: string; name: string; weight: number } }
+interface Grade { id: string; studentId: string; value: number; category: { id: string; name: string; weight: number }; editWindowExpired?: boolean }
 
 type AttStatus = 'present' | 'absent' | 'late';
 const ATT_BTN: { status: AttStatus; label: string; color: string }[] = [
@@ -33,6 +35,8 @@ function todayISO() {
 }
 
 function Journal() {
+  const { role } = useRole();
+  const canDelete = role === 'zavuch' || role === 'super_admin' || role === 'analyst';
   const [loading, setLoading] = useState(true);
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
@@ -131,6 +135,12 @@ function Journal() {
     for (const gr of grades) (map[gr.studentId] ??= []).push(gr);
     return map;
   }, [grades]);
+
+  const reloadGrades = useCallback(async () => {
+    if (!selected || !periodId) return;
+    const g = await (await fetch(`/api/v1/grading?classId=${selected.classId}&subjectId=${selected.subjectId}&periodId=${periodId}`)).json();
+    if (g.success) setGrades(g.data);
+  }, [selected, periodId]);
 
   async function saveGrade(studentId: string) {
     const value = drafts[studentId];
@@ -253,9 +263,7 @@ function Journal() {
                       <Table.Td>
                         <Group gap={4}>
                           {(gradesByStudent[st.id] ?? []).map((gr) => (
-                            <Badge key={gr.id} variant="light" color="gray" radius="sm" title={`${gr.category.name} ×${gr.category.weight}`}>
-                              {gr.value}{gr.category.weight > 1 ? `·${gr.category.weight}` : ''}
-                            </Badge>
+                            <EditableGradeBadge key={gr.id} grade={gr} canDelete={canDelete} onChanged={reloadGrades} />
                           ))}
                           {!(gradesByStudent[st.id]?.length) && <Text size="xs" c={SEC}>—</Text>}
                         </Group>
