@@ -57,6 +57,7 @@ Get-NetTCPConnection -LocalPort 3001 -State Listen | %{ Stop-Process -Id $_.Owni
 1. `git push erudit main` (и `origin main`).
 2. Миграции на Neon (URL в `.env.production.bak` → `DATABASE_URL_UNPOOLED`):
    `DATABASE_URL="<neon-unpooled>" npx prisma migrate deploy`
+   - **ГОЧА (сеть Алана):** этот ПК/сеть блокирует исходящий Postgres-порт 5432 → `prisma migrate deploy` падает `P1001` и на pooled, и на unpooled. Воркэраунд: применять DDL через HTTP-драйвер Neon (порт 443 открыт) — см. `scripts/apply-neon-presentation.mjs` как шаблон (создаёт таблицу + пишет запись в `_prisma_migrations` с корректным checksum, идемпотентно). Под каждую новую миграцию копируй скрипт и вставляй её SQL/имя.
 3. (опц.) seed на Neon (pooled URL): `DATABASE_URL="<neon-pooled>" npx tsx prisma/seed-teacher-demo.ts`
 4. Редеплой Coolify (API `c.asystem.ai`, app uuid `vqjsp8033jekwr4vnxgxrdyd`):
    `GET https://c.asystem.ai/api/v1/deploy?uuid=vqjsp8033jekwr4vnxgxrdyd&force=true` с `Authorization: Bearer <token>` (токен у Алана).
