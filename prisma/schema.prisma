@@ -20,6 +20,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Привязка к Telegram-боту для доставки уведомлений агента (опц.)
+  telegramChatId   String?
+  telegramLinkCode String? @unique
+
   teacher Teacher?
   student Student?
   parent  Parent?

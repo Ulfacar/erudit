@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActionIcon, Badge, Button, Card, Group, Loader, Stack, Switch, Text, Title,
+  ActionIcon, Alert, Badge, Button, Card, Group, Loader, Stack, Switch, Text, Title,
 } from '@mantine/core';
 import {
   IconRobot, IconAlertTriangle, IconChecklist, IconBulb, IconMail, IconCheck, IconX, IconPlayerPlay,
+  IconBrandTelegram,
 } from '@tabler/icons-react';
 
 interface Item {
@@ -32,6 +33,7 @@ export default function AgentPanelPage() {
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [tg, setTg] = useState<{ configured: boolean; linked: boolean; url: string | null } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/v1/agent/items${showAll ? '?status=all' : ''}`);
@@ -41,6 +43,13 @@ export default function AgentPanelPage() {
   }, [showAll]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    fetch('/api/v1/integrations/telegram/link')
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setTg(j.data); })
+      .catch(() => {});
+  }, []);
 
   const act = useCallback(async (id: string, status: string) => {
     setBusy(id);
@@ -69,6 +78,20 @@ export default function AgentPanelPage() {
         </Group>
         <Switch label="Показать закрытые" checked={showAll} onChange={(e) => setShowAll(e.currentTarget.checked)} />
       </Group>
+
+      {tg?.configured && !tg.linked && tg.url && (
+        <Alert color="blue" variant="light" icon={<IconBrandTelegram size={18} />}>
+          <Group justify="space-between" wrap="nowrap">
+            <Text size="sm">Получайте важные оповещения в Telegram — не нужно заходить на сайт.</Text>
+            <Button size="xs" component="a" href={tg.url} target="_blank" leftSection={<IconBrandTelegram size={16} />}>
+              Подключить Telegram
+            </Button>
+          </Group>
+        </Alert>
+      )}
+      {tg?.linked && (
+        <Group gap={6}><IconBrandTelegram size={16} color="var(--mantine-color-blue-6)" /><Text size="xs" c="dimmed">Telegram подключён — оповещения дублируются в чат.</Text></Group>
+      )}
 
       {loading ? (
         <Group justify="center" p="xl"><Loader /></Group>

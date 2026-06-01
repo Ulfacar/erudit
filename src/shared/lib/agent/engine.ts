@@ -1,5 +1,6 @@
 import { prisma } from '@/shared/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { notifyUser } from '@/shared/lib/agent/notify';
 
 /**
  * Проактивный агентский движок (Фаза A+B). См. docs/ai-agents-blueprint.md.
@@ -45,6 +46,8 @@ async function createItem(args: {
     },
   });
   await prisma.agentActionLog.create({ data: { itemId: item.id, action: 'created', byUserId: null } });
+  // Дублируем во внешний канал (Telegram), если получатель его привязал. Best-effort.
+  await notifyUser(args.forUserId, args.title, args.body);
   return item;
 }
 
