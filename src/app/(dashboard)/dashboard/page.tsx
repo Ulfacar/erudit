@@ -198,6 +198,15 @@ function DashboardContent() {
     },
   });
 
+  const { data: insightsData } = useQuery<{ success: boolean; data: Array<{ severity: string; title: string; detail: string; href: string }> }>({
+    queryKey: ['dashboard-insights'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/dashboard/insights');
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+  });
+
   const { data: urgentData } = useQuery<{ success: boolean; data: UrgentIssue[] }>({
     queryKey: ['urgent-issues-dashboard'],
     queryFn: async () => {
@@ -384,6 +393,46 @@ function DashboardContent() {
           </div>
         );
       })()}
+
+      {/* ── AI-инсайты: аномалии, найденные ядром по реальным данным ── */}
+      {insightsData?.data && (
+        <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
+          <Group justify="space-between" mb="sm">
+            <div>
+              <Text fw={600} size="md">🧠 AI-инсайты ядра</Text>
+              <Text size="xs" c="dimmed">Аномалии и сигналы, которые система нашла сама</Text>
+            </div>
+            <Badge size="sm" variant="light" color={insightsData.data.length ? 'grape' : 'teal'}>
+              {insightsData.data.length || '✓'}
+            </Badge>
+          </Group>
+          {insightsData.data.length === 0 ? (
+            <Text c="dimmed" size="sm">Аномалий не обнаружено — школа в норме ✅</Text>
+          ) : (
+            <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="sm">
+              {insightsData.data.map((ins, i) => (
+                <Paper
+                  key={i}
+                  component="a"
+                  href={ins.href}
+                  p="sm"
+                  radius="md"
+                  withBorder
+                  style={{
+                    borderLeftWidth: 4,
+                    borderLeftColor: `var(--mantine-color-${ins.severity === 'urgent' ? 'red' : ins.severity === 'warn' ? 'orange' : 'blue'}-5)`,
+                    textDecoration: 'none',
+                    color: 'inherit',
+                  }}
+                >
+                  <Text size="sm" fw={600}>{ins.title}</Text>
+                  <Text size="xs" c="dimmed" mt={2}>{ins.detail}</Text>
+                </Paper>
+              ))}
+            </SimpleGrid>
+          )}
+        </Paper>
+      )}
 
       {/* ── Main grid ── */}
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">

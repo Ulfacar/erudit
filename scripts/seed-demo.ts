@@ -463,6 +463,66 @@ async function main() {
     console.log(`  + knowledge docs: ${kbDocs.length}`)
   }
 
+  // 14. PRE-данные: заключения психолога уже зачисленных лидов → кабинет психолога
+  const enrolledLeads = await prisma.admissionLead.findMany({
+    where: { stage: 'enrolled', enrolledStudentId: { not: null }, psychNote: { not: null } },
+    select: { enrolledStudentId: true, psychNote: true },
+  })
+  if (enrolledLeads.length) {
+    const psychUser = await prisma.user.findFirst({ where: { role: 'psychologist' } })
+      ?? await prisma.user.findFirst({ where: { role: 'specialist' } })
+      ?? adminUser
+    let preCount = 0
+    for (const l of enrolledLeads) {
+      const existing = await prisma.specialistRecommendation.findFirst({
+        where: { studentId: l.enrolledStudentId!, text: { startsWith: 'Заключение при поступлении' } },
+      })
+      if (existing) continue
+      await prisma.specialistRecommendation.create({
+        data: {
+          kind: 'psych',
+          studentId: l.enrolledStudentId!,
+          specialistId: psychUser.id,
+          text: `Заключение при поступлении: ${l.psychNote}`.slice(0, 2000),
+        },
+      })
+      preCount++
+    }
+    if (preCount) console.log(`  + PRE psych notes transferred: ${preCount}`)
+  }
+
+  // 15. Демо-кейс для AI-инсайтов: у ученика заметное падение успеваемости
+  //     (хорошие оценки месяц назад → слабые за последние 2 недели)
+  const dropMarker = await prisma.grade.findFirst({ where: { comment: 'seed: динамика для AI-инсайтов' } })
+  if (!dropMarker) {
+    const ts0 = teacherSubjects[0]
+    const dropStudent = await prisma.student.findFirst({
+      where: { classId: ts0.classId },
+      skip: 2,
+      select: { id: true, lastName: true },
+    })
+    if (dropStudent) {
+      const mk = (value: number, daysAgo: number) =>
+        prisma.grade.create({
+          data: {
+            studentId: dropStudent.id,
+            subjectId: ts0.subjectId,
+            categoryId: kontrolnaya.id,
+            teacherId: ts0.teacherId,
+            periodId: period.id,
+            value,
+            scale: 'FIVE',
+            date: new Date(Date.now() - daysAgo * 864e5),
+            status: 'published',
+            comment: 'seed: динамика для AI-инсайтов',
+          },
+        })
+      // месяц назад — отличник; последние 2 недели — просел
+      await Promise.all([mk(5, 40), mk(5, 35), mk(4, 30), mk(5, 25), mk(3, 10), mk(2, 7), mk(3, 4), mk(2, 1)])
+      console.log(`  + AI-insight drop case: ${dropStudent.lastName}`)
+    }
+  }
+
   console.log('--- seed-demo: готово ---')
 }
 

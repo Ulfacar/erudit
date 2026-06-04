@@ -56,6 +56,26 @@ export const TYPE_LABELS: Record<GraphNode['type'], string> = {
 };
 
 const STEP_MS = 2100; // длительность шага сценария
+const LIVE_SEG_MS = 900; // длительность сегмента живого импульса
+const LIVE_POLL_MS = 6000; // период опроса живых событий
+
+interface LivePulse {
+  path: GraphNode[]; // уже резолвленные узлы (≥2)
+  startedAt: number;
+  color: string;
+}
+
+interface TickerItem {
+  id: string;
+  caption: string;
+}
+
+const EVENT_COLORS: Record<string, string> = {
+  'grade.created': '#fbbf24',
+  'attendance.marked': '#34d399',
+  'admission.enrolled': '#2dd4bf',
+  'test.completed': '#60a5fa',
+};
 
 function linkDistance(link: { source: GraphNode | string; target: GraphNode | string }): number {
   const s = typeof link.source === 'object' ? link.source.type : null;
@@ -88,6 +108,11 @@ export default function CoreGraph(props: {
   const scenarioRef = useRef<{ active: boolean; step: number; startedAt: number }>({ active: false, step: 0, startedAt: 0 });
   const [caption, setCaption] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  // живые события ядра: очередь импульсов + лента
+  const livePulsesRef = useRef<LivePulse[]>([]);
+  const liveSinceRef = useRef<string>(new Date(Date.now() - 60_000).toISOString());
+  const seenEventsRef = useRef<Set<string>>(new Set());
+  const [ticker, setTicker] = useState<TickerItem[]>([]);
 
   const nodesById = useMemo(() => {
     const m = new Map<string, GraphNode>();
@@ -141,6 +166,43 @@ export default function CoreGraph(props: {
     }, 420);
     return () => clearInterval(t);
   }, [props.links]);
+
+  // ── Живые события: поллинг реальных AgentEvent → импульсы + лента ──
+  useEffect(() => {
+    let active = true;
+    const poll = async () => {
+      if (document.hidden) return;
+      try {
+        const res = await fetch(`/api/v1/core/events?since=${encodeURIComponent(liveSinceRef.current)}`);
+        const j = await res.json();
+        if (!active || !j?.success) return;
+        liveSinceRef.current = j.data.now;
+        const fresh: TickerItem[] = [];
+        for (const ev of j.data.events as Array<{ id: string; type: string; path: string[]; caption: string }>) {
+          if (seenEventsRef.current.has(ev.id)) continue;
+          seenEventsRef.current.add(ev.id);
+          const nodes = ev.path.map((id) => nodesById.get(id)).filter((n): n is GraphNode => !!n);
+          if (nodes.length >= 2) {
+            livePulsesRef.current.push({
+              path: nodes,
+              startedAt: performance.now(),
+              color: EVENT_COLORS[ev.type] ?? '#7dd3fc',
+            });
+          }
+          fresh.push({ id: ev.id, caption: ev.caption });
+        }
+        if (fresh.length) setTicker((prev) => [...fresh.reverse(), ...prev].slice(0, 4));
+      } catch {
+        /* живые события не критичны */
+      }
+    };
+    poll();
+    const t = setInterval(poll, LIVE_POLL_MS);
+    return () => {
+      active = false;
+      clearInterval(t);
+    };
+  }, [nodesById]);
 
   // ── Сценарий ──
   const startScenario = useCallback(() => {
@@ -294,6 +356,63 @@ export default function CoreGraph(props: {
     [props.scenario, nodesById],
   );
 
+  // ── Живые импульсы: светящаяся точка бежит по реальному пути события ──
+  const drawLivePulses = useCallback((ctx: CanvasRenderingContext2D) => {
+    const now = performance.now();
+    livePulsesRef.current = livePulsesRef.current.filter(
+      (p) => now - p.startedAt < (p.path.length - 1) * LIVE_SEG_MS,
+    );
+    for (const pulse of livePulsesRef.current) {
+      const elapsed = now - pulse.startedAt;
+      const seg = Math.min(Math.floor(elapsed / LIVE_SEG_MS), pulse.path.length - 2);
+      const t = Math.min((elapsed - seg * LIVE_SEG_MS) / LIVE_SEG_MS, 1);
+      const from = pulse.path[seg];
+      const to = pulse.path[seg + 1];
+      if (!from || !to) continue;
+      const x = (from.x ?? 0) + ((to.x ?? 0) - (from.x ?? 0)) * t;
+      const y = (from.y ?? 0) + ((to.y ?? 0) - (from.y ?? 0)) * t;
+
+      ctx.save();
+      // тонкая нить текущего сегмента
+      ctx.beginPath();
+      ctx.moveTo(from.x ?? 0, from.y ?? 0);
+      ctx.lineTo(to.x ?? 0, to.y ?? 0);
+      ctx.strokeStyle = pulse.color + '55';
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+      // хвост
+      for (let i = 3; i >= 1; i--) {
+        const tp = Math.max(t - i * 0.06, 0);
+        ctx.beginPath();
+        ctx.arc(
+          (from.x ?? 0) + ((to.x ?? 0) - (from.x ?? 0)) * tp,
+          (from.y ?? 0) + ((to.y ?? 0) - (from.y ?? 0)) * tp,
+          2.2 - i * 0.45,
+          0,
+          2 * Math.PI,
+        );
+        ctx.fillStyle = pulse.color + ['66', '44', '22'][i - 1];
+        ctx.fill();
+      }
+      // голова импульса
+      ctx.shadowColor = pulse.color;
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, 2 * Math.PI);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.restore();
+    }
+  }, []);
+
+  const drawOverlays = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      drawScenarioFrame(ctx);
+      drawLivePulses(ctx);
+    },
+    [drawScenarioFrame, drawLivePulses],
+  );
+
   const searchData = useMemo(
     () =>
       props.nodes.map((n) => ({
@@ -312,8 +431,10 @@ export default function CoreGraph(props: {
       setFocus(id);
       fg.centerAt(node.x ?? 0, node.y ?? 0, 800);
       fg.zoom(3.4, 800);
+      // найденный ученик — сразу открываем карточку 360°
+      if (node.type === 'student') props.onNodeClick(node);
     },
-    [nodesById, setFocus],
+    [nodesById, setFocus, props],
   );
 
   return (
@@ -344,7 +465,52 @@ export default function CoreGraph(props: {
             {playing ? 'Стоп' : 'Как это работает'}
           </Button>
         )}
+        <Box
+          px={10}
+          py={6}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            border: '1px solid #334155',
+            borderRadius: 8,
+          }}
+        >
+          <Box
+            w={8}
+            h={8}
+            style={{ borderRadius: '50%', backgroundColor: '#34d399', boxShadow: '0 0 8px #34d399' }}
+          />
+          <Text size="xs" c="#94e2c0" fw={600}>
+            live
+          </Text>
+        </Box>
       </Box>
+
+      {/* лента живых событий ядра */}
+      {ticker.length > 0 && !playing && (
+        <Box pos="absolute" bottom={14} left={14} style={{ zIndex: 5, maxWidth: 420 }}>
+          {ticker.map((t, i) => (
+            <Paper
+              key={t.id}
+              px="sm"
+              py={5}
+              radius="md"
+              mb={4}
+              style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(51, 65, 85, 0.8)',
+                opacity: 1 - i * 0.22,
+              }}
+            >
+              <Text size="xs" c="#cbd5e1">
+                {t.caption}
+              </Text>
+            </Paper>
+          ))}
+        </Box>
+      )}
 
       {/* каптион сценария */}
       {caption && (
@@ -414,7 +580,7 @@ export default function CoreGraph(props: {
           if (n) setFocus(String((n as GraphNode).id));
         }}
         onBackgroundClick={() => setFocus(null)}
-        onRenderFramePost={drawScenarioFrame}
+        onRenderFramePost={drawOverlays}
         cooldownTicks={250}
         d3VelocityDecay={0.22}
       />

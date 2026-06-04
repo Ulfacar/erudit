@@ -193,6 +193,19 @@ export async function stubAssistant(scope: AssistantScope, userMessage: string):
       return reply('Не нашёл такого ученика в вашей зоне доступа.');
     }
 
+    // ── AI-инсайты: аномалии ──
+    if (has('инсайт', 'аномал', 'что не так', 'проблем', 'риски', 'требует внимания')) {
+      const r = (await run('school_insights', {})) as unknown;
+      if (Array.isArray(r) && r.length) {
+        const lines = r
+          .map((i) => `${i['важность'] === 'urgent' ? '🔴' : i['важность'] === 'warn' ? '⚠️' : 'ℹ️'} ${i['заголовок']}\n   ${i['детали']}`)
+          .join('\n');
+        return reply(`Аномалии, которые нашло ядро:\n${lines}`);
+      }
+      if (r && typeof r === 'object' && 'info' in (r as Json)) return reply(String((r as Json).info));
+      return reply('У вашей роли нет доступа к инсайтам школы.');
+    }
+
     // ── Сигналы агентов ──
     if (has('агент', 'входящ', 'сигнал', 'тревож', 'алерт', 'уведомлен', 'рекоменд')) {
       const r = (await run('agent_inbox')) as unknown;

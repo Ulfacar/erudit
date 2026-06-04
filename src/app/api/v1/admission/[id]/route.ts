@@ -74,6 +74,25 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       });
       data.enrolledStudentId = student.id;
 
+      // PRE-данные: заключение психолога с поступления → кабинет психолога,
+      // чтобы при дальнейшем сопровождении ничего не потерялось (best-effort)
+      try {
+        const psychNote = (data.psychNote as string) || lead.psychNote;
+        if (psychNote) {
+          await prisma.specialistRecommendation.create({
+            data: {
+              kind: 'psych',
+              studentId: student.id,
+              specialistId: auth.session.user.id,
+              text: `Заключение при поступлении: ${psychNote}`.slice(0, 2000),
+              date: new Date(),
+            },
+          });
+        }
+      } catch (err) {
+        console.error('[admission] PRE psych note transfer failed:', err);
+      }
+
       // счета по графику оплат из договора (best-effort — зачисление важнее)
       try {
         const schedule = (data.paymentSchedule as PaymentSchedule) || lead.paymentSchedule;

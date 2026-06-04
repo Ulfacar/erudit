@@ -1,6 +1,7 @@
 import { prisma } from '@/shared/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { type AssistantScope, studentInScope, classInScope } from '@/shared/lib/ai/scope';
+import { computeInsights } from '@/shared/lib/ai/insights';
 
 /**
  * Инструменты AI-ассистента ядра. Каждый тул — это серверный запрос к Prisma,
@@ -458,6 +459,15 @@ const schoolKnowledge: ToolExecutor = async (args, _scope) => {
   });
 };
 
+// ─── 13. AI-инсайты (аномалии) ───────────────────────────────────────────────
+
+const schoolInsights: ToolExecutor = async (_args, scope) => {
+  if (!scope.canSeeSchoolStats) return ACCESS_DENIED;
+  const insights = await computeInsights({ includeFinance: scope.canSeeFinance });
+  if (!insights.length) return { info: 'аномалий не обнаружено — показатели школы в норме' };
+  return insights.map((i) => ({ важность: i.severity, заголовок: i.title, детали: i.detail }));
+};
+
 // ─── Реестр ──────────────────────────────────────────────────────────────────
 
 interface ToolEntry {
@@ -610,6 +620,18 @@ const TOOLS: Record<string, ToolEntry> = {
       function: {
         name: 'agent_inbox',
         description: 'Активные сигналы проактивных агентов для текущего пользователя: алерты, задачи, черновики (низкие оценки, пропуски и т.п.).',
+        parameters: { type: 'object', properties: {} },
+      },
+    },
+  },
+  school_insights: {
+    available: (s) => s.canSeeSchoolStats,
+    execute: schoolInsights,
+    def: {
+      type: 'function',
+      function: {
+        name: 'school_insights',
+        description: 'AI-инсайты: аномалии, найденные ядром — падение успеваемости учеников, классы с пропусками выше нормы, задолженности, застрявшие заявки приёмной.',
         parameters: { type: 'object', properties: {} },
       },
     },
