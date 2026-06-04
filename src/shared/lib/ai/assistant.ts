@@ -1,5 +1,6 @@
 import { type AssistantScope } from '@/shared/lib/ai/scope';
 import { toolDefinitionsForScope, executeTool } from '@/shared/lib/ai/tools';
+import { stubAssistant } from '@/shared/lib/ai/assistant-stub';
 
 /**
  * Мозг ассистента ядра: цикл tool-calling поверх OpenRouter (OpenAI-совместимый).
@@ -102,14 +103,10 @@ export async function runAssistant(args: {
 }): Promise<AssistantResult> {
   const { scope, history, userMessage } = args;
 
+  // Без ключа — детерминированная заглушка: те же инструменты и реальные данные,
+  // но разбор вопроса по ключевым словам вместо LLM. С ключом включается ИИ.
   if (!assistantConfigured()) {
-    return {
-      reply:
-        'ИИ-ассистент пока не подключён на этом сервере (нет ключа модели). ' +
-        'Обратитесь к администратору системы — после подключения я смогу отвечать на вопросы по данным школы.',
-      usedTools: [],
-      model: 'stub',
-    };
+    return stubAssistant(scope, userMessage);
   }
 
   const messages: ApiMessage[] = [
