@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intellect OS — ядро школы уже работает</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070d1a;
+    --bg-soft: #0b1424;
+    --card: rgba(255, 255, 255, 0.04);
+    --card-border: rgba(125, 145, 200, 0.16);
+    --txt: #e8edf7;
+    --dim: #8b97b0;
+    --blue: #3b82f6;
+    --violet: #a855f7;
+    --cyan: #22d3ee;
+    --amber: #fbbf24;
+    --teal: #2dd4bf;
+    --rose: #f472b6;
+    --orange: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--txt); font-family: 'Inter', sans-serif; overflow: hidden; }
+  .display { font-family: 'Unbounded', 'Inter', sans-serif; }
+
+  .deck { height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    padding: 56px 84px 72px; overflow: hidden;
+  }
+  .slide.active { display: flex; animation: slideIn 480ms cubic-bezier(.2,.8,.2,1); }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  /* фоновое сияние ядра */
+  .slide::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(900px 500px at 85% -10%, rgba(59,130,246,.14), transparent 60%),
+      radial-gradient(700px 450px at -5% 110%, rgba(168,85,247,.12), transparent 60%);
+  }
+  .slide > * { position: relative; z-index: 1; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--cyan); margin-bottom: 18px;
+  }
+  .eyebrow::before { content: ''; width: 26px; height: 2px; background: linear-gradient(90deg, var(--blue), var(--violet)); border-radius: 2px; }
+
+  h1 { font-size: 56px; font-weight: 900; line-height: 1.08; letter-spacing: -0.01em; }
+  h2 { font-size: 40px; font-weight: 700; line-height: 1.12; letter-spacing: -0.01em; margin-bottom: 10px; }
+  .grad { background: linear-gradient(92deg, #7db4ff 0%, #b388ff 55%, #67e8f9 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { font-size: 19px; color: var(--dim); line-height: 1.55; max-width: 880px; }
+
+  .glass {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 18px;
+    backdrop-filter: blur(8px); padding: 22px 24px;
+  }
+  .bento { display: grid; gap: 14px; margin-top: 30px; }
+
+  .shot {
+    border-radius: 16px; border: 1px solid rgba(125,145,200,.25);
+    box-shadow: 0 24px 60px rgba(2, 8, 22, .65); width: 100%; display: block;
+  }
+  .shot-frame { position: relative; }
+  .shot-frame::after {
+    content: 'LIVE · bilimos.kg'; position: absolute; top: 14px; right: 14px;
+    font-size: 11px; font-weight: 800; letter-spacing: .1em; color: #052e1f;
+    background: linear-gradient(90deg, #34d399, #2dd4bf); padding: 5px 10px; border-radius: 99px;
+  }
+
+  .kpi { font-size: 44px; font-weight: 900; }
+  .kpi-l { font-size: 13px; color: var(--dim); font-weight: 600; margin-top: 2px; }
+
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 11px; border-radius: 99px; letter-spacing: .04em; }
+  .tag.b { background: rgba(59,130,246,.16); color: #93c5fd; }
+  .tag.v { background: rgba(168,85,247,.16); color: #d8b4fe; }
+  .tag.t { background: rgba(45,212,191,.14); color: #7ef0dd; }
+  .tag.a { background: rgba(251,191,36,.14); color: #fde38c; }
+  .tag.o { background: rgba(245,158,11,.18); color: #fcd34d; }
+
+  .footer {
+    position: absolute; left: 84px; right: 84px; bottom: 26px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: #5a6680; z-index: 2;
+  }
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--blue), var(--violet), var(--cyan)); z-index: 10; transition: width .35s ease; }
+
+  .num { font-family: 'Unbounded'; font-weight: 700; font-size: 15px; color: var(--cyan); }
+  .row { display: flex; gap: 14px; align-items: flex-start; }
+  .step-dot { min-width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;
+    background: linear-gradient(135deg, var(--blue), var(--violet)); box-shadow: 0 0 18px rgba(99,102,241,.45); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding-left: 26px; position: relative; margin-bottom: 10px; line-height: 1.5; }
+  ul.clean li::before { content: '◆'; position: absolute; left: 0; color: var(--cyan); font-size: 11px; top: 5px; }
+
+  .hint { position: fixed; bottom: 26px; right: 32px; font-size: 12px; color: #4a5570; z-index: 10; }
+
+  @media print {
+    html, body { overflow: visible; background: var(--bg); }
+    .deck { height: auto; }
+    .slide { position: relative; display: flex !important; page-break-after: always; height: 100vh; }
+    .hint, .progress { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="bar"></div>
+<div class="deck" id="deck">
+
+  <!-- 1. ТИТУЛ -->
+  <section class="slide active" style="justify-content: center; align-items: flex-start;">
+    <div class="eyebrow">Intellect Pro School · июнь 2026</div>
+    <h1 class="display">INTELLECT <span class="grad">OS</span></h1>
+    <h1 class="display" style="font-size: 40px; margin-top: 10px;">Ядро школы. <span class="grad">Уже работает.</span></h1>
+    <p class="sub" style="margin-top: 26px;">
+      Не концепция и не слайды — живая система на реальных данных.<br>
+      Всё, что показано дальше, работает прямо сейчас и будет показано вживую.
+    </p>
+    <div style="display: flex; gap: 12px; margin-top: 40px;">
+      <span class="tag v">Видение и архитектура — Эмир</span>
+      <span class="tag b">Инженерная платформа — команда Bilim OS</span>
+    </div>
+  </section>
+
+  <!-- 2. ПРОБЛЕМА -->
+  <section class="slide" style="justify-content: center;">
+    <div class="eyebrow">Сегодняшняя реальность</div>
+    <h2>Школа знает о ребёнке всё.<br><span class="grad">Но по кусочкам — в разных тетрадях.</span></h2>
+    <div class="bento" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="glass"><div class="kpi" style="color:#fb7185;">5+</div><div class="kpi-l">таблиц с одними и теми же данными</div></div>
+      <div class="glass"><div class="kpi" style="color:#fbbf24;">3×</div><div class="kpi-l">дублирование ФИО, оплат, контактов</div></div>
+      <div class="glass"><div class="kpi" style="color:#fb7185;">0</div><div class="kpi-l">связей между источниками</div></div>
+      <div class="glass"><div class="kpi" style="color:#94a3b8;">30 дн</div><div class="kpi-l">родитель узнаёт о проблеме на собрании</div></div>
+    </div>
+    <div class="bento" style="grid-template-columns: 1fr 1fr;">
+      <div class="glass">
+        <ul class="clean" style="font-size: 16px;">
+          <li>Каждый август ассистент копирует таблицы классов заново</li>
+          <li>Колл-центр и бухгалтерия — две разные таблицы оплат, сверка вручную</li>
+          <li>Заключения психолога — в блокноте, теряются после поступления</li>
+        </ul>
+      </div>
+      <div class="glass">
+        <ul class="clean" style="font-size: 16px;">
+          <li>Директор узнаёт о происходящем через цепочку звонков</li>
+          <li>Кто ушёл и почему — никто не считает</li>
+          <li>При увольнении сотрудника знания о процессах исчезают</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. РЕШЕНИЕ -->
+  <section class="slide">
+    <div class="eyebrow">Решение</div>
+    <h2>Единая «медкарта школы»:<br><span class="grad">один ребёнок — один профиль.</span></h2>
+    <p class="sub">Все кабинеты пишут в общий профиль, а система сама подсказывает действие в нужный момент.</p>
+    <div class="bento" style="grid-template-columns: repeat(4, 1fr); margin-top: 36px;">
+      <div class="glass"><div class="row"><div class="step-dot">1</div><div><b>Звонок мамы</b><br><span style="color:var(--dim); font-size:14px;">заявка сразу становится карточкой ребёнка</span></div></div></div>
+      <div class="glass"><div class="row"><div class="step-dot">2</div><div><b>Тест и психолог</b><br><span style="color:var(--dim); font-size:14px;">баллы и заключение — в ту же карточку</span></div></div></div>
+      <div class="glass"><div class="row"><div class="step-dot">3</div><div><b>Кнопка «Зачислить»</b><br><span style="color:var(--dim); font-size:14px;">ученик в журнале + счета по графику — сами</span></div></div></div>
+      <div class="glass"><div class="row"><div class="step-dot">4</div><div><b>Школа реагирует</b><br><span style="color:var(--dim); font-size:14px;">двойка → сигнал маме в тот же день</span></div></div></div>
+    </div>
+    <div class="glass" style="margin-top: 22px; border-color: rgba(45,212,191,.4);">
+      <b style="color: var(--teal);">Ключевой момент:</b> через полгода психолог открывает карточку — и заключение со вступительного теста <b>уже там</b>. Ни один факт о ребёнке не теряется.
+    </div>
+  </section>
+
+  <!-- 4. ЖИВОЕ ЯДРО -->
+  <section class="slide">
+    <div class="eyebrow">Сердце системы · показываем вживую</div>
+    <h2>Ядро <span class="grad">дышит в реальном времени</span></h2>
+    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 26px; margin-top: 22px; align-items: start;">
+      <div class="shot-frame"><img class="shot" src="img/core-live.png" alt="Живой граф ядра"></div>
+      <div>
+        <div class="glass" style="margin-bottom: 14px;">
+          <span class="tag t">живая демонстрация</span>
+          <p style="margin-top: 10px; line-height: 1.6; font-size: 16px;">
+            Учитель ставит оценку <b>с телефона</b> — и на экране импульс
+            <b>реально пролетает</b>: учитель → журнал → ядро → класс → ученик → родитель.
+          </p>
+        </div>
+        <div class="glass">
+          <p style="font-size: 15px; line-height: 1.6; color: var(--dim);">
+            194 узла — настоящие записи школы: модули, классы, педагоги, ученики, родители.
+            Лента внизу — реальные события, а не анимация.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. AI-АССИСТЕНТ -->
+  <section class="slide">
+    <div class="eyebrow">AI-ассистент · на каждой странице</div>
+    <h2>Каждый спрашивает —<br><span class="grad">и получает ответ строго в своей зоне</span></h2>
+    <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 26px; margin-top: 20px; align-items: start;">
+      <div class="shot-frame"><img class="shot" src="img/assistant.png" alt="AI-ассистент"></div>
+      <div class="bento" style="grid-template-columns: 1fr; margin-top: 0;">
+        <div class="glass"><span class="tag b">директор</span><p style="margin-top:8px; font-size:15px;">«Сколько учеников? Сводка по финансам? Что в воронке приёмной?»</p></div>
+        <div class="glass"><span class="tag v">родитель</span><p style="margin-top:8px; font-size:15px;">«Расскажи про моего ребёнка» — и только про своего. «Во сколько уроки?»</p></div>
+        <div class="glass"><span class="tag t">учитель · психолог · бухгалтер</span><p style="margin-top:8px; font-size:15px;">каждый видит только свою зону — права зашиты на сервере, обойти нельзя</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. CRM ПРИЁМНОЙ -->
+  <section class="slide">
+    <div class="eyebrow">Приёмная · вместо Google-таблиц</div>
+    <h2>От звонка до зачисления — <span class="grad">ни один факт не теряется</span></h2>
+    <div style="margin-top: 20px;" class="shot-frame"><img class="shot" src="img/admission.png" alt="CRM приёмной" style="max-height: 56vh; object-fit: cover; object-position: top;"></div>
+    <div class="bento" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="glass" style="padding: 14px 18px;"><b>Воронка целиком:</b> <span style="color:var(--dim);">заявка → тест → психолог → директор → договор → зачисление, с конверсией</span></div>
+      <div class="glass" style="padding: 14px 18px;"><b>Один клик «Зачислить»:</b> <span style="color:var(--dim);">ученик в журнале + счета по графику оплат создаются сами</span></div>
+      <div class="glass" style="padding: 14px 18px;"><b>Отказы с причинами:</b> <span style="color:var(--dim);">школа впервые видит, почему семьи уходят</span></div>
+    </div>
+  </section>
+
+  <!-- 7. AI-ИНСАЙТЫ -->
+  <section class="slide">
+    <div class="eyebrow">AI-инсайты · система замечает сама</div>
+    <h2>То, что человек глазами не сложит — <span class="grad">ядро находит за секунду</span></h2>
+    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 26px; margin-top: 20px; align-items: start;">
+      <div class="shot-frame"><img class="shot" src="img/insights.png" alt="AI-инсайты"></div>
+      <div class="bento" style="grid-template-columns: 1fr; margin-top: 0;">
+        <div class="glass" style="border-left: 3px solid #f87171;"><b>🔴 Падение успеваемости</b><p style="font-size:14px; color:var(--dim); margin-top:6px;">ученик просел на 1.8 балла за 2 недели — сигнал куратору до того, как станет поздно</p></div>
+        <div class="glass" style="border-left: 3px solid var(--amber);"><b>⚠️ Класс-выброс по пропускам</b><p style="font-size:14px; color:var(--dim); margin-top:6px;">7а пропускает на 8пп больше нормы школы</p></div>
+        <div class="glass" style="border-left: 3px solid var(--blue);"><b>💰 Задолженности · застрявшие заявки</b><p style="font-size:14px; color:var(--dim); margin-top:6px;">бухгалтерия и приёмная видят, где теряются деньги</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. 16 КАБИНЕТОВ -->
+  <section class="slide">
+    <div class="eyebrow">9 доменов — 1 ядро</div>
+    <h2>У каждого сотрудника — <span class="grad">свой кабинет</span></h2>
+    <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 26px; margin-top: 20px; align-items: start;">
+      <div class="shot-frame"><img class="shot" src="img/login-roles.png" alt="16 ролей"></div>
+      <div>
+        <div class="glass">
+          <ul class="clean" style="font-size: 15.5px;">
+            <li><b>Бухгалтер</b> входит — видит счета и оплаты. И только их.</li>
+            <li><b>Психолог</b> — только свои сессии. Врач — только медкарты.</li>
+            <li><b>Повар</b> — меню питания. <b>Завхоз</b> — заявки и инвентарь.</li>
+            <li><b>16 ролей</b>, и все пишут в одно ядро — данные связаны, доступы разделены.</li>
+          </ul>
+        </div>
+        <div class="glass" style="margin-top: 14px; border-color: rgba(168,85,247,.35);">
+          <p style="font-size: 15px;"><b style="color:#d8b4fe;">Покажем вживую:</b> вход бухгалтером, психологом и поваром — три разных мира из одного ядра, за 30 секунд.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. ЧТО УЖЕ РАБОТАЕТ -->
+  <section class="slide">
+    <div class="eyebrow">Не обещания — механика</div>
+    <h2>Действие → <span class="grad">автоматика ядра</span></h2>
+    <div class="bento" style="grid-template-columns: 1fr 1fr; margin-top: 28px;">
+      <div class="glass"><b>Двойка в журнале</b><p style="color:var(--dim); font-size:15px; margin-top:6px;">→ заботливое письмо родителю готово через секунду. Учитель проверяет и отправляет — AI не действует за спиной педагога.</p></div>
+      <div class="glass"><b>3 пропуска за 2 недели</b><p style="color:var(--dim); font-size:15px; margin-top:6px;">→ куратор получает сигнал с рекомендацией подключить психолога.</p></div>
+      <div class="glass"><b>Зачисление в приёмной</b><p style="color:var(--dim); font-size:15px; margin-top:6px;">→ ученик, счета и перенос заключения психолога — одним кликом.</p></div>
+      <div class="glass"><b>Вопрос ассистенту</b><p style="color:var(--dim); font-size:15px; margin-top:6px;">→ ответ из реальной базы школы, в рамках роли спрашивающего.</p></div>
+    </div>
+    <div class="bento" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="glass" style="text-align:center;"><div class="kpi grad">16</div><div class="kpi-l">ролей с кабинетами</div></div>
+      <div class="glass" style="text-align:center;"><div class="kpi grad">40+</div><div class="kpi-l">модулей в одном ядре</div></div>
+      <div class="glass" style="text-align:center;"><div class="kpi grad">24/7</div><div class="kpi-l">ядро следит и подсказывает</div></div>
+    </div>
+  </section>
+
+  <!-- 10. ДОРОЖНАЯ КАРТА -->
+  <section class="slide">
+    <div class="eyebrow">Дорожная карта</div>
+    <h2>Ядро готово. <span class="grad">Дальше — интеллект.</span></h2>
+    <div class="bento" style="grid-template-columns: repeat(4, 1fr); margin-top: 32px;">
+      <div class="glass" style="border-color: rgba(45,212,191,.45);">
+        <span class="tag t">✓ сделано</span>
+        <p style="font-weight:700; margin-top:10px;">Ядро + AI-режим</p>
+        <p style="font-size:14px; color:var(--dim); margin-top:6px;">единый профиль, 16 кабинетов, ассистент, агенты, CRM, инсайты, живой граф</p>
+      </div>
+      <div class="glass">
+        <span class="tag b">пилот · мес 1–2</span>
+        <p style="font-weight:700; margin-top:10px;">Полный AI + данные школы</p>
+        <p style="font-size:14px; color:var(--dim); margin-top:6px;">LLM-ассистент со свободным языком, реальные ученики Intellect, обучение команды</p>
+      </div>
+      <div class="glass">
+        <span class="tag v">мес 3–6</span>
+        <p style="font-weight:700; margin-top:10px;">Каналы и журнал PRO</p>
+        <p style="font-size:14px; color:var(--dim); margin-top:6px;">WhatsApp/Telegram-ассистент для родителей, расширенный журнал учителя, QR-вход</p>
+      </div>
+      <div class="glass">
+        <span class="tag a">волна 2</span>
+        <p style="font-weight:700; margin-top:10px;">Интеллект-надстройки</p>
+        <p style="font-size:14px; color:var(--dim); margin-top:6px;">Voice AI, диагностика знаний, предиктивный retention, антибуллинг</p>
+      </div>
+    </div>
+    <p class="sub" style="margin-top: 24px;">Каждый этап — рабочий продукт, а не отчёт. Как сегодня.</p>
+  </section>
+
+  <!-- 11. ПРЕДЛОЖЕНИЕ -->
+  <section class="slide" style="justify-content: center;">
+    <div class="eyebrow">Предложение для Intellect Pro School</div>
+    <h2>Статус <span class="grad">founding school</span> — первая школа-экосистема КР</h2>
+    <div class="bento" style="grid-template-columns: 1.2fr 1fr; margin-top: 26px;">
+      <div class="glass">
+        <p style="font-weight: 800; font-size: 18px; margin-bottom: 14px;">Что входит в пилот</p>
+        <ul class="clean" style="font-size: 16px;">
+          <li>Развёртывание Intellect OS на реальных данных школы</li>
+          <li>Полноценный AI-ассистент (свободный язык) для всех ролей</li>
+          <li>Обучение команды + сопровождение внедрения</li>
+          <li>Эмир — куратор внедрения со стороны школы; платформа и инженерия — Bilim OS</li>
+        </ul>
+      </div>
+      <div>
+        <div class="glass" style="text-align: center; border-color: rgba(245,158,11,.4);">
+          <div class="kpi" style="color: var(--orange);">30 000 <span style="font-size:20px;">сом/мес</span></div>
+          <div class="kpi-l">+ $1000 запуск · вся школа, все роли</div>
+          <p style="font-size: 14px; color: var(--dim); margin-top: 10px;">— меньше стоимости обучения одного ученика в год</p>
+        </div>
+        <div class="glass" style="margin-top: 12px; text-align: center;">
+          <p style="font-size: 14.5px;"><b style="color:#7ef0dd;">Founding school:</b> цена фиксируется, школа становится эталонным кейсом, на который равняется регион</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. ФИНАЛ -->
+  <section class="slide" style="justify-content: center; align-items: center; text-align: center;">
+    <div class="eyebrow" style="justify-content: center;">Intellect Pro School · первая школа-экосистема Кыргызстана</div>
+    <h1 class="display" style="font-size: 46px; max-width: 1000px;">Команда — есть. Технология — <span class="grad">работает</span>.<br>Прецедент — на экране.</h1>
+    <p class="sub" style="margin-top: 30px; text-align: center;">
+      Всё, что нужно, чтобы это стало реальностью —
+    </p>
+    <h2 class="display grad" style="font-size: 52px; margin-top: 8px;">ваше слово, агай.</h2>
+    <div style="display: flex; gap: 12px; margin-top: 46px;">
+      <span class="tag o">Пилот стартует в течение недели</span>
+      <span class="tag b">bilimos.kg — живая система уже сегодня</span>
+    </div>
+  </section>
+
+</div>
+<div class="hint">← → листать · F11 — на весь экран</div>
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const bar = document.getElementById('bar');
+  let i = 0;
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', ' ', 'PageDown', 'Enter'].includes(e.key)) show(i + 1);
+    if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) show(i - 1);
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+  });
+  document.addEventListener('click', (e) => { if (!window.getSelection().toString()) show(i + 1); });
+  show(0);
+</script>
+</body>
+</html>
