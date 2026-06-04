@@ -1283,3 +1283,74 @@ model AgentActionLog {
   detail    Json?
   createdAt DateTime @default(now())
 }
+
+// ============ AI-АССИСТЕНТ ЯДРА (чат в разрезе роли) ============
+
+/// Диалог пользователя с ассистентом ядра. История сохраняется —
+/// ассистент «помнит» контекст между сессиями.
+model AssistantConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("Новый диалог")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AssistantMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AssistantMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // user | assistant
+  content        String                @db.VarChar(8000)
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ============ ПРИЁМНАЯ (CRM-воронка: звонок → зачисление) ============
+
+enum AdmissionStage {
+  lead // заявка/звонок
+  testing // тестирование (математика/английский)
+  psych // заключение психолога
+  director // решение директора
+  contract // договор + график оплат
+  enrolled // зачислен (создан Student)
+  rejected // отказ (причина — для retention-аналитики)
+}
+
+enum PaymentSchedule {
+  monthly
+  quarterly
+  yearly
+}
+
+/// Лид приёмной. Один ребёнок — одна запись, ни один факт не теряется:
+/// баллы теста, заключение психолога, решение, договор, причина ухода.
+model AdmissionLead {
+  id                String           @id @default(cuid())
+  stage             AdmissionStage   @default(lead)
+  childName         String
+  targetGrade       Int
+  parentName        String
+  phone             String
+  source            String? // звонок | instagram | сайт | рекомендация
+  mathScore         Int?
+  englishScore      Int?
+  psychNote         String?          @db.VarChar(2000)
+  decisionNote      String?          @db.VarChar(1000)
+  contractAmount    Int? // сомов за период обучения
+  paymentSchedule   PaymentSchedule?
+  rejectReason      String?          @db.VarChar(1000)
+  enrolledStudentId String? // Student.id после зачисления
+  classId           String? // класс зачисления
+  createdById       String // user.id (секретарь/ассистент директора)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([stage, updatedAt])
+}

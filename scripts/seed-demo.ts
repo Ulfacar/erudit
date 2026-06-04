@@ -261,6 +261,148 @@ async function main() {
     console.log(`  + incidents: ${incidentItems.length}`)
   }
 
+  // 9. Приёмная (CRM): ~12 лидов по всем этапам воронки
+  const leadCount = await prisma.admissionLead.count()
+  if (leadCount === 0) {
+    const secretaryUser = await prisma.user.findFirst({ where: { role: 'secretary' } })
+    const createdById = secretaryUser?.id ?? adminUser.id
+    const someClass = await prisma.class.findFirst({ select: { id: true } })
+    const leads: Array<Record<string, unknown>> = [
+      { stage: 'lead', childName: 'Айдана Токтогулова', targetGrade: 1, parentName: 'Гулнара Токтогулова', phone: '+996 555 111 221', source: 'Звонок' },
+      { stage: 'lead', childName: 'Эмир Жумабеков', targetGrade: 5, parentName: 'Бакыт Жумабеков', phone: '+996 700 222 331', source: 'Instagram' },
+      { stage: 'lead', childName: 'Алия Касымова', targetGrade: 2, parentName: 'Айгуль Касымова', phone: '+996 555 333 441', source: 'Сайт' },
+      { stage: 'testing', childName: 'Тимур Алиев', targetGrade: 7, parentName: 'Эльмира Алиева', phone: '+996 770 444 551', source: 'Рекомендация' },
+      { stage: 'testing', childName: 'Сезим Бекова', targetGrade: 3, parentName: 'Нурлан Беков', phone: '+996 555 555 661', source: 'Звонок' },
+      { stage: 'psych', childName: 'Адилет Мамытов', targetGrade: 6, parentName: 'Жылдыз Мамытова', phone: '+996 700 666 771', source: 'WhatsApp', mathScore: 78, englishScore: 64 },
+      { stage: 'psych', childName: 'Каныкей Орозова', targetGrade: 4, parentName: 'Талант Орозов', phone: '+996 555 777 881', source: 'Сайт', mathScore: 91, englishScore: 85 },
+      { stage: 'director', childName: 'Бекзат Иманалиев', targetGrade: 8, parentName: 'Чолпон Иманалиева', phone: '+996 770 888 991', source: 'Рекомендация', mathScore: 84, englishScore: 72, psychNote: 'Адаптивность высокая, мотивация к учёбе выраженная. Рекомендован к зачислению.' },
+      { stage: 'contract', childName: 'Айпери Сыдыкова', targetGrade: 1, parentName: 'Мирлан Сыдыков', phone: '+996 555 999 101', source: 'Звонок', mathScore: 88, englishScore: 90, psychNote: 'Готовность к школе полная, развитая речь.', decisionNote: 'Принять. Сильный кандидат.' },
+      { stage: 'contract', childName: 'Нурсултан Абдыкадыров', targetGrade: 9, parentName: 'Венера Абдыкадырова', phone: '+996 700 101 112', source: 'Instagram', mathScore: 73, englishScore: 68, psychNote: 'Лёгкая тревожность, рекомендовано сопровождение психолога в адаптационный период.', decisionNote: 'Принять с сопровождением психолога.', contractAmount: 12000, paymentSchedule: 'monthly' },
+      { stage: 'enrolled', childName: 'Дастан Эсенов', targetGrade: 5, parentName: 'Айзада Эсенова', phone: '+996 555 121 314', source: 'Рекомендация', mathScore: 95, englishScore: 88, psychNote: 'Отличная готовность, лидерские качества.', decisionNote: 'Принять.', contractAmount: 12000, paymentSchedule: 'quarterly', classId: someClass?.id ?? null },
+      { stage: 'rejected', childName: 'Амина Шарипова', targetGrade: 6, parentName: 'Руслан Шарипов', phone: '+996 770 141 516', source: 'Сайт', mathScore: 55, englishScore: 49, rejectReason: 'Родители выбрали школу ближе к дому (переезд в Ош).' },
+    ]
+    for (const l of leads) {
+      await prisma.admissionLead.create({ data: { ...(l as object), createdById } as never })
+    }
+    console.log(`  + admission leads: ${leads.length}`)
+  }
+
+  // 10. Финансы: счета + оплаты ~15 ученикам (для ассистента и финансовой сводки)
+  const invoiceCount = await prisma.feeInvoice.count()
+  if (invoiceCount < 10) {
+    const finStudents = await prisma.student.findMany({ take: 15, select: { id: true } })
+    const months = ['сентябрь', 'октябрь', 'ноябрь']
+    let invCount = 0
+    for (let si = 0; si < finStudents.length; si++) {
+      const s = finStudents[si]
+      for (let mi = 0; mi < months.length; mi++) {
+        const due = new Date()
+        due.setMonth(due.getMonth() - (months.length - mi) + 1)
+        due.setDate(10)
+        // первые 2 месяца оплачены, последний — у половины долг
+        const isPaid = mi < 2 || si % 2 === 0
+        const inv = await prisma.feeInvoice.create({
+          data: {
+            studentId: s.id,
+            title: `Обучение, ${months[mi]}`,
+            period: months[mi],
+            amount: 8000,
+            status: isPaid ? 'paid' : 'pending',
+            dueDate: due,
+          },
+        })
+        if (isPaid) {
+          await prisma.payment.create({
+            data: { invoiceId: inv.id, amount: 8000, method: si % 3 === 0 ? 'нал' : 'банк', paidAt: due },
+          })
+        }
+        invCount++
+      }
+    }
+    console.log(`  + fee invoices: ${invCount}`)
+  }
+
+  // 11. Специалисты: сессии/рекомендации/прогресс психолога и логопеда ~6 ученикам
+  const sessCount = await prisma.specialistSession.count()
+  if (sessCount === 0) {
+    const specialistUser = await prisma.user.findFirst({ where: { role: 'specialist' } })
+    if (specialistUser) {
+      const psyStudents = await prisma.student.findMany({ take: 6, select: { id: true } })
+      const DAY2 = 864e5
+      let psyCount = 0
+      for (let i = 0; i < psyStudents.length; i++) {
+        const s = psyStudents[i]
+        const kind = i < 4 ? 'psych' : 'speech'
+        // 3 сессии с шагом в неделю
+        for (let k = 0; k < 3; k++) {
+          await prisma.specialistSession.create({
+            data: {
+              kind: kind as never,
+              studentId: s.id,
+              specialistId: specialistUser.id,
+              date: new Date(Date.now() - (21 - k * 7) * DAY2),
+              startTime: '10:00',
+              endTime: '10:45',
+              note: kind === 'psych'
+                ? ['Первичная диагностика: лёгкая тревожность в период адаптации.', 'Динамика положительная, тревожность снижается.', 'Стабильное состояние, продолжаем поддерживающие встречи.'][k]
+                : ['Постановка звука «Р»: подготовительные упражнения.', 'Звук поставлен изолированно, автоматизация в слогах.', 'Автоматизация в словах и фразах.'][k],
+            },
+          })
+          psyCount++
+        }
+        await prisma.specialistRecommendation.create({
+          data: {
+            kind: kind as never,
+            studentId: s.id,
+            specialistId: specialistUser.id,
+            text: kind === 'psych'
+              ? 'Рекомендации родителям: соблюдать режим дня, хвалить за усилия, не сравнивать с другими детьми. Повторная встреча через 2 недели.'
+              : 'Ежедневные артикуляционные упражнения дома по 10 минут, контроль звука в свободной речи.',
+            date: new Date(Date.now() - 7 * DAY2),
+          },
+        })
+        // динамика метрики 3 точки
+        const metric = kind === 'psych' ? 'тревожность' : 'звук «Р»'
+        const values = kind === 'psych' ? [62, 48, 35] : [30, 55, 75]
+        for (let k = 0; k < 3; k++) {
+          await prisma.specialistProgress.create({
+            data: {
+              kind: kind as never,
+              studentId: s.id,
+              specialistId: specialistUser.id,
+              metric,
+              value: values[k],
+              date: new Date(Date.now() - (21 - k * 7) * DAY2),
+            },
+          })
+        }
+      }
+      console.log(`  + specialist sessions: ${psyCount} (+recs +progress)`)
+    }
+  }
+
+  // 12. Посещаемость за 30 дней — сэмплу учеников (для трендов ассистента)
+  const since30 = new Date(Date.now() - 30 * 864e5)
+  const attCount = await prisma.attendance.count({ where: { date: { gte: since30 } } })
+  if (attCount < 100) {
+    const attStudents = await prisma.student.findMany({ take: 20, select: { id: true } })
+    const rows: Array<{ studentId: string; date: Date; status: 'present' | 'absent' | 'late' }> = []
+    for (let d = 0; d <= 30; d++) {
+      const date = new Date()
+      date.setHours(0, 0, 0, 0)
+      date.setDate(date.getDate() - d)
+      if (date.getDay() === 0 || date.getDay() === 6) continue // выходные
+      for (let si = 0; si < attStudents.length; si++) {
+        // детерминированный «рандом»: в основном присутствие, изредка пропуски/опоздания
+        const roll = (d * 7 + si * 13) % 20
+        const status = roll === 0 ? 'absent' : roll === 1 ? 'late' : 'present'
+        rows.push({ studentId: attStudents[si].id, date, status })
+      }
+    }
+    const created = await prisma.attendance.createMany({ data: rows, skipDuplicates: true })
+    console.log(`  + attendance rows: ${created.count}`)
+  }
+
   console.log('--- seed-demo: готово ---')
 }
 

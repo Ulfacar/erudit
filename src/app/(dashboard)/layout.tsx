@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { AuthGuard } from '@/shared/components/auth/AuthGuard';
+import { AssistantWidget } from '@/shared/components/assistant/AssistantWidget';
 import {
   ActionIcon,
   AppShell,
@@ -77,6 +78,8 @@ const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?
   '/agent': IconRobot,
   '/journal': IconBook2,
   '/dashboard': IconHome,
+  '/core': IconChartDots,
+  '/admission': IconUsersGroup,
   '/calendar': IconCalendar,
   '/classes': IconSchool,
   '/academic-periods': IconCalendarEvent,
@@ -334,6 +337,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <AppShell.Main>
           {children}
+          <AssistantWidget />
         </AppShell.Main>
       </AppShell>
     </AuthGuard>
