@@ -2,6 +2,7 @@ import { prisma } from '@/shared/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { type AssistantScope, studentInScope, classInScope } from '@/shared/lib/ai/scope';
 import { computeInsights } from '@/shared/lib/ai/insights';
+import { computePenalty } from '@/shared/lib/finance/penalty';
 
 /**
  * Инструменты AI-ассистента ядра. Каждый тул — это серверный запрос к Prisma,
@@ -194,17 +195,25 @@ const studentFinance: ToolExecutor = async (args, scope) => {
   });
   const totalDue = invoices.filter((i) => i.status !== 'cancelled').reduce((s, i) => s + i.amount, 0);
   const totalPaid = invoices.flatMap((i) => i.payments).reduce((s, p) => s + p.amount, 0);
-  return {
-    счета: invoices.map((i) => ({
+  let totalPenalty = 0;
+  const rows = invoices.map((i) => {
+    const { penalty, overdueDays } = computePenalty(i);
+    totalPenalty += penalty;
+    return {
       название: i.title,
       сумма: i.amount,
       оплачено: i.payments.reduce((s, p) => s + p.amount, 0),
       статус: i.status,
       срок: i.dueDate?.toISOString().slice(0, 10) ?? null,
-    })),
+      ...(penalty > 0 ? { пеня: penalty, просрочка_дней: overdueDays } : {}),
+    };
+  });
+  return {
+    счета: rows,
     итого_начислено: totalDue,
     итого_оплачено: totalPaid,
     задолженность: Math.max(totalDue - totalPaid, 0),
+    ...(totalPenalty > 0 ? { пеня_всего: totalPenalty, к_оплате_с_пеней: Math.max(totalDue - totalPaid, 0) + totalPenalty } : {}),
     валюта: 'сом',
   };
 };

@@ -7,6 +7,7 @@ export const { GET, POST, DELETE } = createCrud({
   createFields: ['studentId', 'title', 'period', 'amount', 'status', 'dueDate'],
   dateFields: ['dueDate'],
   intFields: ['amount'],
+  include: { payments: { select: { amount: true } } }, // для расчёта пени на клиенте
   orderBy: { createdAt: 'desc' },
   filterableParams: ['status', 'studentId'],
 });

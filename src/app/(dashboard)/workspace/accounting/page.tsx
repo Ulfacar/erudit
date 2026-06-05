@@ -1,10 +1,22 @@
 'use client';
 
-import { Badge, Tabs } from '@mantine/core';
+import { Badge, Tabs, Text } from '@mantine/core';
 import { IconCash, IconReceipt, IconArrowDownRight } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 import { fmtDate, fmtMoney, studentField, studentLookup } from '@/shared/components/ui/resource-helpers';
+import { computePenalty } from '@/shared/lib/finance/penalty';
+
+/** Пеня по строке счёта (payments приходят из API). */
+function rowPenalty(r: Record<string, unknown>): { penalty: number; overdueDays: number } {
+  const { penalty, overdueDays } = computePenalty({
+    amount: Number(r.amount ?? 0),
+    status: String(r.status ?? ''),
+    dueDate: (r.dueDate as string) ?? null,
+    payments: (r.payments as Array<{ amount: number }>) ?? [],
+  });
+  return { penalty, overdueDays };
+}
 
 const INV_STATUS = [
   { value: 'pending', label: 'Ожидает' },
@@ -46,6 +58,20 @@ export default function AccountingPage() {
               { key: 'amount', label: 'Сумма', render: (r) => fmtMoney(r.amount) },
               { key: 'status', label: 'Статус', render: (r) => <Badge variant="light" color={INV_COLOR[String(r.status)] ?? 'gray'} radius="sm">{INV_STATUS.find((s) => s.value === r.status)?.label ?? String(r.status)}</Badge> },
               { key: 'dueDate', label: 'Срок', render: (r) => (r.dueDate ? fmtDate(r.dueDate) : '—') },
+              {
+                key: 'penalty',
+                label: 'Пеня',
+                render: (r) => {
+                  const { penalty, overdueDays } = rowPenalty(r as Record<string, unknown>);
+                  return penalty > 0 ? (
+                    <Text size="sm" c="red" fw={600}>
+                      +{fmtMoney(penalty)} <Text span size="xs" c="dimmed">({overdueDays} дн)</Text>
+                    </Text>
+                  ) : (
+                    <Text size="xs" c="dimmed">—</Text>
+                  );
+                },
+              },
             ]}
             fields={[
               studentField,

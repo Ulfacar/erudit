@@ -1,4 +1,5 @@
 import { prisma } from '@/shared/lib/prisma';
+import { computePenalty } from '@/shared/lib/finance/penalty';
 
 /**
  * AI-инсайты ядра: детерминированный поиск аномалий по реальным данным.
@@ -133,6 +134,35 @@ export async function computeInsights(opts?: { includeFinance?: boolean }): Prom
       }
     } catch (e) {
       console.error('[insights] finance failed:', e);
+    }
+  }
+
+  // ── 3b. Пени за просрочку (расчёт на лету по просроченным счетам) ──
+  if (includeFinance) {
+    try {
+      const overdue = await prisma.feeInvoice.findMany({
+        where: { status: { in: ['pending', 'partial'] }, dueDate: { lt: new Date(now) } },
+        select: { amount: true, status: true, dueDate: true, studentId: true, payments: { select: { amount: true } } },
+      });
+      let totalPenalty = 0;
+      const penaltyStudents = new Set<string>();
+      for (const inv of overdue) {
+        const { penalty } = computePenalty(inv);
+        if (penalty > 0) {
+          totalPenalty += penalty;
+          penaltyStudents.add(inv.studentId);
+        }
+      }
+      if (totalPenalty > 0) {
+        insights.push({
+          severity: penaltyStudents.size >= 5 ? 'warn' : 'info',
+          title: `Пени за просрочку: ${totalPenalty.toLocaleString('ru-RU')} сом`,
+          detail: `${penaltyStudents.size} учеников с просроченными счетами. Пеня 0.1%/день, начисляется автоматически.`,
+          href: '/workspace/accounting',
+        });
+      }
+    } catch (e) {
+      console.error('[insights] penalty failed:', e);
     }
   }
 
