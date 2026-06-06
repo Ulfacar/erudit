@@ -140,6 +140,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/workspace/medical', label: 'Медкабинет', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary', 'doctor'] },
   { href: '/workspace/parents', label: 'Родители', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'curator'] },
   // Хозчасть / бизнес
+  { href: '/finance', label: 'Финансы', roles: ['super_admin', 'analyst', 'accountant'] },
   { href: '/workspace/accounting', label: 'Бухгалтерия', roles: [...ADMIN_AND_VICE, 'accountant'] },
   { href: '/workspace/kitchen', label: 'Кухня', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'cook'] },
   { href: '/workspace/maintenance', label: 'АХЧ', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'zavhoz'] },
