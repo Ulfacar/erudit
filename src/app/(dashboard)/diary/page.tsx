@@ -20,8 +20,10 @@ import {
   Title,
 } from '@mantine/core';
 import {
+  IconAlertTriangle,
   IconCalendar,
   IconCalendarStats,
+  IconCash,
   IconCheck,
   IconChevronLeft,
   IconChevronRight,
@@ -33,6 +35,7 @@ import {
 import { useMe } from '@/shared/hooks/useMe';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { noteTypeInfo } from '@/shared/lib/note-types';
+import { INV_COLOR, invoiceStatusLabel } from '@/shared/lib/finance/invoice-status';
 
 /* ── Заметки (BehaviorIncident, EduPage-style) ── */
 interface NoteItem { id: string; type: string; description: string; status: string; createdAt: string }
@@ -79,6 +82,116 @@ function NotesTab({ studentId }: { studentId: string }) {
           </Paper>
         );
       })}
+    </Stack>
+  );
+}
+
+/* ── Оплата (счета ребёнка, пеня на сервере) ── */
+interface MyInvoice {
+  id: string; studentId: string; title: string; period: string | null;
+  amount: number; status: string; dueDate: string | null;
+  paid: number; remaining: number; penalty: number; overdueDays: number;
+}
+
+const fmtSom = (n: number) => `${n.toLocaleString('ru-RU')} сом`;
+
+function PaymentsTab({ studentId }: { studentId: string }) {
+  const [items, setItems] = useState<MyInvoice[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setItems(null);
+    fetch('/api/v1/fee-invoices/mine')
+      .then((r) => r.json())
+      .then((j) => { if (!cancelled) setItems(j.success ? j.data : []); })
+      .catch(() => { if (!cancelled) setItems([]); });
+    return () => { cancelled = true; };
+  }, [studentId]);
+
+  const mine = useMemo(() => (items ?? []).filter((i) => i.studentId === studentId), [items, studentId]);
+  const totals = useMemo(() => mine.reduce(
+    (t, i) => ({ amount: t.amount + i.amount, paid: t.paid + i.paid, remaining: t.remaining + i.remaining, penalty: t.penalty + i.penalty }),
+    { amount: 0, paid: 0, remaining: 0, penalty: 0 },
+  ), [mine]);
+
+  if (!items) return <Center py="lg"><Loader size="sm" /></Center>;
+  if (mine.length === 0) {
+    return (
+      <Paper withBorder p="lg" radius="md" ta="center">
+        <ThemeIcon variant="light" color="teal" size={44} radius="xl" mx="auto"><IconCheck size={24} /></ThemeIcon>
+        <Text mt="sm" c="dimmed">Счетов нет — задолженности отсутствуют.</Text>
+      </Paper>
+    );
+  }
+
+  return (
+    <Stack gap="md">
+      {/* Сводка */}
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+        <Paper p="md" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
+          <Text size="xs" c="dimmed" fw={600} tt="uppercase">Начислено</Text>
+          <Text fw={700} style={{ fontSize: 20, fontVariantNumeric: 'tabular-nums' }}>{fmtSom(totals.amount)}</Text>
+        </Paper>
+        <Paper p="md" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
+          <Text size="xs" c="dimmed" fw={600} tt="uppercase">Оплачено</Text>
+          <Text fw={700} style={{ fontSize: 20, color: '#2f9e44', fontVariantNumeric: 'tabular-nums' }}>{fmtSom(totals.paid)}</Text>
+        </Paper>
+        <Paper p="md" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
+          <Text size="xs" c="dimmed" fw={600} tt="uppercase">Остаток</Text>
+          <Text fw={700} style={{ fontSize: 20, color: totals.remaining > 0 ? '#f08c00' : '#2f9e44', fontVariantNumeric: 'tabular-nums' }}>{fmtSom(totals.remaining)}</Text>
+        </Paper>
+        <Paper p="md" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
+          <Text size="xs" c="dimmed" fw={600} tt="uppercase">Пеня</Text>
+          <Text fw={700} style={{ fontSize: 20, color: totals.penalty > 0 ? '#e03131' : '#9ba2ad', fontVariantNumeric: 'tabular-nums' }}>{totals.penalty > 0 ? `+${fmtSom(totals.penalty)}` : '—'}</Text>
+        </Paper>
+      </SimpleGrid>
+
+      {totals.penalty > 0 && (
+        <Paper p="sm" radius="md" withBorder style={{ border: '1px solid #ffc9c9', background: '#fff5f5' }}>
+          <Group gap={8} wrap="nowrap">
+            <IconAlertTriangle size={18} color="#e03131" />
+            <Text size="sm" c="#c92a2a">
+              Есть просроченные счета — начисляется пеня 0,1% в день. Пожалуйста, погасите задолженность.
+            </Text>
+          </Group>
+        </Paper>
+      )}
+
+      {/* Счета */}
+      <Stack gap="sm">
+        {mine.map((inv) => (
+          <Paper key={inv.id} p="md" radius="lg" withBorder style={{ border: inv.penalty > 0 ? '1px solid #ffc9c9' : '1px solid #e6e9ee' }}>
+            <Group justify="space-between" wrap="wrap" gap="xs">
+              <div style={{ minWidth: 180 }}>
+                <Text fw={600}>{inv.title}</Text>
+                <Text size="xs" c="dimmed">
+                  {inv.period ?? ''}{inv.dueDate ? ` · срок до ${fmtDate(inv.dueDate)}` : ''}
+                </Text>
+              </div>
+              <Group gap="lg" wrap="nowrap">
+                <div>
+                  <Text size="xs" c="dimmed">Сумма</Text>
+                  <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtSom(inv.amount)}</Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">Оплачено</Text>
+                  <Text size="sm" fw={600} c={inv.paid > 0 ? 'green' : 'dimmed'} style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtSom(inv.paid)}</Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">Остаток</Text>
+                  <Text size="sm" fw={600} c={inv.remaining > 0 ? 'orange' : 'green'} style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtSom(inv.remaining)}</Text>
+                </div>
+                {inv.penalty > 0 && (
+                  <div>
+                    <Text size="xs" c="dimmed">Пеня</Text>
+                    <Text size="sm" fw={700} c="red" style={{ fontVariantNumeric: 'tabular-nums' }}>+{fmtSom(inv.penalty)} <Text span size="xs" c="dimmed">({inv.overdueDays} дн)</Text></Text>
+                  </div>
+                )}
+                <Badge variant="light" color={INV_COLOR[inv.status] ?? 'gray'} radius="sm">{invoiceStatusLabel(inv.status)}</Badge>
+              </Group>
+            </Group>
+          </Paper>
+        ))}
+      </Stack>
     </Stack>
   );
 }
@@ -281,6 +394,7 @@ function DiaryContent() {
           <Tabs.Tab value="homework" leftSection={<IconNotebook size={16} />}>Домашние задания</Tabs.Tab>
           <Tabs.Tab value="schedule" leftSection={<IconCalendar size={16} />}>Расписание</Tabs.Tab>
           <Tabs.Tab value="notes" leftSection={<IconMessageDots size={16} />}>Заметки</Tabs.Tab>
+          <Tabs.Tab value="payments" leftSection={<IconCash size={16} />}>Оплата</Tabs.Tab>
         </Tabs.List>
 
         {loading && <Center h={200}><Loader /></Center>}
@@ -413,6 +527,11 @@ function DiaryContent() {
         {/* ── Заметки от учителей ── */}
         <Tabs.Panel value="notes">
           {studentId ? <NotesTab studentId={studentId} /> : <Text c="dimmed">Нет данных.</Text>}
+        </Tabs.Panel>
+
+        {/* ── Оплата ── */}
+        <Tabs.Panel value="payments">
+          {studentId ? <PaymentsTab studentId={studentId} /> : <Text c="dimmed">Нет данных.</Text>}
         </Tabs.Panel>
       </Tabs>
     </Stack>

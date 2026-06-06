@@ -164,6 +164,35 @@ async function ruleTestFailed(eventId: string, ctx: EventCtx) {
   });
 }
 
+async function ruleInvoiceOverdue(eventId: string, ctx: EventCtx) {
+  const key = 'invoice-overdue-parent';
+  if (!(await ruleEnabled(key))) return;
+  if (!ctx.studentId) return;
+
+  const title = (ctx.payload.title as string) || 'Оплата обучения';
+  const remaining = Number(ctx.payload.remaining ?? 0);
+  const penalty = Number(ctx.payload.penalty ?? 0);
+  const overdueDays = Number(ctx.payload.overdueDays ?? 0);
+  if (remaining <= 0) return;
+
+  const who = await studentLabel(ctx.studentId);
+  const parents = await parentUserIds(ctx.studentId);
+  if (parents.length === 0) return;
+
+  const penaltyPart = penalty > 0 ? ` Начислена пеня ${penalty.toLocaleString('ru-RU')} сом (просрочка ${overdueDays} дн, 0,1%/день).` : '';
+  const body = `По счёту «${title}» (${who}) есть задолженность ${remaining.toLocaleString('ru-RU')} сом.${penaltyPart} Пожалуйста, погасите её — оплату можно внести в бухгалтерии школы.`;
+
+  for (const uid of parents) {
+    if (await hasOpenItem(key, ctx.studentId, uid)) continue; // не дублируем открытые напоминания
+    await createItem({
+      ruleKey: key, eventId, forUserId: uid, studentId: ctx.studentId, kind: 'alert', severity: 'urgent',
+      title: 'Задолженность по оплате обучения',
+      body,
+      payload: { invoiceId: ctx.payload.invoiceId, remaining, penalty, overdueDays },
+    });
+  }
+}
+
 // ─── Диспетчер ───────────────────────────────────────────────────────────────
 
 async function processEvent(eventId: string, type: string, ctx: EventCtx) {
@@ -171,6 +200,7 @@ async function processEvent(eventId: string, type: string, ctx: EventCtx) {
     if (type === 'grade.created') await ruleLowGrade(eventId, ctx);
     else if (type === 'attendance.marked') await ruleAbsenceStreak(eventId, ctx);
     else if (type === 'test.completed') await ruleTestFailed(eventId, ctx);
+    else if (type === 'invoice.overdue') await ruleInvoiceOverdue(eventId, ctx);
     await prisma.agentEvent.update({ where: { id: eventId }, data: { processedAt: new Date() } });
   } catch (err) {
     console.error(`[agent] processEvent ${type} failed:`, err);
