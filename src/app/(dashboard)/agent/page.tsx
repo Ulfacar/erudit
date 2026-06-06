@@ -8,6 +8,7 @@ import {
   IconRobot, IconAlertTriangle, IconChecklist, IconBulb, IconMail, IconCheck, IconX, IconPlayerPlay,
   IconBrandTelegram, IconSend,
 } from '@tabler/icons-react';
+import { EnablePushButton } from '@/shared/components/pwa/EnablePushButton';
 
 interface Item {
   id: string; ruleKey: string | null; kind: string; severity: string;
@@ -90,7 +91,10 @@ export default function AgentPanelPage() {
             <Text c="dimmed" size="sm">ИИ-ассистент следит за событиями и подсказывает, что сделать.</Text>
           </div>
         </Group>
-        <Switch label="Показать закрытые" checked={showAll} onChange={(e) => setShowAll(e.currentTarget.checked)} />
+        <Group gap="sm">
+          <EnablePushButton />
+          <Switch label="Показать закрытые" checked={showAll} onChange={(e) => setShowAll(e.currentTarget.checked)} />
+        </Group>
       </Group>
 
       {tg?.configured && !tg.linked && tg.url && (

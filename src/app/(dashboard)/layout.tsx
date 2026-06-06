@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { AuthGuard } from '@/shared/components/auth/AuthGuard';
 import { AssistantWidget } from '@/shared/components/assistant/AssistantWidget';
+import { PwaRegister } from '@/shared/components/pwa/PwaRegister';
 import {
   ActionIcon,
   AppShell,
@@ -359,6 +360,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <AppShell.Main>
           {children}
           <AssistantWidget />
+          <PwaRegister />
         </AppShell.Main>
       </AppShell>
     </AuthGuard>

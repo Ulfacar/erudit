@@ -27,6 +27,21 @@ model User {
   teacher Teacher?
   student Student?
   parent  Parent?
+
+  pushSubscriptions PushSubscription[]
+}
+
+// Web-push подписка браузера/PWA (у пользователя может быть несколько устройств)
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 enum Role {
