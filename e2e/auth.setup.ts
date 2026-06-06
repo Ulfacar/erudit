@@ -14,9 +14,10 @@ setup.beforeAll(() => {
 for (const [key, login] of Object.entries(accounts)) {
   setup(`authenticate ${key} (${login})`, async ({ page }) => {
     await page.goto('/login');
-    await page.getByPlaceholder('Введите логин').fill(login);
-    await page.getByPlaceholder('Введите пароль').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Войти' }).click();
+    // Новый экран логина (выбор ролей): поля по label/типу, без плейсхолдеров
+    await page.getByLabel('Логин или email').fill(login);
+    await page.locator('input[type="password"]').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Войти в кабинет' }).click();
 
     // signIn() sets the session-token cookie on success. Wait for that directly,
     // independent of the client-side redirect to /dashboard (which can be slow to
