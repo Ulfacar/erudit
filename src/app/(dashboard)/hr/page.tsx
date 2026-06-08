@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Badge, Button, Group, Loader, Modal, Paper, Select, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
-import { IconBriefcase, IconUsers, IconCash, IconBeach, IconPlus } from '@tabler/icons-react';
+import { IconBriefcase, IconUsers, IconCash, IconBeach, IconPlus, IconFileText } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 import { fmtDate, fmtMoney } from '@/shared/components/ui/resource-helpers';
@@ -20,6 +20,7 @@ function HR() {
           <Tabs.Tab value="vacancies" leftSection={<IconBriefcase size={16} />}>Вакансии</Tabs.Tab>
           <Tabs.Tab value="salary" leftSection={<IconCash size={16} />}>Зарплаты</Tabs.Tab>
           <Tabs.Tab value="leave" leftSection={<IconBeach size={16} />}>Отпуска</Tabs.Tab>
+          <Tabs.Tab value="contracts" leftSection={<IconFileText size={16} />}>Договоры</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="candidates" pt="md"><Candidates /></Tabs.Panel>
@@ -72,6 +73,27 @@ function HR() {
               { name: 'startDate', label: 'С', type: 'date', required: true },
               { name: 'endDate', label: 'По', type: 'date', required: true },
               { name: 'note', label: 'Примечание', type: 'textarea' },
+            ]} />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="contracts" pt="md">
+          <ResourcePage title="Трудовые договоры" endpoint="/api/v1/hr/staff-contracts" createLabel="Заключить договор" canDelete
+            columns={[
+              { key: 'staffId', label: 'Сотрудник' },
+              { key: 'number', label: '№ договора' },
+              { key: 'position', label: 'Должность' },
+              { key: 'salary', label: 'Оклад', render: (r) => fmtMoney(r.salary) },
+              { key: 'startDate', label: 'С', render: (r) => fmtDate(r.startDate) },
+              { key: 'status', label: 'Статус', render: (r) => <Badge color={r.status === 'active' ? 'green' : 'gray'}>{r.status === 'active' ? 'Действует' : 'Завершён'}</Badge> },
+            ]}
+            fields={[
+              { name: 'staffId', label: 'Сотрудник (ФИО/ID)', type: 'text', required: true },
+              { name: 'number', label: '№ договора', type: 'text', required: true },
+              { name: 'position', label: 'Должность', type: 'text', required: true },
+              { name: 'salary', label: 'Оклад', type: 'number', required: true },
+              { name: 'startDate', label: 'Дата начала', type: 'date' },
+              { name: 'endDate', label: 'Дата окончания', type: 'date' },
+              { name: 'status', label: 'Статус', type: 'select', options: [{ value: 'active', label: 'Действует' }, { value: 'completed', label: 'Завершён' }], defaultValue: 'active' },
             ]} />
         </Tabs.Panel>
       </Tabs>

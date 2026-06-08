@@ -3,6 +3,7 @@ import { sendTelegram, isTelegramConfigured } from '@/shared/lib/agent/telegram'
 import { sendWebPush, isWebPushConfigured } from '@/shared/lib/agent/webpush';
 import { sendWhatsapp, isWhatsappConfigured } from '@/shared/lib/agent/whatsapp';
 import { sendSms, isSmsConfigured } from '@/shared/lib/agent/sms';
+import { sendEmail, isEmailConfigured } from '@/shared/lib/agent/email';
 
 /**
  * Канал-агностичный нотификатор. Источник правды — AgentItem (внутренний инбокс),
@@ -41,6 +42,15 @@ export async function notifyUser(userId: string | null | undefined, title: strin
     }
   } catch (e) {
     console.error('[notify] whatsapp/sms failed:', e);
+  }
+  // Email — фолбэк для тех, у кого указан e-mail (родитель/сотрудник).
+  try {
+    if (isEmailConfigured()) {
+      const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (u?.email) await sendEmail(u.email, title, body);
+    }
+  } catch (e) {
+    console.error('[notify] email failed:', e);
   }
 }
 

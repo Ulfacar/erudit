@@ -11,7 +11,8 @@ import {
 import { IconArrowLeft, IconBrain, IconCheck, IconPlus, IconMicrophone, IconWand, IconShieldLock } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
-import { saveDraft, loadDraft, clearDraft } from '@/shared/lib/offline/draftStore';
+import { saveDraft, loadDraft, clearDraft, saveAudio, loadAudio, clearAudio } from '@/shared/lib/offline/draftStore';
+import { transcribeLocally, isTranscribeSupported } from '@/shared/lib/psy/localTranscribe';
 import { Dynamics } from './Dynamics';
 import { ProjectiveTest } from './ProjectiveTest';
 import { ScoreTest } from './ScoreTest';
@@ -60,9 +61,14 @@ function CaseDetail() {
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // M2: голос + AI
-  const [listening, setListening] = useState(false);
-  const recRef = useRef<any>(null);
+  // M2: голос + AI. Запись через MediaRecorder → blob; транскрипция ЛОКАЛЬНО (Whisper в браузере),
+  // аудио с реальными ФИО в сеть не уходит (UC-2). NER/DAP — уже над текстом.
+  const [recording, setRecording] = useState(false);
+  const mrRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [transcribing, setTranscribing] = useState(false);
+  const [modelPct, setModelPct] = useState(0);
+  const [hasAudio, setHasAudio] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string } | null>(null);
 
@@ -82,6 +88,8 @@ function CaseDetail() {
   async function openComposer() {
     const d = await loadDraft(id);
     if (d) { setType(d.type || 'planned'); setRawNote(d.rawNote); setDapData(d.dapData); setDapAssessment(d.dapAssessment); setDapPlan(d.dapPlan); }
+    const audio = await loadAudio(id); // офлайн-патч: незавершённое аудио пережило перезагрузку/потерю сети
+    setHasAudio(!!audio);
     setErr(''); setAiInfo(null); setVerify(false); setOpen(true);
   }
   // автосейв черновика (UC-2 офлайн-патч)
@@ -91,20 +99,54 @@ function CaseDetail() {
     return () => clearTimeout(t);
   }, [open, id, rawNote, dapData, dapAssessment, dapPlan, type]);
 
-  function toggleMic() {
-    const SR: any = (typeof window !== 'undefined') && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
-    if (!SR) { setErr('Голосовой ввод не поддерживается этим браузером (нужен Chrome).'); return; }
-    if (listening) { recRef.current?.stop(); setListening(false); return; }
-    const rec = new SR();
-    rec.lang = 'ru-RU'; rec.continuous = true; rec.interimResults = false;
-    rec.onresult = (e: any) => {
-      let chunk = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) chunk += e.results[i][0].transcript + ' ';
-      setRawNote((prev) => (prev ? prev + ' ' : '') + chunk.trim());
-    };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    recRef.current = rec; rec.start(); setListening(true);
+  // Локальная транскрипция аудио-blob → дописываем в rawNote. Аудио в сеть не уходит.
+  async function transcribeBlob(blob: Blob) {
+    if (!isTranscribeSupported()) {
+      setErr('Локальная расшифровка недоступна в этом браузере — впишите текст вручную.');
+      return;
+    }
+    setErr(''); setTranscribing(true); setModelPct(0);
+    try {
+      const text = await transcribeLocally(blob, (p) => setModelPct(Math.round(p)));
+      if (text) setRawNote((prev) => (prev ? prev + ' ' : '') + text);
+      else setErr('Не удалось распознать речь — впишите текст вручную.');
+    } catch (e) {
+      console.error(e);
+      setErr('Ошибка локальной расшифровки — впишите текст вручную.');
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  async function toggleMic() {
+    if (recording) { mrRef.current?.stop(); return; }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setErr('Запись с микрофона не поддерживается этим браузером.'); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecording(false);
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' });
+        if (blob.size === 0) return;
+        await saveAudio(id, blob); // офлайн-патч: сохраняем до расшифровки
+        setHasAudio(true);
+        await transcribeBlob(blob);
+      };
+      mrRef.current = mr; mr.start(); setRecording(true); setErr('');
+    } catch {
+      setErr('Нет доступа к микрофону.');
+    }
+  }
+
+  // Повторная локальная расшифровка из кэшированного аудио (после потери сети/перезагрузки).
+  async function retranscribeCached() {
+    const blob = await loadAudio(id);
+    if (blob) await transcribeBlob(blob);
   }
 
   async function aiStructure() {
@@ -141,8 +183,8 @@ function CaseDetail() {
     }
     setSaving(false);
     if (!j.success) { setErr(j.error?.message ?? 'Ошибка'); return; }
-    await clearDraft(id);
-    setOpen(false); setType('planned'); setRawNote(''); setDapData(''); setDapAssessment(''); setDapPlan(''); setQualNote(''); setVerify(false); setAiInfo(null);
+    await clearDraft(id); await clearAudio(id);
+    setOpen(false); setType('planned'); setRawNote(''); setDapData(''); setDapAssessment(''); setDapPlan(''); setQualNote(''); setVerify(false); setAiInfo(null); setHasAudio(false);
     load();
   }
 
@@ -240,8 +282,8 @@ function CaseDetail() {
             <Group justify="space-between" mb={4}>
               <Text size="sm" fw={500}>Запись сессии (оригинал)</Text>
               <Group gap={6}>
-                <Tooltip label={listening ? 'Остановить запись' : 'Голосовой ввод'}>
-                  <ActionIcon variant={listening ? 'filled' : 'light'} color={listening ? 'red' : 'grape'} onClick={toggleMic}>
+                <Tooltip label={recording ? 'Остановить запись' : 'Голосовой ввод (расшифровка локально)'}>
+                  <ActionIcon variant={recording ? 'filled' : 'light'} color={recording ? 'red' : 'grape'} onClick={toggleMic} disabled={transcribing}>
                     <IconMicrophone size={16} />
                   </ActionIcon>
                 </Tooltip>
@@ -250,7 +292,14 @@ function CaseDetail() {
                 </Button>
               </Group>
             </Group>
-            <Textarea autosize minRows={2} placeholder="Продиктуйте или впишите ход сессии своими словами" value={rawNote} onChange={(e) => setRawNote(e.currentTarget.value)} />
+            {recording && <Group gap={6} mb={4}><Loader size="xs" color="red" /><Text size="xs" c="red">Идёт запись… нажмите микрофон, чтобы остановить.</Text></Group>}
+            {transcribing && (
+              <Group gap={6} mb={4}><Loader size="xs" /><Text size="xs" c="dimmed">Локальная расшифровка{modelPct > 0 && modelPct < 100 ? ` (загрузка модели ${modelPct}%)` : '…'} — аудио не покидает устройство.</Text></Group>
+            )}
+            {!recording && !transcribing && hasAudio && (
+              <Group gap={6} mb={4}><IconShieldLock size={14} color="#2f9e44" /><Text size="xs" c="dimmed">Аудио сохранено офлайн. <Anchor size="xs" component="button" type="button" onClick={retranscribeCached}>Расшифровать ещё раз</Anchor></Text></Group>
+            )}
+            <Textarea autosize minRows={2} placeholder="Продиктуйте (расшифровка локально) или впишите ход сессии своими словами" value={rawNote} onChange={(e) => setRawNote(e.currentTarget.value)} />
           </div>
 
           {aiInfo && (

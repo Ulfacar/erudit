@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Badge, Button, Card, Group, Paper, Stack, Text, TextInput, Textarea, Title } from '@mantine/core';
+import { Badge, Button, Card, Group, Loader, Paper, Stack, Text, TextInput, Textarea, Title } from '@mantine/core';
 import { IconPhoto, IconWand, IconCheck, IconShieldLock } from '@tabler/icons-react';
 
 interface TestResult { id: string; aiInterpretation: string | null; isHumanVerified: boolean; rawScores?: { methodology?: string } | null }
@@ -14,6 +14,8 @@ export function ProjectiveTest({ caseId, tests, onSaved }: { caseId: string; tes
   const [source, setSource] = useState('');
   const [testId, setTestId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [autoBlurred, setAutoBlurred] = useState(0);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const originalRef = useRef<string>(''); // оригинал (до блюра) — для цифрового сейфа
 
@@ -28,9 +30,37 @@ export function ProjectiveTest({ caseId, tests, onSaved }: { caseId: string; tes
       cv.width = img.width * scale; cv.height = img.height * scale;
       cv.getContext('2d')!.drawImage(img, 0, 0, cv.width, cv.height);
       originalRef.current = cv.toDataURL('image/png'); // снимок оригинала ДО блюра
-      setHasImage(true); setDraft(''); setTestId(null); setSource('');
+      setHasImage(true); setDraft(''); setTestId(null); setSource(''); setAutoBlurred(0);
+      autoBlur(); // UC-3: авто-детект рукописного текста и блюр ДО любой отправки
     };
     img.src = URL.createObjectURL(file);
+  }
+
+  // UC-3 шаг 2: локальный OCR (tesseract.js, в браузере) находит текст/подписи → авто-пикселизация.
+  // Ручное выделение остаётся для корректировки. Картинка в сеть не уходит на этом шаге.
+  async function autoBlur() {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    setOcrBusy(true);
+    try {
+      const Tesseract = (await import('tesseract.js')).default;
+      const { data } = await Tesseract.recognize(cv.toDataURL('image/png'), 'rus+eng');
+      let n = 0;
+      for (const w of data.words ?? []) {
+        const txt = (w.text ?? '').trim();
+        // блюрим уверенно распознанные «словесные» фрагменты (подписи/имена), пропуская шум
+        if (w.confidence >= 55 && txt.length >= 2 && /[A-Za-zА-Яа-яЁё0-9]/.test(txt)) {
+          const b = w.bbox;
+          pixelate(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
+          n++;
+        }
+      }
+      setAutoBlurred(n);
+    } catch (err) {
+      console.error('[ocr] auto-blur failed:', err);
+    } finally {
+      setOcrBusy(false);
+    }
   }
 
   // пиксселизация выделенной области (скрытие рукописной подписи ДО отправки)
@@ -99,13 +129,18 @@ export function ProjectiveTest({ caseId, tests, onSaved }: { caseId: string; tes
 
       <Stack gap="sm">
         <TextInput label="Методика" value={methodology} onChange={(e) => setMethodology(e.currentTarget.value)} />
-        <input type="file" accept="image/*" onChange={onFile} />
-        <Text size="xs" c="dimmed">Загрузите рисунок. Перетащите мышью по подписи/имени — область будет размыта <b>до</b> отправки в AI.</Text>
+        <input type="file" accept="image/*" capture="environment" onChange={onFile} />
+        <Text size="xs" c="dimmed">Загрузите/сфотографируйте рисунок. Подписи распознаются и размываются <b>автоматически</b> (локально, в браузере). Можно дополнительно выделить область мышью — она тоже будет размыта <b>до</b> отправки в AI.</Text>
+        {ocrBusy && <Group gap={6}><Loader size="xs" /><Text size="xs" c="dimmed">Поиск и скрытие подписей (локально)…</Text></Group>}
+        {!ocrBusy && hasImage && autoBlurred > 0 && (
+          <Group gap={6}><IconShieldLock size={14} color="#2f9e44" /><Text size="xs" c="dimmed">Авто-скрыто текстовых фрагментов: <b>{autoBlurred}</b>. Проверьте и при необходимости размойте ещё мышью.</Text></Group>
+        )}
         <canvas ref={canvasRef} onMouseDown={down} onMouseUp={up}
           style={{ border: '1px solid #dee2e6', borderRadius: 8, cursor: hasImage ? 'crosshair' : 'default', maxWidth: '100%', display: hasImage ? 'block' : 'none' }} />
         {hasImage && (
           <Group>
-            <Button leftSection={<IconWand size={16} />} loading={busy} onClick={analyze}>Анализировать</Button>
+            <Button leftSection={<IconWand size={16} />} loading={busy} disabled={ocrBusy} onClick={analyze}>Анализировать</Button>
+            <Button variant="light" leftSection={<IconShieldLock size={16} />} loading={ocrBusy} onClick={autoBlur}>Повторить авто-скрытие</Button>
           </Group>
         )}
         {draft && (
