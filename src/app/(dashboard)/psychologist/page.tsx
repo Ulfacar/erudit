@@ -25,7 +25,7 @@ const STATUS = {
 interface Student { id: string; firstName: string; lastName: string; middleName?: string | null }
 interface PsyCase {
   id: string; studentId: string; title: string; riskLevel: keyof typeof RISK;
-  status: keyof typeof STATUS; updatedAt: string; _count?: { sessions: number };
+  status: keyof typeof STATUS; updatedAt: string; isIntake?: boolean; _count?: { sessions: number };
 }
 interface ActiveCase { id: string; ownerName: string; isMine: boolean; riskLevel: keyof typeof RISK }
 
@@ -129,7 +129,14 @@ function PsychologistCabinet() {
               {cases.map((c) => (
                 <Table.Tr key={c.id} style={{ cursor: 'pointer' }}>
                   <Table.Td><Link href={`/psychologist/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>{studentMap[c.studentId] ?? '—'}</Link></Table.Td>
-                  <Table.Td><Link href={`/psychologist/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>{c.title}</Link></Table.Td>
+                  <Table.Td>
+                    <Link href={`/psychologist/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <Group gap={6} wrap="nowrap">
+                        {c.title}
+                        {c.isIntake && <Badge size="xs" color="grape" variant="light">входная диагностика</Badge>}
+                      </Group>
+                    </Link>
+                  </Table.Td>
                   <Table.Td><Badge color={RISK[c.riskLevel].color} variant="light">{RISK[c.riskLevel].label}</Badge></Table.Td>
                   <Table.Td><Badge color={STATUS[c.status].color} variant="outline">{STATUS[c.status].label}</Badge></Table.Td>
                   <Table.Td>{c._count?.sessions ?? 0}</Table.Td>

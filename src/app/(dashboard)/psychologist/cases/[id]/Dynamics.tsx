@@ -33,6 +33,7 @@ export function Dynamics({ caseId }: { caseId: string }) {
   // данные графика: нормализованные значения (склейка версий через mappingRule)
   const chartData = points.map((p) => ({ date: fmtDate(p.date), [p.metric]: p.normalized }));
   const metrics = [...new Set(points.map((p) => p.metric))];
+  const versions = [...new Set(points.map((p) => p.templateVersion))].sort((a, b) => a - b);
   const colors = ['#9c36b5', '#1971c2', '#2f9e44', '#e8590c'];
 
   return (
@@ -50,6 +51,12 @@ export function Dynamics({ caseId }: { caseId: string }) {
             {metrics.map((m, i) => <Line key={m} type="monotone" dataKey={m} stroke={colors[i % colors.length]} strokeWidth={2} />)}
           </LineChart>
         </ResponsiveContainer>
+      )}
+      {versions.length > 0 && (
+        <Text size="xs" c="dimmed" mt={4}>
+          Методики: {versions.map((v) => `v${v}`).join(', ')}
+          {versions.length > 1 ? ' · значения склеены через правило пересчёта (mapping)' : ''}
+        </Text>
       )}
       <Group gap="xs" mt="sm" align="flex-end">
         <TextInput label="Метрика" value={metric} onChange={(e) => setMetric(e.currentTarget.value)} w={180} />
