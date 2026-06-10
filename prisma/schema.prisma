@@ -982,6 +982,10 @@ model PsyAlert {
   status    PsyAlertStatus @default(open)
   takenBy   String?
   takenAt   DateTime?
+  // Авто-эскалация (UC-5+): если сигнал не взят в работу за N часов — поднимаем директору.
+  escalatedAt    DateTime? // момент первой эскалации директору
+  remindCount    Int       @default(0) // сколько напоминаний отправлено
+  lastNotifiedAt DateTime? // последнее напоминание (для интервала)
   createdAt DateTime       @default(now())
 
   @@index([status])

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getPsyScope, canAccessCase, CASE_OWNER_ROLES } from '@/shared/lib/psy-scope';
-import { deidentifyForCase, reidentify } from '@/shared/lib/ai/psy/deidentify';
+import { deidentifyForCase, reidentify, residualPiiRisk, strictPrivacyEnabled } from '@/shared/lib/ai/psy/deidentify';
 import { structureDap } from '@/shared/lib/ai/psy/dap';
 
 /**
@@ -24,9 +24,14 @@ export async function POST(request: NextRequest) {
   try {
     // 1) обезличиваем (ФИО → маркеры) — карта остаётся ТОЛЬКО на сервере
     const deid = await deidentifyForCase(caseId, rawNote);
-    // 2) структурируем обезличенный текст (облачный LLM или локальный fallback)
-    const { dap, source } = await structureDap(deid.masked);
-    // 3) ре-идентификация ответа для показа психологу
+    // 2) FAIL-CLOSED: если строгий режим и в тексте остался возможный PII —
+    //    НЕ отправляем в облако, структурируем локально. «Не уверены → не шлём.»
+    const strict = strictPrivacyEnabled();
+    const risk = residualPiiRisk(deid.masked);
+    const allowCloud = !(strict && risk.risky);
+    // 3) структурируем обезличенный текст (облако или локальный сплиттер)
+    const { dap, source } = await structureDap(deid.masked, { allowCloud });
+    // 4) ре-идентификация ответа для показа психологу
     const result = {
       data: reidentify(dap.data, deid.map),
       assessment: reidentify(dap.assessment, deid.map),
@@ -35,7 +40,13 @@ export async function POST(request: NextRequest) {
     return successResponse({
       dap: result,
       source, // 'llm' | 'stub'
-      privacy: { maskedEntities: deid.count, sentToCloud: deid.masked }, // прозрачность: что реально ушло
+      privacy: {
+        maskedEntities: deid.count,
+        strict,
+        mode: allowCloud ? 'cloud' : 'local-only', // ушло в облако или осталось на месте
+        residualSignals: risk.signals, // что заставило придержать (если придержали)
+        sentToCloud: allowCloud ? deid.masked : null, // прозрачность: что реально ушло (null = ничего)
+      },
     });
   } catch (e) {
     console.error('POST psy/sessions/dap error:', e);

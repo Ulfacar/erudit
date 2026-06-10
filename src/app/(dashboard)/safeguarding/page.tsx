@@ -8,7 +8,7 @@ import { fmtDate } from '@/shared/components/ui/resource-helpers';
 
 const ST = { open: { label: 'Открыт', color: 'red' }, in_progress: { label: 'В работе', color: 'orange' }, resolved: { label: 'Закрыт', color: 'green' } } as const;
 
-interface Alert { id: string; status: keyof typeof ST; createdAt: string; reason: string; studentInitials: string; riskLevel: string }
+interface Alert { id: string; status: keyof typeof ST; createdAt: string; reason: string; studentInitials: string; riskLevel: string; escalatedAt: string | null; remindCount: number }
 
 function Safeguarding() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -50,6 +50,9 @@ function Safeguarding() {
                     </div>
                   </Group>
                   <Group gap="xs">
+                    {a.escalatedAt && a.status === 'open' && (
+                      <Badge color="red" variant="filled">⬆ Эскалировано директору{a.remindCount > 1 ? ` · напоминаний: ${a.remindCount}` : ''}</Badge>
+                    )}
                     <Badge color={ST[a.status].color}>{ST[a.status].label}</Badge>
                     {a.status === 'open' && <Button size="xs" color="orange" onClick={() => patch(a.id, 'in_progress')}>Взять в работу</Button>}
                     {a.status === 'in_progress' && <Button size="xs" variant="light" color="green" onClick={() => patch(a.id, 'resolved')}>Закрыть</Button>}

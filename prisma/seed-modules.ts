@@ -55,6 +55,12 @@ async function main() {
     prisma.specialistSession.deleteMany(),
     prisma.specialistRecommendation.deleteMany(),
     prisma.specialistProgress.deleteMany(),
+    prisma.leaveRecord.deleteMany(),
+    prisma.salaryRecord.deleteMany(),
+    prisma.staffContract.deleteMany(),
+    prisma.candidate.deleteMany(),
+    prisma.vacancy.deleteMany(),
+    prisma.staffMember.deleteMany(),
   ]);
 
   // ── Calendar ──
@@ -249,6 +255,94 @@ async function main() {
       kind: pick(['speech', 'psych'] as any, i), studentId: pick(students, i).id, specialistId,
       metric: pick(['Звук «Р»', 'Звук «Л»', 'Тревожность', 'Связная речь', 'Концентрация'], i),
       value: 40 + (i * 6) % 60, date: daysFromNow(-i * 3),
+    })),
+  });
+
+  // ── HR / Кадры ──
+  // Сотрудники АХЧ/сервиса (StaffMember), на них вешаем договоры/зарплаты/отпуска.
+  const staffSeed: Array<[string, string, string, string, string]> = [
+    ['Асанов', 'Бакыт', 'Бакытович', 'Завхоз', 'АХЧ'],
+    ['Иманова', 'Гульнара', 'Сапаровна', 'Бухгалтер', 'Бухгалтерия'],
+    ['Койчуманов', 'Эрлан', 'Тологонович', 'Системный администратор', 'IT'],
+    ['Садыкова', 'Айгуль', 'Маратовна', 'Методист', 'Учебная часть'],
+    ['Токтосунов', 'Нурлан', 'Жанышевич', 'Охранник', 'Охрана'],
+    ['Эргешова', 'Жылдыз', 'Аскаровна', 'Повар', 'Кухня'],
+  ];
+  const staff = [];
+  for (let i = 0; i < staffSeed.length; i++) {
+    const [lastName, firstName, middleName, position, department] = staffSeed[i];
+    staff.push(
+      await prisma.staffMember.create({
+        data: {
+          lastName, firstName, middleName, position, department,
+          phone: `+99670${(100000 + i * 1111).toString().slice(0, 6)}`,
+          hireDate: daysFromNow(-300 - i * 40), isActive: true,
+        },
+      }),
+    );
+  }
+
+  // Вакансии (главная задача HR — копить резерв под открытые позиции).
+  await prisma.vacancy.createMany({
+    data: ([
+      ['Учитель английского языка', 'Учебная часть', 2, 'open'],
+      ['Учитель начальных классов', 'Учебная часть', 1, 'open'],
+      ['Психолог', 'Психологическая служба', 1, 'open'],
+      ['Лаборант химии', 'Учебная часть', 1, 'closed'],
+      ['Дворник', 'АХЧ', 1, 'open'],
+    ] as Array<[string, string, number, string]>).map(([title, department, count, status]) => ({
+      title, department, count, status,
+    })),
+  });
+
+  // Резерв кандидатов (воркфлоу статусов резерв→собес→оффер→принят/отказ).
+  await prisma.candidate.createMany({
+    data: ([
+      ['Жакшылыков Тимур', 'Учитель английского языка', 'interview', 'Опыт 3 года, уровень B2'],
+      ['Маматова Асель', 'Учитель начальных классов', 'reserve', 'Резюме на будущее'],
+      ['Орозбеков Канат', 'Психолог', 'offer', 'Прошёл собеседование, ждёт решения'],
+      ['Бейшеналиева Нургуль', 'Учитель английского языка', 'reserve', null],
+      ['Дуйшенов Азамат', 'Лаборант химии', 'hired', 'Принят с 1 сентября'],
+      ['Сыдыкова Чолпон', 'Учитель начальных классов', 'rejected', 'Недостаточно опыта'],
+    ] as Array<[string, string, string, string | null]>).map(([fullName, position, status, note]) => ({
+      fullName, position, status: status as any, note,
+    })),
+  });
+
+  // Трудовые договоры — по одному на сотрудника.
+  for (let i = 0; i < staff.length; i++) {
+    const s = staff[i];
+    await prisma.staffContract.create({
+      data: {
+        staffId: s.id, number: `ТД-2025-${100 + i}`, position: s.position,
+        salary: 25000 + i * 4000, startDate: s.hireDate, status: 'active',
+      },
+    });
+  }
+
+  // Журнал зарплат — 3 месяца × сотрудник (последний месяц — ещё не выплачен).
+  const periods = ['Март', 'Апрель', 'Май'];
+  const salRows: any[] = [];
+  for (let i = 0; i < staff.length; i++) {
+    for (let p = 0; p < periods.length; p++) {
+      salRows.push({
+        staffId: staff[i].id, period: periods[p], amount: 25000 + i * 4000,
+        bonus: p === 2 ? 3000 : 0, paid: p < 2,
+        paidAt: p < 2 ? daysFromNow(-30 * (2 - p)) : null,
+      });
+    }
+  }
+  await prisma.salaryRecord.createMany({ data: salRows });
+
+  // Отпуска / больничные.
+  await prisma.leaveRecord.createMany({
+    data: ([
+      [0, 'vacation', -20, -6, 'Очередной отпуск'],
+      [2, 'sick', -10, -7, 'Больничный лист'],
+      [4, 'vacation', 10, 24, 'Плановый отпуск летом'],
+      [1, 'unpaid', -3, -2, 'За свой счёт'],
+    ] as Array<[number, string, number, number, string]>).map(([idx, type, sd, ed, note]) => ({
+      staffId: staff[idx].id, type, startDate: daysFromNow(sd), endDate: daysFromNow(ed), note,
     })),
   });
 

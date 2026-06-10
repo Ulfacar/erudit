@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
-import { COORDINATOR_ROLES } from '@/shared/lib/psy-safeguarding';
+import { COORDINATOR_ROLES, escalateStaleAlerts } from '@/shared/lib/psy-safeguarding';
 
 /**
  * GET /api/v1/psy/safeguarding — закрытый контур координатора безопасности.
@@ -14,6 +14,10 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
+    // Ленивый прогон авто-эскалации при каждом открытии контура (на случай,
+    // если cron не настроен — на on-prem без планировщика). Best-effort.
+    await escalateStaleAlerts().catch((e) => console.error('escalateStaleAlerts (on-read) failed:', e));
+
     const alerts = await prisma.psyAlert.findMany({ orderBy: [{ status: 'asc' }, { createdAt: 'desc' }] });
     const caseIds = [...new Set(alerts.map((a) => a.caseId))];
     const cases = await prisma.psyCase.findMany({ where: { id: { in: caseIds } }, select: { id: true, studentId: true, riskLevel: true } });
@@ -30,6 +34,7 @@ export async function GET(request: NextRequest) {
         id: a.id, status: a.status, createdAt: a.createdAt, reason: a.reason,
         studentInitials: c ? initials(c.studentId) : '—',
         riskLevel: c?.riskLevel ?? 'red',
+        escalatedAt: a.escalatedAt, remindCount: a.remindCount,
       };
     });
     return successResponse(result);

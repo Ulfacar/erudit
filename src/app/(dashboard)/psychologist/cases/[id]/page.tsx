@@ -79,7 +79,7 @@ function CaseDetail() {
   const [modelPct, setModelPct] = useState(0);
   const [hasAudio, setHasAudio] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string } | null>(null);
+  const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string | null; mode?: string; signals?: string[] } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -190,7 +190,7 @@ function CaseDetail() {
     setAiLoading(false);
     if (!j.success) { setErr(j.error?.message ?? 'Ошибка AI'); return; }
     setDapData(j.data.dap.data); setDapAssessment(j.data.dap.assessment); setDapPlan(j.data.dap.plan);
-    setAiInfo({ source: j.data.source, masked: j.data.privacy.maskedEntities, sent: j.data.privacy.sentToCloud });
+    setAiInfo({ source: j.data.source, masked: j.data.privacy.maskedEntities, sent: j.data.privacy.sentToCloud, mode: j.data.privacy.mode, signals: j.data.privacy.residualSignals });
     setVerify(false); // anti-hallucination: всегда требуем повторной проверки человеком
   }
 
@@ -357,12 +357,18 @@ function CaseDetail() {
           </div>
 
           {aiInfo && (
-            <Paper withBorder p="xs" radius="sm" bg="gray.0">
-              <Group gap="xs">
-                <IconShieldLock size={14} color="#2f9e44" />
-                <Text size="xs" c="dimmed">
-                  Источник: <b>{aiInfo.source === 'llm' ? 'Claude (облако)' : 'локальный сплиттер'}</b> · обезличено сущностей: <b>{aiInfo.masked}</b> · в облако ушёл текст с маркерами, не ФИО.
-                </Text>
+            <Paper withBorder p="xs" radius="sm" bg={aiInfo.mode === 'local-only' ? 'orange.0' : 'gray.0'}>
+              <Group gap="xs" wrap="nowrap" align="flex-start">
+                <IconShieldLock size={14} color={aiInfo.mode === 'local-only' ? '#e8590c' : '#2f9e44'} style={{ marginTop: 2 }} />
+                {aiInfo.mode === 'local-only' ? (
+                  <Text size="xs" c="dimmed">
+                    🔒 <b>Строгий режим приватности:</b> в тексте остался возможный идентификатор{aiInfo.signals?.length ? ` (${aiInfo.signals.join(', ')})` : ''} — данные <b>НЕ отправлены в облако</b>, структурировано локально. Подсказка может быть проще, но данные ребёнка не покинули сервер.
+                  </Text>
+                ) : (
+                  <Text size="xs" c="dimmed">
+                    Источник: <b>{aiInfo.source === 'llm' ? 'Claude (облако)' : 'локальный сплиттер'}</b> · обезличено сущностей: <b>{aiInfo.masked}</b> · в облако ушёл текст с маркерами, не ФИО.
+                  </Text>
+                )}
               </Group>
             </Paper>
           )}

@@ -45,8 +45,13 @@ export function stubDap(text: string): Dap {
   return { data: data.join(' '), assessment: assessment.join(' '), plan: plan.join(' ') };
 }
 
-export async function structureDap(maskedText: string): Promise<{ dap: Dap; source: 'llm' | 'stub' }> {
-  if (isLlmConfigured()) {
+export async function structureDap(
+  maskedText: string,
+  opts?: { allowCloud?: boolean },
+): Promise<{ dap: Dap; source: 'llm' | 'stub' }> {
+  // allowCloud=false — строгий режим приватности заблокировал облако: только локально.
+  const allowCloud = opts?.allowCloud ?? true;
+  if (allowCloud && isLlmConfigured()) {
     try {
       const j = (await chatJson(SYSTEM, maskedText, 0.3)) as Partial<Dap>;
       return {
