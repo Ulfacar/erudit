@@ -1,0 +1,39 @@
+{
+  "base_url": "http://localhost:3000",
+  "admin_base_url": "http://localhost:3000",
+  "lang": "ru",
+  "labels": {
+    "login_entry": "войти|вход|log\\s*in|sign in",
+    "continue": "продолжить|далее|continue|next",
+    "submit_login": "войти в кабинет|войти|вход|log\\s*in|sign in",
+    "logout": "выйти|выход|log\\s*out|sign out"
+  },
+  "auth": {
+    "login_path": "/login",
+    "two_step": false,
+    "success_path_is_not": "/login"
+  },
+  "fixtures": {
+    "super_admin":  { "email": "admin",         "note": "директор/суперадмин — полный доступ" },
+    "analyst":      { "email": "analyst1",       "note": "аналитик — админ-tier" },
+    "zavuch":       { "email": "kozlova",        "note": "завуч — модерация оценок, замены" },
+    "secretary":    { "email": "secretary1",     "note": "секретарь/приёмная" },
+    "teacher":      { "email": "azhibaeva",       "note": "учитель — журнал/сегодня" },
+    "curator":      { "email": "curator1",       "note": "классный руководитель" },
+    "specialist":   { "email": "specialist1",    "note": "специалист (психолог/логопед)" },
+    "student":      { "email": "student1",        "note": "ученик — дневник" },
+    "parent":       { "email": "parent1",         "note": "родитель — дневник/оплата" },
+    "accountant":   { "email": "accountant1",     "note": "бухгалтер — финансы" },
+    "psychologist": { "email": "psychologist1",   "note": "психолог — кабинет" },
+    "doctor":       { "email": "doctor1",         "note": "врач — медкабинет" },
+    "hr":           { "email": "hr1",             "note": "HR — персонал/нагрузка" },
+    "librarian":    { "email": "librarian1",      "note": "библиотекарь" },
+    "cook":         { "email": "cook1",           "note": "повар — кухня/столовая" },
+    "zavhoz":       { "email": "zavhoz1",         "note": "завхоз — АХЧ" },
+    "khaydarova":   { "email": "khaydarova",      "note": "учитель с L2-дескрипторами (RBAC-кейс)" },
+    "senior_psychologist": { "email": "senior_psy", "note": "старший психолог — конструктор методик" },
+    "safeguarding_lead":   { "email": "safeguard",  "note": "координатор безопасности — слепые алерты" },
+    "call_center":         { "email": "callcenter1", "note": "колл-центр — задолжники" }
+  },
+  "viewport": { "width": 1366, "height": 900 }
+}
