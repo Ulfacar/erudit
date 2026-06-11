@@ -250,7 +250,15 @@ export default function CoreGraphPage() {
           ))}
         </Group>
 
-        <Paper ref={containerRef} withBorder radius="lg" style={{ overflow: 'hidden', backgroundColor: '#0b1220' }}>
+        <Paper
+          ref={containerRef}
+          withBorder
+          radius="lg"
+          style={{
+            overflow: 'hidden',
+            background: 'radial-gradient(ellipse at 50% 38%, #10213f 0%, #0b1220 55%, #060b14 100%)',
+          }}
+        >
           {error ? (
             <Text c="red" p="xl">
               {error}

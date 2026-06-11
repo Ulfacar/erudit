@@ -120,6 +120,9 @@ export default function CoreGraph(props: {
     return m;
   }, [props.nodes]);
 
+  // ядро организма — для волн-сердцебиения
+  const coreNode = useMemo(() => props.nodes.find((n) => n.type === 'school') ?? null, [props.nodes]);
+
   const adjacency = useMemo(() => {
     const m = new Map<string, Set<string>>();
     const add = (a: string, b: string) => {
@@ -269,17 +272,18 @@ export default function CoreGraph(props: {
         ctx.shadowColor = color;
         ctx.shadowBlur = isFocus ? 26 : node.type === 'school' ? 24 : 12;
       }
+      // светящаяся сфера: блик смещён вверх-влево, как у освещённого шара
+      const cx = node.x ?? 0;
+      const cy = node.y ?? 0;
       ctx.beginPath();
-      ctx.arc(node.x ?? 0, node.y ?? 0, r, 0, 2 * Math.PI);
-      ctx.fillStyle = color;
+      ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+      const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+      grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+      grad.addColorStop(0.42, color);
+      grad.addColorStop(1, color);
+      ctx.fillStyle = grad;
       ctx.fill();
       ctx.shadowBlur = 0;
-
-      // светлое «ядрышко» нейрона
-      ctx.beginPath();
-      ctx.arc(node.x ?? 0, node.y ?? 0, r * 0.45, 0, 2 * Math.PI);
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.fill();
 
       // подписи: крупным всегда, мелким — при зуме или в подсветке
       const showLabel =
@@ -405,12 +409,36 @@ export default function CoreGraph(props: {
     }
   }, []);
 
+  // ── Сердцебиение ядра: концентрические волны расходятся от центра ──
+  const drawCorePulse = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (!coreNode) return;
+      const cx = coreNode.x ?? 0;
+      const cy = coreNode.y ?? 0;
+      const baseR = Math.sqrt(coreNode.val) * 3.2;
+      const period = 2800; // период «удара»
+      const now = performance.now();
+      for (let k = 0; k < 2; k++) {
+        const phase = ((now + (k * period) / 2) % period) / period;
+        const rr = baseR + phase * 110;
+        const alpha = (1 - phase) * 0.3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, rr, 0, 2 * Math.PI);
+        ctx.strokeStyle = `rgba(96, 165, 250, ${alpha})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    },
+    [coreNode],
+  );
+
   const drawOverlays = useCallback(
     (ctx: CanvasRenderingContext2D) => {
+      drawCorePulse(ctx);
       drawScenarioFrame(ctx);
       drawLivePulses(ctx);
     },
-    [drawScenarioFrame, drawLivePulses],
+    [drawCorePulse, drawScenarioFrame, drawLivePulses],
   );
 
   const searchData = useMemo(
@@ -540,7 +568,7 @@ export default function CoreGraph(props: {
         width={props.width}
         height={props.height}
         graphData={{ nodes: props.nodes, links: props.links }}
-        backgroundColor="#0b1220"
+        backgroundColor="rgba(0,0,0,0)"
         autoPauseRedraw={false}
         nodeVal={(n) => (n as GraphNode).val}
         nodeLabel={(n) => {
