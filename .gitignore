@@ -48,8 +48,25 @@ qa-screenshots/
 .claude/scheduled_tasks.lock
 .claude/worktrees/
 .claude/skills/ui-ux-pro-max/
+.claude/skills/journey-qa/
+.claude/agents/
 verify-shots/
 PRAvki/
+journey-results/
+SUMMARY.md
+
+# scratch / throwaway dev scripts
+hr_*.mjs
+shot-*.mjs
+*.log
+
+# secrets / temp (НЕ коммитить — приватные ключи!)
+vapid-*.tmp.json
+
+# e2e generated artifacts (сессионные токены + отчёты — не в гит)
+e2e/.auth/
+e2e/.report/
+e2e/.results/
 
 # исходники Эмира (vision-деки, аудио) — локально; в гит идёт только school/deck
 school/*
