@@ -4,8 +4,9 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 
 /**
- * GET subjects taught in a specific class (via TeacherSubject assignments).
- * Query param: classId (required)
+ * GET subjects.
+ * - With ?classId=...  → only subjects taught in that class (via TeacherSubject).
+ * - Without classId    → full subject catalogue (для глобальных пикеров, напр. олимпиады).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,11 @@ export async function GET(request: NextRequest) {
     const classId = searchParams.get('classId');
 
     if (!classId) {
-      return errorResponse('VALIDATION_ERROR', 'Параметр classId обязателен');
+      const all = await prisma.subject.findMany({
+        select: { id: true, name: true, color: true },
+        orderBy: { name: 'asc' },
+      });
+      return successResponse(all);
     }
 
     const teacherSubjects = await prisma.teacherSubject.findMany({

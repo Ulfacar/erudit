@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   ActionIcon,
@@ -272,9 +272,8 @@ function IncidentsContent() {
               </Table.Tr>
             ) : (
               incidents.map((incident) => (
-                <>
+                <Fragment key={incident.id}>
                   <Table.Tr
-                    key={incident.id}
                     style={{ cursor: 'pointer' }}
                     onClick={() => setExpandedId(expandedId === incident.id ? null : incident.id)}
                   >
@@ -362,7 +361,7 @@ function IncidentsContent() {
                     </Table.Td>
                   </Table.Tr>
                   {expandedId === incident.id && (
-                    <Table.Tr key={`${incident.id}-detail`}>
+                    <Table.Tr>
                       <Table.Td colSpan={6}>
                         <Box p="sm" bg="var(--mantine-color-gray-light)">
                           <Text size="sm" fw={600} mb={4}>Описание:</Text>
@@ -376,7 +375,7 @@ function IncidentsContent() {
                       </Table.Td>
                     </Table.Tr>
                   )}
-                </>
+                </Fragment>
               ))
             )}
           </Table.Tbody>
