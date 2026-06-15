@@ -125,7 +125,10 @@ function StudentsContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [classFilter, setClassFilter] = useState<string | null>(null);
+  // Класс может прийти из ?classId= (переход «Состав класса» из раздела «Классы»).
+  const [classFilter, setClassFilter] = useState<string | null>(
+    () => (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('classId') : null),
+  );
   const [levelTab, setLevelTab] = useState('all');
   const [performanceFilter, setPerformanceFilter] = useState<string | null>('all');
 
@@ -532,7 +535,7 @@ function StudentsContent() {
 
 export default function StudentsPage() {
   return (
-    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist', 'psychologist', 'doctor']}>
+    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist', 'psychologist', 'doctor', 'safeguarding_lead']}>
       <StudentsContent />
     </RoleGate>
   );

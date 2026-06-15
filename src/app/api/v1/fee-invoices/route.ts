@@ -4,12 +4,12 @@ import { createCrud } from '@/shared/lib/crud';
 // Список — только персонал: родители/ученики ходят через /fee-invoices/mine (row-level scoping).
 export const { GET, POST, DELETE } = createCrud({
   model: 'feeInvoice',
-  listRoles: ['super_admin', 'analyst', 'zavuch', 'accountant'],
+  listRoles: ['super_admin', 'analyst', 'zavuch', 'accountant', 'secretary', 'call_center'],
   writeRoles: ['super_admin', 'analyst', 'zavuch', 'accountant'],
-  createFields: ['studentId', 'title', 'period', 'amount', 'status', 'dueDate'],
+  createFields: ['studentId', 'contractId', 'title', 'period', 'amount', 'status', 'dueDate'],
   dateFields: ['dueDate'],
   intFields: ['amount'],
   include: { payments: { select: { amount: true } } }, // для расчёта пени на клиенте
-  orderBy: { createdAt: 'desc' },
-  filterableParams: ['status', 'studentId'],
+  orderBy: { dueDate: 'asc' },
+  filterableParams: ['status', 'studentId', 'contractId'],
 });

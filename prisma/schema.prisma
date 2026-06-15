@@ -737,17 +737,21 @@ model LibraryItem {
 
 model LibraryLoan {
   id         String   @id @default(cuid())
-  itemId     String
-  item       LibraryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId     String?  // каталожная запись (необязательна при выдаче по скану)
+  item       LibraryItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  code       String?  // штрихкод/инвентарный номер физического экземпляра (скан)
+  title      String?  // название учебника (если без каталога)
   studentId  String?
   teacherId  String?
+  classId    String?
   borrowerName String? // на случай ручной выдачи
   takenAt    DateTime @default(now())
-  dueAt      DateTime
+  dueAt      DateTime?
   returnedAt DateTime?
 
   @@index([itemId])
   @@index([studentId])
+  @@index([code])
 }
 
 // ============ SPECIALIST CABINETS ============
@@ -1230,19 +1234,22 @@ enum InvoiceStatus {
 }
 
 model FeeInvoice {
-  id        String   @id @default(cuid())
-  studentId String
-  title     String   // "Обучение, сентябрь" и т.п.
-  period    String?  // месяц/триместр
-  amount    Int      // в сомах
-  status    InvoiceStatus @default(pending)
-  dueDate   DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  studentId  String
+  contractId String?  // привязка к договору (для графика платежей по договору)
+  title      String   // "Обучение, сентябрь" и т.п.
+  period     String?  // месяц/триместр
+  amount     Int      // в сомах
+  status     InvoiceStatus @default(pending)
+  dueDate    DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
+  contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
   payments Payment[]
 
   @@index([studentId])
+  @@index([contractId])
   @@index([status])
 }
 
@@ -1308,6 +1315,8 @@ model Contract {
   createdById    String
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  invoices FeeInvoice[]
 
   @@index([studentId])
   @@index([branchId])

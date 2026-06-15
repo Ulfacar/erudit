@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActionIcon,
   Badge,
   Box,
   Button,
   Card,
   Group,
   Loader,
+  Menu,
   Modal,
   NumberInput,
   Paper,
@@ -20,7 +22,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { IconArrowRight, IconBrain, IconPhone, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
+import { IconArrowRight, IconBrain, IconChevronDown, IconPhone, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 /**
@@ -98,6 +100,7 @@ export default function AdmissionPage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [moveLead, setMoveLead] = useState<Lead | null>(null);
+  const [moveTo, setMoveTo] = useState<Stage | null>(null);
   const [rejectLead, setRejectLead] = useState<Lead | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -176,6 +179,7 @@ export default function AdmissionPage() {
       const json = await res.json();
       if (json.success) {
         setMoveLead(null);
+        setMoveTo(null);
         setRejectLead(null);
         setStageFields({});
         load();
@@ -191,7 +195,7 @@ export default function AdmissionPage() {
     load();
   };
 
-  const targetStage = moveLead ? NEXT_STAGE[moveLead.stage] : undefined;
+  const targetStage = moveLead ? (moveTo ?? NEXT_STAGE[moveLead.stage]) : undefined;
 
   return (
     <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'secretary']}>
@@ -297,11 +301,29 @@ export default function AdmissionPage() {
                             rightSection={<IconArrowRight size={12} />}
                             onClick={() => {
                               setStageFields({});
+                              setMoveTo(NEXT_STAGE[stage]!);
                               setMoveLead(lead);
                             }}
                           >
                             {STAGE_META[NEXT_STAGE[stage]!].label}
                           </Button>
+                          {PIPELINE.indexOf(stage) < PIPELINE.length - 2 && (
+                            <Menu position="bottom-start" withinPortal>
+                              <Menu.Target>
+                                <Tooltip label="Пропустить этапы">
+                                  <ActionIcon size="sm" variant="light" color="gray"><IconChevronDown size={13} /></ActionIcon>
+                                </Tooltip>
+                              </Menu.Target>
+                              <Menu.Dropdown>
+                                <Menu.Label>Перейти сразу к этапу</Menu.Label>
+                                {PIPELINE.slice(PIPELINE.indexOf(stage) + 2).map((tg) => (
+                                  <Menu.Item key={tg} onClick={() => { setStageFields({}); setMoveTo(tg); setMoveLead(lead); }}>
+                                    {STAGE_META[tg].label}
+                                  </Menu.Item>
+                                ))}
+                              </Menu.Dropdown>
+                            </Menu>
+                          )}
                           <Button
                             size="compact-xs"
                             variant="subtle"
@@ -385,7 +407,7 @@ export default function AdmissionPage() {
       {/* Перевод на следующий этап */}
       <Modal
         opened={!!moveLead}
-        onClose={() => setMoveLead(null)}
+        onClose={() => { setMoveLead(null); setMoveTo(null); }}
         title={moveLead && targetStage ? `${moveLead.childName} → ${STAGE_META[targetStage].label}` : ''}
         centered
       >

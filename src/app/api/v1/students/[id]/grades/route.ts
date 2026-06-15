@@ -13,6 +13,11 @@ export async function GET(
     const role = auth.session.user.role;
     const userId = auth.session.user.id;
 
+    // Психологи и колл-центр не имеют доступа к академическим оценкам ученика.
+    if (role === 'psychologist' || role === 'senior_psychologist' || role === 'call_center') {
+      return errorResponse('FORBIDDEN', 'Доступ к оценкам ограничен для вашей роли', 403);
+    }
+
     const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
     const periodId = searchParams.get('periodId');

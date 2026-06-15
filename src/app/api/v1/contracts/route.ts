@@ -65,17 +65,31 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // генерация счетов по графику (равными долями)
+    // генерация счетов по графику: отдельная предоплата + равные доли по графику
     let invoices = 0;
     if (generateInvoices !== false && months > 0) {
-      const per = Math.round(amount / months);
+      const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
       const stepMonths = schedule === 'quarterly' ? 3 : schedule === 'yearly' ? 12 : 1;
+      const base0 = startDate ? new Date(String(startDate)) : new Date();
+      const prepay = Math.round((amount * (parseInt(String(prepaymentPct ?? 0), 10) || 0)) / 100);
+
+      // предоплата вносится в дату старта договора
+      if (prepay > 0) {
+        await prisma.feeInvoice.create({
+          data: { studentId: String(studentId), contractId: contract.id, title: 'Предоплата', period: 'prepay', amount: prepay, status: 'pending', dueDate: new Date(base0) },
+        });
+        invoices++;
+      }
+
+      // остаток (после предоплаты) — равными долями по графику
+      const rest = amount - prepay;
+      const per = Math.round(rest / months);
       for (let i = 0; i < months; i++) {
-        const due = startDate ? new Date(String(startDate)) : new Date();
+        const due = new Date(base0);
         due.setMonth(due.getMonth() + i * stepMonths);
         due.setDate(payDay);
         await prisma.feeInvoice.create({
-          data: { studentId: String(studentId), title: `Обучение по договору №${number}`, period: `${i + 1}/${months}`, amount: per, status: 'pending', dueDate: due },
+          data: { studentId: String(studentId), contractId: contract.id, title: MONTHS_RU[due.getMonth()], period: `${i + 1}/${months}`, amount: per, status: 'pending', dueDate: due },
         });
         invoices++;
       }

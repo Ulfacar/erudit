@@ -3,17 +3,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Alert, Badge, Button, Group, Loader, Modal, Paper, Select, Stack, Table, Text,
+  Alert, Badge, Button, Card, Group, Loader, Modal, Paper, Select, SimpleGrid, Stack, Text,
   Textarea, TextInput, Title,
 } from '@mantine/core';
-import { IconBrain, IconUserPlus, IconAlertTriangle } from '@tabler/icons-react';
+import { IconBrain, IconUserPlus, IconAlertTriangle, IconActivity, IconFlame, IconClipboardHeart } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
+import { DrilldownByClass, type DrillGroup } from '@/shared/components/DrilldownByClass';
 
 const RISK = {
-  green: { label: 'Зелёный', color: 'green' },
-  yellow: { label: 'Жёлтый', color: 'yellow' },
-  red: { label: 'Красный', color: 'red' },
+  green: { label: 'Зелёный', color: 'green', rank: 0 },
+  yellow: { label: 'Жёлтый', color: 'yellow', rank: 1 },
+  red: { label: 'Красный', color: 'red', rank: 2 },
 } as const;
 const STATUS = {
   new: { label: 'Новый', color: 'gray' },
@@ -22,18 +23,28 @@ const STATUS = {
   closed: { label: 'Закрыт', color: 'teal' },
 } as const;
 
-interface Student { id: string; firstName: string; lastName: string; middleName?: string | null }
+interface Student { id: string; firstName: string; lastName: string; middleName?: string | null; class?: { grade: number; letter: string } | null }
 interface PsyCase {
   id: string; studentId: string; title: string; riskLevel: keyof typeof RISK;
   status: keyof typeof STATUS; updatedAt: string; isIntake?: boolean; _count?: { sessions: number };
 }
 interface ActiveCase { id: string; ownerName: string; isMine: boolean; riskLevel: keyof typeof RISK }
 
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+  return (
+    <Paper withBorder radius="md" p="md">
+      <Group gap="xs" mb={4}>{icon}<Text size="xs" c="dimmed" tt="uppercase">{label}</Text></Group>
+      <Text fw={700} size="xl" c={color}>{value}</Text>
+    </Paper>
+  );
+}
+
 function PsychologistCabinet() {
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<PsyCase[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [open, setOpen] = useState(false);
+  const [studentModal, setStudentModal] = useState<{ name: string; cases: PsyCase[] } | null>(null);
 
   // форма создания
   const [studentId, setStudentId] = useState<string | null>(null);
@@ -45,14 +56,18 @@ function PsychologistCabinet() {
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const studentMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const s of students) m[s.id] = `${s.lastName} ${s.firstName}${s.middleName ? ' ' + s.middleName : ''}`;
+  const studentInfo = useMemo(() => {
+    const m: Record<string, { name: string; className: string }> = {};
+    for (const s of students) {
+      m[s.id] = {
+        name: `${s.lastName} ${s.firstName}${s.middleName ? ' ' + s.middleName : ''}`,
+        className: s.class ? `${s.class.grade}${s.class.letter}` : 'Без класса',
+      };
+    }
     return m;
   }, [students]);
 
   async function load() {
-    setLoading(true);
     const [cRes, sRes] = await Promise.all([
       fetch('/api/v1/psy/cases').then((r) => r.json()).catch(() => ({ data: [] })),
       fetch('/api/v1/students').then((r) => r.json()).catch(() => ({ data: [] })),
@@ -96,6 +111,52 @@ function PsychologistCabinet() {
 
   const foreignActive = active.filter((a) => !a.isMine);
 
+  // Дашборд «моя работа»
+  const inRisk = cases.filter((c) => c.riskLevel !== 'green' && c.status !== 'closed').length;
+  const critical = cases.filter((c) => c.riskLevel === 'red' && c.status !== 'closed').length;
+  const sessions = cases.reduce((s, c) => s + (c._count?.sessions ?? 0), 0);
+  const openCount = cases.filter((c) => c.status !== 'closed').length;
+
+  // Группировка кейсов по классам → ученики → их кейсы
+  const groups = useMemo<DrillGroup[]>(() => {
+    const byClass = new Map<string, PsyCase[]>();
+    for (const c of cases) {
+      const cls = studentInfo[c.studentId]?.className ?? 'Без класса';
+      if (!byClass.has(cls)) byClass.set(cls, []);
+      byClass.get(cls)!.push(c);
+    }
+    const worst = (list: PsyCase[]) => list.reduce((m, c) => Math.max(m, RISK[c.riskLevel].rank), 0);
+    const riskColor = (rank: number) => (rank === 2 ? 'red' : rank === 1 ? 'yellow' : 'green');
+
+    return [...byClass.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], 'ru'))
+      .map(([cls, list]) => {
+        // уникальные ученики класса
+        const byStudent = new Map<string, PsyCase[]>();
+        for (const c of list) {
+          if (!byStudent.has(c.studentId)) byStudent.set(c.studentId, []);
+          byStudent.get(c.studentId)!.push(c);
+        }
+        const open = list.filter((c) => c.status !== 'closed').length;
+        return {
+          key: cls, title: cls,
+          count: open, countColor: riskColor(worst(list.filter((c) => c.status !== 'closed'))),
+          subtitle: `${byStudent.size} ученик(ов) · открытых ${open}`,
+          items: [...byStudent.entries()].map(([sid, sCases]) => {
+            const info = studentInfo[sid];
+            const w = worst(sCases);
+            return {
+              id: sid,
+              primary: info?.name ?? '—',
+              secondary: `${sCases.length} кейс(ов)`,
+              right: <Badge color={riskColor(w)} variant="light">{RISK[(['green', 'yellow', 'red'] as const)[w]].label}</Badge>,
+              onClick: () => setStudentModal({ name: info?.name ?? '—', cases: sCases }),
+            };
+          }),
+        };
+      });
+  }, [cases, studentInfo]);
+
   return (
     <Stack gap="lg" p="md">
       <Group justify="space-between">
@@ -108,6 +169,14 @@ function PsychologistCabinet() {
         </Button>
       </Group>
 
+      {/* Моя работа */}
+      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+        <StatCard icon={<IconActivity size={15} color="#1971c2" />} label="Открытых кейсов" value={String(openCount)} color="#1971c2" />
+        <StatCard icon={<IconAlertTriangle size={15} color="#f08c00" />} label="В зоне риска" value={String(inRisk)} color="#f08c00" />
+        <StatCard icon={<IconFlame size={15} color="#e03131" />} label="Критических" value={String(critical)} color="#e03131" />
+        <StatCard icon={<IconClipboardHeart size={15} color="#2f9e44" />} label="Консультаций" value={String(sessions)} color="#2f9e44" />
+      </SimpleGrid>
+
       <Group gap="xs">
         {Object.entries(RISK).map(([k, v]) => <Badge key={k} color={v.color} variant="light">{v.label}</Badge>)}
       </Group>
@@ -115,44 +184,37 @@ function PsychologistCabinet() {
       <Paper withBorder p="md" radius="md">
         {loading ? (
           <Group justify="center" p="xl"><Loader /></Group>
-        ) : cases.length === 0 ? (
-          <Text c="dimmed" ta="center" py="xl">Пока нет кейсов. Создайте первый — «Новый кейс».</Text>
         ) : (
-          <Table highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Ученик</Table.Th><Table.Th>Кейс</Table.Th><Table.Th>Риск</Table.Th>
-                <Table.Th>Статус</Table.Th><Table.Th>Сессий</Table.Th><Table.Th>Обновлён</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {cases.map((c) => (
-                <Table.Tr key={c.id} style={{ cursor: 'pointer' }}>
-                  <Table.Td><Link href={`/psychologist/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>{studentMap[c.studentId] ?? '—'}</Link></Table.Td>
-                  <Table.Td>
-                    <Link href={`/psychologist/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <Group gap={6} wrap="nowrap">
-                        {c.title}
-                        {c.isIntake && <Badge size="xs" color="grape" variant="light">входная диагностика</Badge>}
-                      </Group>
-                    </Link>
-                  </Table.Td>
-                  <Table.Td><Badge color={RISK[c.riskLevel].color} variant="light">{RISK[c.riskLevel].label}</Badge></Table.Td>
-                  <Table.Td><Badge color={STATUS[c.status].color} variant="outline">{STATUS[c.status].label}</Badge></Table.Td>
-                  <Table.Td>{c._count?.sessions ?? 0}</Table.Td>
-                  <Table.Td>{fmtDate(c.updatedAt)}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+          <DrilldownByClass groups={groups} emptyText="Пока нет кейсов. Создайте первый — «Новый кейс»." />
         )}
       </Paper>
+
+      {/* Кейсы выбранного ученика */}
+      <Modal opened={!!studentModal} onClose={() => setStudentModal(null)} title={`Кейсы — ${studentModal?.name ?? ''}`} centered size="lg">
+        <Stack gap="sm">
+          {studentModal?.cases.map((c) => (
+            <Card key={c.id} withBorder radius="md" padding="sm" component={Link} href={`/psychologist/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Group justify="space-between" wrap="nowrap">
+                <Group gap={6} wrap="nowrap">
+                  <Text fw={500}>{c.title}</Text>
+                  {c.isIntake && <Badge size="xs" color="grape" variant="light">входная диагностика</Badge>}
+                </Group>
+                <Group gap="xs" wrap="nowrap">
+                  <Badge color={RISK[c.riskLevel].color} variant="light">{RISK[c.riskLevel].label}</Badge>
+                  <Badge color={STATUS[c.status].color} variant="outline">{STATUS[c.status].label}</Badge>
+                  <Text size="xs" c="dimmed">{c._count?.sessions ?? 0} сесс. · {fmtDate(c.updatedAt)}</Text>
+                </Group>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+      </Modal>
 
       <Modal opened={open} onClose={() => setOpen(false)} title="Новый кейс" centered size="lg">
         <Stack gap="md">
           <Select
             label="Ученик" placeholder="Найти ученика" searchable required
-            data={students.map((s) => ({ value: s.id, label: `${s.lastName} ${s.firstName}` }))}
+            data={students.map((s) => ({ value: s.id, label: `${s.lastName} ${s.firstName}${s.class ? ` (${s.class.grade}${s.class.letter})` : ''}` }))}
             value={studentId} onChange={setStudentId}
           />
           {foreignActive.length > 0 && (

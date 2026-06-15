@@ -18,8 +18,9 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { IconPencil, IconPlus, IconSchool, IconTrash } from '@tabler/icons-react';
+import { IconPencil, IconPlus, IconSchool, IconTrash, IconUsers } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import Link from 'next/link';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 /* ── Dark theme tokens ── */
@@ -273,6 +274,16 @@ function ClassesContent() {
                           </Table.Td>
                           <Table.Td style={tdStyle} ta="center">
                             <Group gap={4} justify="center">
+                              <Button
+                                component={Link}
+                                href={`/students?classId=${cls.id}`}
+                                variant="light"
+                                size="compact-xs"
+                                color="teal"
+                                leftSection={<IconUsers size={14} />}
+                              >
+                                Состав
+                              </Button>
                               <Button
                                 variant="subtle"
                                 size="compact-xs"

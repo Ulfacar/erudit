@@ -4,7 +4,7 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { emitEvent } from '@/shared/lib/agent/engine';
 
-const STAFF_NOTE_ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'accountant', 'call_center', 'hr', 'doctor'] as const;
+const STAFF_NOTE_ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'accountant', 'call_center', 'hr', 'doctor', 'safeguarding_lead'] as const;
 
 /** GET — заметки по ученику (кросс-ролевые). */
 export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {

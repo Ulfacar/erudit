@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useRole } from '@/shared/hooks/useRole';
 import {
   ActionIcon,
   Avatar,
@@ -35,12 +36,14 @@ import {
   IconClockHour4,
   IconFileText,
   IconHeartbeat,
+  IconMessageCircle,
   IconPlus,
   IconTrash,
   IconUsers,
 } from '@tabler/icons-react';
 import { StudentTimeline } from './StudentTimeline';
 import { StudentContracts } from './StudentContracts';
+import { StudentTalks } from './StudentTalks';
 
 /* ── Colors ── */
 const SURFACE = '#ffffff';
@@ -290,10 +293,27 @@ function StarBadge({ level }: { level: number }) {
    MAIN COMPONENT
    ══════════════════════════════════════════════════════════════ */
 
+/* ── Вкладки профиля, видимые под роль ──
+   Эмир: психолог не видит «Оценки»; колл-центр видит только договор+платежи. */
+const TAB_ORDER = [
+  'timeline', 'contracts', 'grades', 'attendance', 'questionnaire',
+  'medical', 'behavior', 'talks', 'analytics', 'portfolio', 'documents',
+] as const;
+
 export default function StudentProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { role } = useRole();
   const studentId = params.id as string;
+
+  const tabVisible = useMemo(() => {
+    let allowed: readonly string[] = TAB_ORDER;
+    if (role === 'call_center') allowed = ['contracts'];
+    else if (role === 'psychologist' || role === 'senior_psychologist') {
+      allowed = TAB_ORDER.filter((t) => t !== 'grades');
+    }
+    return (key: string) => allowed.includes(key);
+  }, [role]);
 
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [grades, setGrades] = useState<SubjectGrades[]>([]);
@@ -355,6 +375,9 @@ export default function StudentProfilePage() {
     fetchData();
     fetchIncidents();
   }, [studentId, fetchIncidents]);
+
+  // Если выбранная вкладка скрыта для роли — показываем первую доступную (без доп. состояния).
+  const shownTab = activeTab && tabVisible(activeTab) ? activeTab : (TAB_ORDER.find(tabVisible) ?? null);
 
   /* ── Save family data ── */
   async function saveFamilyData() {
@@ -574,38 +597,63 @@ export default function StudentProfilePage() {
           padding: 16,
         }}
       >
-        <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs value={shownTab} onChange={setActiveTab}>
           <Tabs.List mb="md" style={{ flexWrap: 'wrap' }}>
-            <Tabs.Tab value="timeline" leftSection={<IconClockHour4 size={16} />}>
-              Лента
-            </Tabs.Tab>
-            <Tabs.Tab value="contracts" leftSection={<IconFileText size={16} />}>
-              Договоры
-            </Tabs.Tab>
-            <Tabs.Tab value="grades" leftSection={<IconBook2 size={16} />}>
-              Оценки
-            </Tabs.Tab>
-            <Tabs.Tab value="attendance" leftSection={<IconCalendarStats size={16} />}>
-              Посещаемость
-            </Tabs.Tab>
-            <Tabs.Tab value="questionnaire" leftSection={<IconUsers size={16} />}>
-              Анкета
-            </Tabs.Tab>
-            <Tabs.Tab value="medical" leftSection={<IconHeartbeat size={16} />}>
-              Медицина
-            </Tabs.Tab>
-            <Tabs.Tab value="behavior" leftSection={<IconAlertTriangle size={16} />}>
-              Поведение
-            </Tabs.Tab>
-            <Tabs.Tab value="analytics" leftSection={<IconChartBar size={16} />}>
-              Аналитика
-            </Tabs.Tab>
-            <Tabs.Tab value="portfolio" leftSection={<IconCertificate size={16} />}>
-              Портфолио
-            </Tabs.Tab>
-            <Tabs.Tab value="documents" leftSection={<IconFileText size={16} />}>
-              Документы
-            </Tabs.Tab>
+            {tabVisible('timeline') && (
+              <Tabs.Tab value="timeline" leftSection={<IconClockHour4 size={16} />}>
+                Лента
+              </Tabs.Tab>
+            )}
+            {tabVisible('contracts') && (
+              <Tabs.Tab value="contracts" leftSection={<IconFileText size={16} />}>
+                Договоры
+              </Tabs.Tab>
+            )}
+            {tabVisible('grades') && (
+              <Tabs.Tab value="grades" leftSection={<IconBook2 size={16} />}>
+                Оценки
+              </Tabs.Tab>
+            )}
+            {tabVisible('attendance') && (
+              <Tabs.Tab value="attendance" leftSection={<IconCalendarStats size={16} />}>
+                Посещаемость
+              </Tabs.Tab>
+            )}
+            {tabVisible('questionnaire') && (
+              <Tabs.Tab value="questionnaire" leftSection={<IconUsers size={16} />}>
+                Анкета
+              </Tabs.Tab>
+            )}
+            {tabVisible('medical') && (
+              <Tabs.Tab value="medical" leftSection={<IconHeartbeat size={16} />}>
+                Медицина
+              </Tabs.Tab>
+            )}
+            {tabVisible('behavior') && (
+              <Tabs.Tab value="behavior" leftSection={<IconAlertTriangle size={16} />}>
+                Поведение
+              </Tabs.Tab>
+            )}
+            {tabVisible('talks') && (
+              <Tabs.Tab value="talks" leftSection={<IconMessageCircle size={16} />}>
+                Беседы
+              </Tabs.Tab>
+            )}
+            {tabVisible('analytics') && (
+              <Tabs.Tab value="analytics" leftSection={<IconChartBar size={16} />}>
+                Аналитика
+              </Tabs.Tab>
+            )}
+            {tabVisible('portfolio') && (
+              <Tabs.Tab value="portfolio" leftSection={<IconCertificate size={16} />}>
+                Портфолио
+              </Tabs.Tab>
+            )}
+            {tabVisible('documents') && (
+              <Tabs.Tab value="documents" leftSection={<IconFileText size={16} />}>
+                Документы
+              </Tabs.Tab>
+            )}
           </Tabs.List>
 
           {/* ── Grades tab ── */}
@@ -1289,6 +1337,11 @@ export default function StudentProfilePage() {
                 </Group>
               </Stack>
             </Modal>
+          </Tabs.Panel>
+
+          {/* ── Беседы (воспитательная часть) ── */}
+          <Tabs.Panel value="talks">
+            <StudentTalks studentId={studentId} />
           </Tabs.Panel>
 
           {/* ══════════════════════════════════════════════

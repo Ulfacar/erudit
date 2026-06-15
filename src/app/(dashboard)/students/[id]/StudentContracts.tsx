@@ -1,8 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Badge, Button, Card, Checkbox, Group, Loader, Modal, NumberInput, Paper, Select, Stack, Text, TextInput, Title } from '@mantine/core';
-import { IconFileText, IconPlus, IconPrinter } from '@tabler/icons-react';
+import {
+  ActionIcon, Badge, Button, Checkbox, Grid, Group, Loader, Menu, Modal,
+  NumberInput, Paper, Progress, Select, Stack, Table, Tabs, Text, TextInput, Title,
+} from '@mantine/core';
+import {
+  IconArrowForward, IconCalendarEvent, IconCash, IconDots, IconPlus, IconPrinter, IconWallet,
+} from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
 import { useRole } from '@/shared/hooks/useRole';
 import { printContract } from '@/shared/lib/contract/print-contract';
@@ -12,61 +18,300 @@ interface Contract {
   amount: number; prepaymentPct: number; scheduleType: string; scheduleMonths: number; paymentDay: number;
   status: string; startDate: string | null; representative: Record<string, string> | null; requisites: Record<string, string> | null; createdAt: string;
 }
+interface Invoice {
+  id: string; title: string; period: string | null; amount: number; status: string; dueDate: string | null;
+  payments: { amount: number }[];
+}
+
 const STATUS: Record<string, { label: string; color: string }> = {
-  draft: { label: 'Черновик', color: 'gray' }, active: { label: 'Действует', color: 'green' },
+  draft: { label: 'Черновик', color: 'gray' }, active: { label: 'Active', color: 'green' },
   completed: { label: 'Завершён', color: 'blue' }, cancelled: { label: 'Расторгнут', color: 'red' },
 };
+const INV_STATUS: Record<string, { label: string; color: string }> = {
+  pending: { label: 'Ожидается', color: 'gray' }, partial: { label: 'Частично', color: 'yellow' },
+  paid: { label: 'Оплачено', color: 'green' }, cancelled: { label: 'Отменён', color: 'red' },
+  overdue: { label: 'Просрочено', color: 'red' },
+};
+const isOverdue = (inv: Invoice) =>
+  inv.status !== 'paid' && inv.status !== 'cancelled' && !!inv.dueDate &&
+  new Date(inv.dueDate) < new Date() && inv.amount - paidOf(inv) > 0;
+const dispStatus = (inv: Invoice) => (isOverdue(inv) ? 'overdue' : inv.status);
+const SCHEDULE_LABEL: Record<string, string> = { monthly: 'Ежемесячно', quarterly: 'По триместрам', yearly: 'За год' };
+
+const som = (n: number) => `${n.toLocaleString('ru-RU')} сом`;
+const paidOf = (inv: Invoice) => inv.payments.reduce((s, p) => s + p.amount, 0);
 
 export function StudentContracts({ studentId, studentName, className }: { studentId: string; studentName: string; className?: string }) {
   const { has } = useRole();
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingInv, setLoadingInv] = useState(false);
   const [open, setOpen] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const j = await fetch(`/api/v1/contracts?studentId=${studentId}`).then((r) => r.json()).catch(() => ({ data: [] }));
-    setContracts(j.data ?? []);
-    setLoading(false);
-  }, [studentId]);
-  useEffect(() => { load(); }, [load]);
+  const [payTarget, setPayTarget] = useState<Invoice | null>(null);
+  const [carryTarget, setCarryTarget] = useState<{ invoice: Invoice; mode: 'next' | 'spread' } | null>(null);
 
   const canCreate = has('super_admin', 'analyst', 'zavuch', 'secretary');
+  const canPay = has('super_admin', 'analyst', 'zavuch', 'accountant', 'call_center', 'secretary');
+  const canCarry = has('super_admin', 'analyst', 'zavuch', 'accountant', 'secretary');
+
+  const loadContracts = useCallback(async () => {
+    const j = await fetch(`/api/v1/contracts?studentId=${studentId}`).then((r) => r.json()).catch(() => ({ data: [] }));
+    const list: Contract[] = j.data ?? [];
+    setContracts(list);
+    setActiveId((prev) => prev && list.some((c) => c.id === prev) ? prev : (list.find((c) => c.status === 'active')?.id ?? list[0]?.id ?? null));
+    setLoading(false);
+  }, [studentId]);
+  useEffect(() => { loadContracts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadInvoices = useCallback(async (contractId: string) => {
+    const j = await fetch(`/api/v1/fee-invoices?contractId=${contractId}`).then((r) => r.json()).catch(() => ({ data: [] }));
+    setInvoices(j.data ?? []);
+    setLoadingInv(false);
+  }, []);
+  useEffect(() => { if (activeId) loadInvoices(activeId); }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const active = contracts.find((c) => c.id === activeId) ?? null;
+
+  // Баланс по выбранному договору
+  const total = active?.amount ?? 0;
+  const paid = invoices.reduce((s, inv) => s + paidOf(inv), 0);
+  const remaining = Math.max(0, total - paid);
+  const advance = Math.max(0, paid - total);
+  const progress = total > 0 ? Math.round((paid / total) * 100) : 0;
+  const nextDue = invoices
+    .filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.dueDate)
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())[0];
 
   return (
     <Stack gap="md">
       <Group justify="space-between">
-        <Title order={5}>Договоры</Title>
+        <div>
+          <Title order={4}>Договор и платежи</Title>
+          <Text size="sm" c="dimmed">{studentName}{className ? ` · ${className}` : ''}</Text>
+        </div>
         {canCreate && <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>Новый договор</Button>}
       </Group>
 
       {loading ? <Group justify="center" p="xl"><Loader /></Group>
         : contracts.length === 0 ? <Text c="dimmed">Договоров пока нет.</Text>
         : (
-          <Stack gap="sm">
-            {contracts.map((c) => (
-              <Card key={c.id} withBorder radius="md">
-                <Group justify="space-between">
-                  <div>
-                    <Group gap="xs">
-                      <Text fw={600}>№ {c.number}</Text>
-                      <Badge color={STATUS[c.status]?.color}>{STATUS[c.status]?.label ?? c.status}</Badge>
-                      <Text size="sm" c="dimmed">{c.year}</Text>
+          <>
+            {contracts.length > 1 && (
+              <Tabs value={activeId} onChange={setActiveId}>
+                <Tabs.List>
+                  {contracts.map((c) => (
+                    <Tabs.Tab key={c.id} value={c.id}>{c.year} · №{c.number}</Tabs.Tab>
+                  ))}
+                </Tabs.List>
+              </Tabs>
+            )}
+
+            {active && (
+              <Grid gutter="md">
+                {/* Карточка договора */}
+                <Grid.Col span={{ base: 12, md: 8 }}>
+                  <Paper withBorder radius="md" p="lg" h="100%">
+                    <Group justify="space-between" mb="md">
+                      <Group gap="xs">
+                        <Title order={3}>Договор #{active.number}</Title>
+                        <Badge color={STATUS[active.status]?.color}>{STATUS[active.status]?.label ?? active.status}</Badge>
+                      </Group>
+                      <Button size="xs" variant="default" leftSection={<IconPrinter size={14} />}
+                        onClick={() => printContract(active, studentName, className)}>Скачать PDF</Button>
                     </Group>
-                    <Text size="sm" c="dimmed" mt={4}>
-                      {c.amount.toLocaleString('ru-RU')} сом{c.discountPct > 0 ? ` (скидка ${c.discountPct}%)` : ''} · {c.scheduleMonths} платеж. · до {c.paymentDay} числа
-                    </Text>
-                  </div>
-                  <Button size="xs" variant="light" leftSection={<IconPrinter size={14} />}
-                    onClick={() => printContract(c, studentName, className)}>Печать (PDF)</Button>
-                </Group>
-              </Card>
-            ))}
-          </Stack>
+                    {active.startDate && <Text size="sm" c="dimmed" mb="md">Начало: {fmtDate(active.startDate)}</Text>}
+                    <Grid>
+                      <Grid.Col span={{ base: 6, sm: 3 }}>
+                        <Text size="xs" c="dimmed" tt="uppercase">Базовая цена</Text>
+                        <Text fw={600}>{som(active.baseAmount)}</Text>
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 6, sm: 3 }}>
+                        <Text size="xs" c="dimmed" tt="uppercase">Скидка</Text>
+                        <Text fw={600} c="teal">{active.discountPct}%</Text>
+                        {active.discountNote && <Text size="xs" c="dimmed">{active.discountNote}</Text>}
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 6, sm: 3 }}>
+                        <Text size="xs" c="dimmed" tt="uppercase">Итого к оплате</Text>
+                        <Text fw={700} c="blue">{som(active.amount)}</Text>
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 6, sm: 3 }}>
+                        <Text size="xs" c="dimmed" tt="uppercase">Режим оплаты</Text>
+                        <Text fw={600}>{SCHEDULE_LABEL[active.scheduleType] ?? active.scheduleType}</Text>
+                      </Grid.Col>
+                    </Grid>
+                  </Paper>
+                </Grid.Col>
+
+                {/* Карточка баланса */}
+                <Grid.Col span={{ base: 12, md: 4 }}>
+                  <Paper withBorder radius="md" p="lg" h="100%">
+                    <Group gap={6} mb="sm"><IconWallet size={18} color="#1971c2" /><Text fw={600} tt="uppercase" size="sm">Баланс</Text></Group>
+                    <Text size="xs" c="dimmed">Оплачено</Text>
+                    <Text fw={700} size="xl">{som(paid)} <Text span size="sm" c="dimmed">из {som(total)}</Text></Text>
+                    <Text size="sm" mt={4}>Остаток: <Text span fw={600}>{som(remaining)}</Text></Text>
+                    {nextDue && (
+                      <Paper withBorder radius="sm" p="xs" mt="sm">
+                        <Group justify="space-between"><Group gap={6}><IconCalendarEvent size={15} /><Text size="sm">Платёж</Text></Group><Text size="sm" fw={500}>{fmtDate(nextDue.dueDate!)}</Text></Group>
+                      </Paper>
+                    )}
+                    <Paper bg="rgba(64,192,87,0.08)" radius="sm" p="xs" mt="xs">
+                      <Group justify="space-between"><Text size="sm" c="teal">Аванс ученика</Text><Text size="sm" fw={600} c="teal">{som(advance)}</Text></Group>
+                    </Paper>
+                    <Group justify="space-between" mt="sm" mb={4}><Text size="xs" c="dimmed" tt="uppercase">Прогресс</Text><Text size="xs" fw={600}>{progress}%</Text></Group>
+                    <Progress value={progress} color="blue" radius="xl" />
+                  </Paper>
+                </Grid.Col>
+
+                {/* График платежей */}
+                <Grid.Col span={12}>
+                  <Paper withBorder radius="md" p="md">
+                    <Title order={5} mb="sm">График платежей</Title>
+                    {loadingInv ? <Group justify="center" p="md"><Loader size="sm" /></Group>
+                      : invoices.length === 0 ? <Text c="dimmed" size="sm">Счёта по этому договору не сгенерированы.</Text>
+                      : (
+                        <Table.ScrollContainer minWidth={680}>
+                          <Table verticalSpacing="sm">
+                            <Table.Thead>
+                              <Table.Tr>
+                                <Table.Th w={36}>#</Table.Th>
+                                <Table.Th>Назначение</Table.Th><Table.Th>Срок оплаты</Table.Th>
+                                <Table.Th ta="right">Сумма</Table.Th><Table.Th ta="right">Оплачено</Table.Th>
+                                <Table.Th ta="right">Остаток</Table.Th><Table.Th>Статус</Table.Th><Table.Th w={48}></Table.Th>
+                              </Table.Tr>
+                            </Table.Thead>
+                            <Table.Tbody>
+                              {invoices.map((inv, i) => {
+                                const p = paidOf(inv);
+                                const rem = Math.max(0, inv.amount - p);
+                                return (
+                                  <Table.Tr key={inv.id}>
+                                    <Table.Td><Text c="dimmed" size="sm">{i + 1}</Text></Table.Td>
+                                    <Table.Td>{inv.title}</Table.Td>
+                                    <Table.Td>{inv.dueDate ? fmtDate(inv.dueDate) : '—'}</Table.Td>
+                                    <Table.Td ta="right"><Text fw={600}>{som(inv.amount)}</Text></Table.Td>
+                                    <Table.Td ta="right"><Text c={p > 0 ? 'teal' : 'dimmed'}>{som(p)}</Text></Table.Td>
+                                    <Table.Td ta="right"><Text c={rem > 0 ? 'blue' : 'dimmed'} fw={500}>{som(rem)}</Text></Table.Td>
+                                    <Table.Td><Badge variant="light" color={INV_STATUS[dispStatus(inv)]?.color}>{INV_STATUS[dispStatus(inv)]?.label ?? inv.status}</Badge></Table.Td>
+                                    <Table.Td>
+                                      {rem > 0 && inv.status !== 'cancelled' && (canPay || canCarry) && (
+                                        <Menu position="bottom-end" withinPortal>
+                                          <Menu.Target><ActionIcon variant="subtle" color="gray"><IconDots size={16} /></ActionIcon></Menu.Target>
+                                          <Menu.Dropdown>
+                                            {canPay && <Menu.Item leftSection={<IconCash size={14} />} onClick={() => setPayTarget(inv)}>Принять оплату</Menu.Item>}
+                                            {canCarry && (
+                                              <>
+                                                <Menu.Divider />
+                                                <Menu.Label>Перенести остаток</Menu.Label>
+                                                <Menu.Item leftSection={<IconArrowForward size={14} />} onClick={() => setCarryTarget({ invoice: inv, mode: 'next' })}>На следующий месяц</Menu.Item>
+                                                <Menu.Item leftSection={<IconArrowForward size={14} />} onClick={() => setCarryTarget({ invoice: inv, mode: 'spread' })}>Распределить по графику</Menu.Item>
+                                              </>
+                                            )}
+                                          </Menu.Dropdown>
+                                        </Menu>
+                                      )}
+                                    </Table.Td>
+                                  </Table.Tr>
+                                );
+                              })}
+                            </Table.Tbody>
+                          </Table>
+                        </Table.ScrollContainer>
+                      )}
+                  </Paper>
+                </Grid.Col>
+              </Grid>
+            )}
+          </>
         )}
 
-      {open && <ContractModal studentId={studentId} onClose={() => setOpen(false)} onDone={() => { setOpen(false); load(); }} />}
+      {open && <ContractModal studentId={studentId} onClose={() => setOpen(false)} onDone={() => { setOpen(false); loadContracts(); }} />}
+      {payTarget && (
+        <PaymentModal
+          invoice={payTarget}
+          onClose={() => setPayTarget(null)}
+          onDone={() => { setPayTarget(null); if (activeId) loadInvoices(activeId); }}
+        />
+      )}
+      {carryTarget && (
+        <CarryModal
+          invoice={carryTarget.invoice}
+          mode={carryTarget.mode}
+          onClose={() => setCarryTarget(null)}
+          onDone={() => { setCarryTarget(null); if (activeId) loadInvoices(activeId); }}
+        />
+      )}
     </Stack>
+  );
+}
+
+function CarryModal({ invoice, mode, onClose, onDone }: { invoice: Invoice; mode: 'next' | 'spread'; onClose: () => void; onDone: () => void }) {
+  const shortfall = Math.max(0, invoice.amount - paidOf(invoice));
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    setSaving(true);
+    const res = await fetch('/api/v1/fee-invoices/carry', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId: invoice.id, mode, reason: reason || null }),
+    });
+    const j = await res.json(); setSaving(false);
+    if (!j.success) { notifications.show({ color: 'red', title: 'Ошибка', message: j.error?.message ?? 'Не удалось перенести' }); return; }
+    notifications.show({ color: 'green', title: 'Остаток перенесён', message: `${shortfall.toLocaleString('ru-RU')} сом — ${mode === 'next' ? 'на следующий месяц' : 'распределён по графику'}` });
+    onDone();
+  }
+
+  return (
+    <Modal opened onClose={onClose} title={`Перенос остатка — ${invoice.title}`} centered>
+      <Stack gap="sm">
+        <Text size="sm">Недоплата: <Text span fw={600}>{som(shortfall)}</Text></Text>
+        <Text size="sm" c="dimmed">{mode === 'next' ? 'Будет добавлено к следующему платежу графика.' : 'Будет равномерно распределено по всем последующим платежам.'}</Text>
+        <TextInput label="Причина недоплаты (необязательно)" placeholder="Напр.: задержка зарплаты у родителя" value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button onClick={submit} loading={saving}>Перенести</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function PaymentModal({ invoice, onClose, onDone }: { invoice: Invoice; onClose: () => void; onDone: () => void }) {
+  const rem = Math.max(0, invoice.amount - paidOf(invoice));
+  const [amount, setAmount] = useState<number>(rem);
+  const [method, setMethod] = useState<string>('нал');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!amount || amount <= 0) return;
+    setSaving(true);
+    const res = await fetch('/api/v1/payments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId: invoice.id, amount, method, note: note || null }),
+    });
+    const j = await res.json(); setSaving(false);
+    if (!j.success) { notifications.show({ color: 'red', title: 'Ошибка', message: j.error?.message ?? 'Не удалось' }); return; }
+    notifications.show({ color: 'green', title: 'Оплата принята', message: `${amount.toLocaleString('ru-RU')} сом по «${invoice.title}»` });
+    onDone();
+  }
+
+  return (
+    <Modal opened onClose={onClose} title={`Оплата — ${invoice.title}`} centered>
+      <Stack gap="sm">
+        <Text size="sm" c="dimmed">Остаток по счёту: {som(rem)}</Text>
+        <NumberInput label="Сумма" value={amount} onChange={(v) => setAmount(Number(v) || 0)} thousandSeparator=" " min={0} max={rem} />
+        <Select label="Способ" value={method} onChange={(v) => setMethod(v ?? 'нал')}
+          data={[{ value: 'нал', label: 'Наличные' }, { value: 'карта', label: 'Карта' }, { value: 'мбанк', label: 'МБанк' }, { value: 'банк', label: 'Банк' }]} />
+        <TextInput label="Комментарий (необязательно)" placeholder="Напр.: оплатил часть, остаток обещал позже" value={note} onChange={(e) => setNote(e.currentTarget.value)} />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button onClick={submit} loading={saving}>Принять</Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }
 
@@ -114,6 +359,7 @@ function ContractModal({ studentId, onClose, onDone }: { studentId: string; onCl
           <NumberInput label="Платежей" value={f.scheduleMonths} onChange={(v) => set('scheduleMonths', Number(v) || 1)} min={1} max={12} />
           <NumberInput label="День оплаты" value={f.paymentDay} onChange={(v) => set('paymentDay', Number(v) || 10)} min={1} max={28} />
         </Group>
+        <TextInput label="Дата начала" type="date" value={f.startDate} onChange={(e) => set('startDate', e.currentTarget.value)} />
         <Text size="sm" fw={500}>Представитель</Text>
         <Group grow>
           <TextInput label="ФИО" value={f.repFio} onChange={(e) => set('repFio', e.currentTarget.value)} />

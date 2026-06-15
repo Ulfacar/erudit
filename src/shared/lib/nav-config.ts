@@ -37,6 +37,10 @@ const STAFF_PLUS_SPECIALIST: Role[] = [...STAFF_TIER, 'specialist']
 const ADMIN_SECRETARY: Role[] = ['super_admin', 'analyst', 'zavuch', 'secretary']
 // «Общественные» модули — видны всем, КРОМЕ учителя/куратора (чтобы не засорять их меню)
 const NON_TEACHING_AUTH: Role[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist', 'student', 'parent']
+// Этап 6 (по встрече с Эмиром): у ассистента/секретаря лишние модули убраны — оставляем
+// только приёмку, классы, учеников, договоры, документы, мероприятия и происшествия.
+const ALL_AUTH_NO_SEC: Role[] = ALL_AUTH.filter((r) => r !== 'secretary')
+const NON_TEACHING_NO_SEC: Role[] = NON_TEACHING_AUTH.filter((r) => r !== 'secretary')
 // Узкие роли сотрудников: у каждого свой кабинет + общие коммуникации
 const NEW_STAFF: Role[] = ['accountant', 'psychologist', 'doctor', 'hr', 'librarian', 'cook', 'zavhoz', 'senior_psychologist', 'safeguarding_lead', 'call_center']
 // Психологическая служба (eSPSMS): кто ведёт кейсы
@@ -94,7 +98,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
       { href: '/grading/moderation', label: 'Модерация', roles: ADMIN_AND_VICE },
     ],
   },
-  { href: '/students', label: 'Ученики', roles: STAFF_PLUS_SPECIALIST.concat('secretary', 'psychologist', 'doctor') },
+  { href: '/students', label: 'Ученики', roles: STAFF_PLUS_SPECIALIST.concat('secretary', 'psychologist', 'doctor', 'safeguarding_lead') },
   {
     href: '/teachers',
     label: 'Педагоги',
@@ -112,31 +116,32 @@ export const SIDEBAR_NAV: NavRoute[] = [
       { href: '/reports/attendance', label: 'Посещаемость', roles: STAFF_TIER },
     ],
   },
-  { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH },
+  { href: '/homework', label: 'Домашние задания', roles: ALL_AUTH_NO_SEC },
   { href: '/tests', label: 'Тесты', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst', 'student'] },
   { href: '/curriculum-plan/my', label: 'Моё КТП', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst'] },
   { href: '/lesson-plans', label: 'Поурочные планы', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst'] },
   { href: '/presentations', label: 'ИИ-презентации', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst'] },
-  { href: '/chats', label: 'Чаты', roles: [...ALL_AUTH, ...NEW_STAFF] },
+  { href: '/chats', label: 'Чаты', roles: [...ALL_AUTH_NO_SEC, ...NEW_STAFF] },
   { href: '/news', label: 'Новости', roles: [...ALL_AUTH, ...NEW_STAFF] },
   { href: '/applications', label: 'Заявления', roles: ['parent', 'student', 'teacher', 'curator', 'zavuch', 'super_admin', 'secretary', 'analyst'] },
   { href: '/surveys', label: 'Опросы', roles: ALL_AUTH },
   { href: '/meals', label: 'Столовая', roles: ['student', 'parent', 'super_admin', 'analyst', 'zavuch', 'secretary', 'cook'] },
   { href: '/consents', label: 'Согласия', roles: ['parent', 'super_admin', 'analyst', 'zavuch', 'secretary', 'curator'] },
-  { href: '/lost-found', label: 'Бюро находок', roles: NON_TEACHING_AUTH },
+  { href: '/lost-found', label: 'Бюро находок', roles: NON_TEACHING_NO_SEC },
   { href: '/urgent-issues', label: 'Срочные вопросы', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'psychologist'] },
-  { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist', 'psychologist') },
+  { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist', 'psychologist', 'safeguarding_lead') },
   { href: '/analytics', label: 'Аналитика', roles: ADMIN_AND_VICE },
   // Учебные модули
   { href: '/calendar', label: 'Календарь', roles: ADMIN_SECRETARY },
   { href: '/curriculum-plan', label: 'КТП', roles: ADMIN_AND_VICE },
-  { href: '/achievements', label: 'Достижения', roles: ADMIN_SECRETARY },
-  { href: '/portfolio', label: 'Портфолио', roles: ADMIN_SECRETARY },
-  { href: '/library', label: 'Библиотека', roles: [...ADMIN_SECRETARY, 'teacher', 'curator', 'librarian'] },
-  { href: '/olympiads', label: 'Олимпиады и проекты', roles: NON_TEACHING_AUTH },
-  { href: '/events', label: 'Мероприятия', roles: NON_TEACHING_AUTH },
-  { href: '/studios', label: 'Студии', roles: NON_TEACHING_AUTH },
-  { href: '/trips', label: 'Выезды', roles: NON_TEACHING_AUTH },
+  { href: '/achievements', label: 'Достижения', roles: ADMIN_AND_VICE },
+  { href: '/portfolio', label: 'Портфолио', roles: ADMIN_AND_VICE },
+  { href: '/library', label: 'Библиотека', roles: ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator', 'librarian'] },
+  { href: '/library/issue', label: 'Выдача учебников', roles: ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator', 'librarian'] },
+  { href: '/olympiads', label: 'Олимпиады и проекты', roles: NON_TEACHING_NO_SEC },
+  { href: '/events', label: 'Мероприятия', roles: [...NON_TEACHING_AUTH, 'safeguarding_lead'] },
+  { href: '/studios', label: 'Студии', roles: NON_TEACHING_NO_SEC },
+  { href: '/trips', label: 'Выезды', roles: NON_TEACHING_NO_SEC },
   // Администрирование
   { href: '/staff', label: 'Персонал', roles: [...ADMIN_SECRETARY, 'hr'] },
   { href: '/hr', label: 'Кадры (HR)', roles: ['super_admin', 'analyst', 'zavuch', 'hr'] },
@@ -152,14 +157,14 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/workspace/speech', label: 'Логопед', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
   { href: '/workspace/psychologist', label: 'Психолог', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator', 'psychologist'] },
   { href: '/workspace/medical', label: 'Медкабинет', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary', 'doctor'] },
-  { href: '/workspace/parents', label: 'Родители', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'curator'] },
+  { href: '/workspace/parents', label: 'Родители', roles: ['super_admin', 'analyst', 'zavuch', 'curator'] },
   // Хозчасть / бизнес
   { href: '/finance', label: 'Финансы', roles: ['super_admin', 'analyst', 'accountant'] },
   { href: '/call-center', label: 'Колл-центр', roles: ['call_center', 'super_admin', 'analyst', 'zavuch', 'accountant'] },
   { href: '/finance/journal', label: 'Журнал оплат', roles: ['super_admin', 'analyst', 'zavuch', 'accountant'] },
   { href: '/workspace/accounting', label: 'Бухгалтерия', roles: [...ADMIN_AND_VICE, 'accountant'] },
-  { href: '/workspace/kitchen', label: 'Кухня', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'cook'] },
-  { href: '/workspace/maintenance', label: 'АХЧ', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'zavhoz'] },
+  { href: '/workspace/kitchen', label: 'Кухня', roles: ['super_admin', 'analyst', 'zavuch', 'cook'] },
+  { href: '/workspace/maintenance', label: 'АХЧ', roles: ['super_admin', 'analyst', 'zavuch', 'zavhoz'] },
 ]
 
 /**
