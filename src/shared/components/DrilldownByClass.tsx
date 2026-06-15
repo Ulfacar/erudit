@@ -54,7 +54,14 @@ export function DrilldownByClass({ groups, emptyText = 'Нет данных' }: 
         </Group>
         <Stack gap={6}>
           {open.items.map((it) => (
-            <Card key={it.id} withBorder radius="md" padding="sm">
+            <Card
+              key={it.id}
+              withBorder
+              radius="md"
+              padding="sm"
+              onClick={!it.href && it.onClick ? it.onClick : undefined}
+              style={!it.href && it.onClick ? { cursor: 'pointer' } : undefined}
+            >
               <Group justify="space-between" wrap="nowrap">
                 <Box style={{ minWidth: 0 }}>
                   {it.href ? (
@@ -62,7 +69,7 @@ export function DrilldownByClass({ groups, emptyText = 'Нет данных' }: 
                       <Text fw={500} truncate>{it.primary}</Text>
                     </Link>
                   ) : (
-                    <Text fw={500} truncate style={{ cursor: it.onClick ? 'pointer' : 'default' }} onClick={it.onClick}>{it.primary}</Text>
+                    <Text fw={500} truncate>{it.primary}</Text>
                   )}
                   {it.secondary && <Text size="xs" c="dimmed">{it.secondary}</Text>}
                 </Box>
