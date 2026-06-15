@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "prisma generate && prisma db push --skip-generate && npx tsx scripts/backfill-branches.ts && npx tsx scripts/seed-psy-templates.ts && npx tsx scripts/seed-demo-intake.ts && next build",
+    "build": "prisma generate && node scripts/predeploy.mjs && next build",
     "start": "next start",
     "lint": "eslint"
   },

@@ -33,19 +33,23 @@ export async function GET(request: NextRequest) {
       where: { id: { in: ids } },
       select: { id: true, firstName: true, lastName: true, class: { select: { grade: true, letter: true } }, parentLinks: { select: { parent: { select: { phone: true } } } } },
     });
-    const promises = await prisma.studentNote.findMany({ where: { studentId: { in: ids }, type: 'promise' }, orderBy: { createdAt: 'desc' } });
+    // последний контакт колл-центра: статус задачи ('collection') или старое обещание ('promise')
+    const notes = await prisma.studentNote.findMany({ where: { studentId: { in: ids }, type: { in: ['collection', 'promise'] } }, orderBy: { createdAt: 'desc' } });
 
     const rows = [...byStudent.values()].map((r) => {
       const s = students.find((x) => x.id === r.studentId);
       const phone = s?.parentLinks.map((pl) => pl.parent.phone).find(Boolean) ?? null;
-      const lastPromise = promises.find((p) => p.studentId === r.studentId);
+      const last = notes.find((p) => p.studentId === r.studentId);
+      const status = last
+        ? ((last.meta as { status?: string } | null)?.status ?? (last.type === 'promise' ? 'promise_to_pay' : 'contacted'))
+        : null;
       return {
         studentId: r.studentId,
         name: s ? `${s.lastName} ${s.firstName}` : '—',
         className: s?.class ? `${s.class.grade}${s.class.letter}` : '',
         phone,
         remaining: r.remaining, penalty: r.penalty, overdueDays: r.overdueDays,
-        lastPromise: lastPromise ? { text: lastPromise.text, at: lastPromise.createdAt } : null,
+        lastTask: last ? { status, text: last.text, at: last.createdAt } : null,
       };
     }).sort((a, b) => b.remaining - a.remaining);
 
