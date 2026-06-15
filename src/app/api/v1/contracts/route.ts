@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const { studentId, number, year, baseAmount, discountPct, discountNote, prepaymentPct,
-    scheduleType, scheduleMonths, paymentDay, representative, startDate, generateInvoices } = body as Record<string, unknown>;
+    scheduleType, scheduleMonths, paymentDay, representative, startDate, generateInvoices, renew } = body as Record<string, unknown>;
 
   if (!studentId || !number || baseAmount === undefined) {
     return errorResponse('VALIDATION_ERROR', 'Нужны ученик, номер договора и стоимость');
@@ -46,6 +46,12 @@ export async function POST(request: NextRequest) {
     const student = await prisma.student.findUnique({ where: { id: String(studentId) }, select: { branchId: true } });
     // предыдущий активный договор → в историю (completed) + связь
     const prev = await prisma.contract.findFirst({ where: { studentId: String(studentId), status: 'active' }, orderBy: { createdAt: 'desc' } });
+    // при продлении переносим непогашенный долг прежнего договора в первый платёж нового
+    let carried = 0;
+    if (renew === true && prev) {
+      const prevInvs = await prisma.feeInvoice.findMany({ where: { contractId: prev.id, status: { not: 'cancelled' } }, include: { payments: { select: { amount: true } } } });
+      for (const inv of prevInvs) { const paid = inv.payments.reduce((s, p) => s + p.amount, 0); carried += Math.max(0, inv.amount - paid); }
+    }
     if (prev) await prisma.contract.update({ where: { id: prev.id }, data: { status: 'completed' } });
 
     const branch = student?.branchId ? await prisma.branch.findUnique({ where: { id: student.branchId }, select: { requisites: true } }) : null;
@@ -73,11 +79,12 @@ export async function POST(request: NextRequest) {
       const base0 = startDate ? new Date(String(startDate)) : new Date();
       const prepay = Math.round((amount * (parseInt(String(prepaymentPct ?? 0), 10) || 0)) / 100);
 
-      // предоплата вносится в дату старта договора
+      // предоплата вносится в дату старта договора (+перенесённый долг, если продление)
       if (prepay > 0) {
         await prisma.feeInvoice.create({
-          data: { studentId: String(studentId), contractId: contract.id, title: 'Предоплата', period: 'prepay', amount: prepay, status: 'pending', dueDate: new Date(base0) },
+          data: { studentId: String(studentId), contractId: contract.id, title: carried > 0 ? 'Предоплата + перенос долга' : 'Предоплата', period: 'prepay', amount: prepay + carried, status: 'pending', dueDate: new Date(base0) },
         });
+        carried = 0;
         invoices++;
       }
 
@@ -88,8 +95,10 @@ export async function POST(request: NextRequest) {
         const due = new Date(base0);
         due.setMonth(due.getMonth() + i * stepMonths);
         due.setDate(payDay);
+        // если предоплаты не было — перенесённый долг идёт в первый платёж
+        const extra = i === 0 ? carried : 0;
         await prisma.feeInvoice.create({
-          data: { studentId: String(studentId), contractId: contract.id, title: MONTHS_RU[due.getMonth()], period: `${i + 1}/${months}`, amount: per, status: 'pending', dueDate: due },
+          data: { studentId: String(studentId), contractId: contract.id, title: extra > 0 ? `${MONTHS_RU[due.getMonth()]} + перенос долга` : MONTHS_RU[due.getMonth()], period: `${i + 1}/${months}`, amount: per + extra, status: 'pending', dueDate: due },
         });
         invoices++;
       }

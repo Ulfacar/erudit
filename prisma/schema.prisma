@@ -1169,6 +1169,23 @@ model SchoolEvent {
   @@index([date])
 }
 
+// Запись к директору (ассистент бронирует встречу, директор подтверждает/отклоняет)
+model DirectorAppointment {
+  id          String    @id @default(cuid())
+  requesterId String    // кто записал (ассистент/секретарь)
+  topic       String    // тема встречи
+  studentName String?   // по какому ученику (опц.)
+  desiredAt   DateTime  // желаемые дата/время
+  note        String?
+  status      String    @default("pending") // pending | confirmed | declined
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+  @@index([desiredAt])
+}
+
 // ============ STUDIOS / CLUBS ============
 
 model Studio {

@@ -6,7 +6,7 @@ import {
   NumberInput, Paper, Progress, Select, Stack, Table, Tabs, Text, TextInput, Title,
 } from '@mantine/core';
 import {
-  IconArrowForward, IconCalendarEvent, IconCash, IconDots, IconPlus, IconPrinter, IconWallet,
+  IconArrowForward, IconCalendarEvent, IconCash, IconDots, IconPlus, IconPrinter, IconRefresh, IconWallet,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
@@ -49,6 +49,7 @@ export function StudentContracts({ studentId, studentName, className }: { studen
   const [loading, setLoading] = useState(true);
   const [loadingInv, setLoadingInv] = useState(false);
   const [open, setOpen] = useState(false);
+  const [renewOpen, setRenewOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<Invoice | null>(null);
   const [carryTarget, setCarryTarget] = useState<{ invoice: Invoice; mode: 'next' | 'spread' } | null>(null);
 
@@ -118,8 +119,13 @@ export function StudentContracts({ studentId, studentName, className }: { studen
                         <Title order={3}>Договор #{active.number}</Title>
                         <Badge color={STATUS[active.status]?.color}>{STATUS[active.status]?.label ?? active.status}</Badge>
                       </Group>
-                      <Button size="xs" variant="default" leftSection={<IconPrinter size={14} />}
-                        onClick={() => printContract(active, studentName, className)}>Скачать PDF</Button>
+                      <Group gap="xs">
+                        {canCreate && (
+                          <Button size="xs" variant="light" leftSection={<IconRefresh size={14} />} onClick={() => setRenewOpen(true)}>Продлить договор</Button>
+                        )}
+                        <Button size="xs" variant="default" leftSection={<IconPrinter size={14} />}
+                          onClick={() => printContract(active, studentName, className)}>Скачать PDF</Button>
+                      </Group>
                     </Group>
                     {active.startDate && <Text size="sm" c="dimmed" mb="md">Начало: {fmtDate(active.startDate)}</Text>}
                     <Grid>
@@ -227,6 +233,7 @@ export function StudentContracts({ studentId, studentName, className }: { studen
         )}
 
       {open && <ContractModal studentId={studentId} onClose={() => setOpen(false)} onDone={() => { setOpen(false); loadContracts(); }} />}
+      {renewOpen && <ContractModal studentId={studentId} renew carriedDebt={remaining} onClose={() => setRenewOpen(false)} onDone={() => { setRenewOpen(false); loadContracts(); }} />}
       {payTarget && (
         <PaymentModal
           invoice={payTarget}
@@ -315,7 +322,7 @@ function PaymentModal({ invoice, onClose, onDone }: { invoice: Invoice; onClose:
   );
 }
 
-function ContractModal({ studentId, onClose, onDone }: { studentId: string; onClose: () => void; onDone: () => void }) {
+function ContractModal({ studentId, renew, carriedDebt = 0, onClose, onDone }: { studentId: string; renew?: boolean; carriedDebt?: number; onClose: () => void; onDone: () => void }) {
   const [f, setF] = useState({
     number: '', year: '2026–2027', baseAmount: 650000, discountPct: 0, discountNote: '', prepaymentPct: 20,
     scheduleType: 'monthly', scheduleMonths: 9, paymentDay: 10, repFio: '', repInn: '', repPhone: '', startDate: '', gen: true,
@@ -333,6 +340,7 @@ function ContractModal({ studentId, onClose, onDone }: { studentId: string; onCl
         discountNote: f.discountNote, prepaymentPct: f.prepaymentPct, scheduleType: f.scheduleType,
         scheduleMonths: f.scheduleMonths, paymentDay: f.paymentDay, startDate: f.startDate || null,
         representative: { fio: f.repFio, inn: f.repInn, phone: f.repPhone }, generateInvoices: f.gen,
+        renew: renew ?? false,
       }),
     });
     const j = await res.json(); setSaving(false);
@@ -341,8 +349,11 @@ function ContractModal({ studentId, onClose, onDone }: { studentId: string; onCl
   }
 
   return (
-    <Modal opened onClose={onClose} title="Новый договор" centered size="lg">
+    <Modal opened onClose={onClose} title={renew ? 'Продление договора' : 'Новый договор'} centered size="lg">
       <Stack gap="sm">
+        {renew && carriedDebt > 0 && (
+          <Text size="sm" c="orange">Непогашенный долг {som(carriedDebt)} перенесётся в первый платёж нового договора. Текущий договор будет закрыт.</Text>
+        )}
         <Group grow>
           <TextInput label="Номер договора" required value={f.number} onChange={(e) => set('number', e.currentTarget.value)} />
           <TextInput label="Учебный год" value={f.year} onChange={(e) => set('year', e.currentTarget.value)} />

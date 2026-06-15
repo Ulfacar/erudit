@@ -22,7 +22,8 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { IconArrowRight, IconBrain, IconChevronDown, IconPhone, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
+import { IconArrowRight, IconBrain, IconChevronDown, IconPhone, IconPlus, IconTrash, IconUser, IconX } from '@tabler/icons-react';
+import Link from 'next/link';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 /**
@@ -101,6 +102,9 @@ export default function AdmissionPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [moveLead, setMoveLead] = useState<Lead | null>(null);
   const [moveTo, setMoveTo] = useState<Stage | null>(null);
+  // фильтр колонки «Зачислен» по дате (чтобы карточки не копились)
+  const [enrFrom, setEnrFrom] = useState('');
+  const [enrTo, setEnrTo] = useState('');
   const [rejectLead, setRejectLead] = useState<Lead | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -197,6 +201,9 @@ export default function AdmissionPage() {
 
   const targetStage = moveLead ? (moveTo ?? NEXT_STAGE[moveLead.stage]) : undefined;
 
+  const inRange = (iso: string) => { const d = iso.slice(0, 10); return (!enrFrom || d >= enrFrom) && (!enrTo || d <= enrTo); };
+  const stageCards = (stage: Stage) => { const list = byStage.get(stage) ?? []; return stage === 'enrolled' ? list.filter((l) => inRange(l.updatedAt)) : list; };
+
   return (
     <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'secretary']}>
       <Stack gap="md">
@@ -231,6 +238,14 @@ export default function AdmissionPage() {
           </Paper>
         </Group>
 
+        {/* Фильтр зачислений по дате */}
+        <Group gap="xs" align="flex-end">
+          <Text size="xs" c="dimmed" mb={6}>Зачисления:</Text>
+          <TextInput size="xs" type="date" label="с" value={enrFrom} onChange={(e) => setEnrFrom(e.currentTarget.value)} />
+          <TextInput size="xs" type="date" label="по" value={enrTo} onChange={(e) => setEnrTo(e.currentTarget.value)} />
+          {(enrFrom || enrTo) && <Button size="compact-xs" variant="subtle" color="gray" onClick={() => { setEnrFrom(''); setEnrTo(''); }}>Сброс</Button>}
+        </Group>
+
         {/* Канбан */}
         <ScrollArea>
           <Group align="flex-start" gap="sm" wrap="nowrap" style={{ minWidth: 1100 }}>
@@ -241,11 +256,11 @@ export default function AdmissionPage() {
                     {STAGE_META[stage].label}
                   </Text>
                   <Badge size="sm" color={STAGE_META[stage].color} variant="light">
-                    {byStage.get(stage)?.length ?? 0}
+                    {stageCards(stage).length}
                   </Badge>
                 </Group>
                 <Stack gap="xs">
-                  {(byStage.get(stage) ?? []).map((lead) => (
+                  {stageCards(stage).map((lead) => (
                     <Card key={lead.id} padding="sm" radius="md" withBorder>
                       <Group justify="space-between" align="flex-start" wrap="nowrap">
                         <Box>
@@ -339,9 +354,14 @@ export default function AdmissionPage() {
                         </Group>
                       )}
                       {stage === 'enrolled' && (
-                        <Badge mt={8} size="xs" color="teal" variant="light">
-                          в ядре: ученик создан
-                        </Badge>
+                        <Group gap={6} mt={8}>
+                          <Badge size="xs" color="teal" variant="light">в ядре: ученик создан</Badge>
+                          {lead.enrolledStudentId && (
+                            <Button component={Link} href={`/students/${lead.enrolledStudentId}`} size="compact-xs" variant="light" leftSection={<IconUser size={12} />}>
+                              Профиль
+                            </Button>
+                          )}
+                        </Group>
                       )}
                       {lead.psychCaseId && (
                         <Button
