@@ -1,33 +1,26 @@
-// Предсборочный шаг: применяет схему (db push) с ретраями (Neon просыпается с холодного
-// старта и иногда рвёт коннект) и прогоняет идемпотентные сиды НЕ фатально — перебой БД
-// на сиде не должен валить прод-сборку. Заменяет хрупкую цепочку `&&` в build-скрипте.
+// Запускается на СТАРТЕ контейнера (npm start), не в build — чтобы билд был детерминированным
+// и не зависел от состояния Neon. db push с exponential backoff: Neon просыпается за 1-5с.
+// Сиды идемпотентные и НЕ фатальные — перебой/отсутствие tsx не валит старт.
 import { execSync } from 'node:child_process';
 
-const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const run = (cmd) => { console.log(`[predeploy] $ ${cmd}`); execSync(cmd, { stdio: 'inherit' }); };
 
-function run(cmd) {
-  console.log(`[predeploy] $ ${cmd}`);
-  execSync(cmd, { stdio: 'inherit' });
-}
-
-function retry(cmd, attempts = 6, delayMs = 8000) {
-  for (let i = 1; i <= attempts; i++) {
-    try { run(cmd); return; }
-    catch (e) {
-      if (i === attempts) throw e;
-      console.warn(`[predeploy] попытка ${i}/${attempts} не удалась (${e.message}); жду ${delayMs / 1000}с и повторяю…`);
-      sleep(delayMs);
-    }
+// Применить схему — критично, с экспоненциальным backoff (~30с суммарно).
+const delays = [1000, 2000, 4000, 8000, 16000];
+let applied = false;
+for (let i = 0; i < delays.length; i++) {
+  try { run('npx prisma db push --skip-generate'); applied = true; break; }
+  catch {
+    if (i === delays.length - 1) { console.error('[predeploy] Neon недоступен после всех попыток'); process.exit(1); }
+    console.log(`[predeploy] Neon cold-start, повтор через ${delays[i]}ms (${i + 1}/${delays.length})…`);
+    await sleep(delays[i]);
   }
 }
+if (applied) console.log('[predeploy] ✓ схема применена');
 
-// Схема — критично: ретраим, чтобы пережить холодный старт/таймаут Neon.
-retry('npx prisma db push --skip-generate', 6, 8000);
-
-// Сиды — идемпотентные, НЕ фатальные: перебой БД здесь не валит сборку.
+// Сиды — идемпотентные, НЕ фатальные.
 for (const seed of ['scripts/backfill-branches.ts', 'scripts/seed-psy-templates.ts', 'scripts/seed-demo-intake.ts']) {
   try { run(`npx tsx ${seed}`); }
   catch (e) { console.warn(`[predeploy] сид ${seed} пропущен (не критично): ${e.message}`); }
 }
-
-console.log('[predeploy] готово.');
