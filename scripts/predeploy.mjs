@@ -20,7 +20,7 @@ for (let i = 0; i < delays.length; i++) {
 if (applied) console.log('[predeploy] ✓ схема применена');
 
 // Сиды — идемпотентные, НЕ фатальные.
-for (const seed of ['scripts/backfill-branches.ts', 'scripts/seed-psy-templates.ts', 'scripts/seed-demo-intake.ts']) {
+for (const seed of ['scripts/backfill-branches.ts', 'scripts/seed-psy-templates.ts', 'scripts/seed-demo-intake.ts', 'scripts/backfill-debtor-contracts.ts']) {
   try { run(`npx tsx ${seed}`); }
   catch (e) { console.warn(`[predeploy] сид ${seed} пропущен (не критично): ${e.message}`); }
 }

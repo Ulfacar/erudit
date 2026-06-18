@@ -348,13 +348,15 @@ export default function StudentProfilePage() {
   useEffect(() => {
     async function fetchData() {
       try {
+        // Оценки тянем только если роль их видит — иначе лишний запрос ловит 403
+        // и раскрывает существование защищённого endpoint-а (смоук J-CC-01, call_center/психолог).
+        const wantsGrades = tabVisible('grades');
         const [studentRes, gradesRes] = await Promise.all([
           fetch(`/api/v1/students/${studentId}`),
-          fetch(`/api/v1/students/${studentId}/grades`),
+          wantsGrades ? fetch(`/api/v1/students/${studentId}/grades`) : Promise.resolve(null),
         ]);
 
         const studentJson = await studentRes.json();
-        const gradesJson = await gradesRes.json();
 
         if (studentJson.success) {
           setStudent(studentJson.data);
@@ -365,7 +367,10 @@ export default function StudentProfilePage() {
             setMedicalForm({ ...defaultMedicalData(), ...studentJson.data.medicalData });
           }
         }
-        if (gradesJson.success) setGrades(gradesJson.data);
+        if (gradesRes) {
+          const gradesJson = await gradesRes.json();
+          if (gradesJson.success) setGrades(gradesJson.data);
+        }
       } catch (err) {
         console.error('Failed to fetch student data:', err);
       } finally {
@@ -374,7 +379,7 @@ export default function StudentProfilePage() {
     }
     fetchData();
     fetchIncidents();
-  }, [studentId, fetchIncidents]);
+  }, [studentId, fetchIncidents, tabVisible]);
 
   // Если выбранная вкладка скрыта для роли — показываем первую доступную (без доп. состояния).
   const shownTab = activeTab && tabVisible(activeTab) ? activeTab : (TAB_ORDER.find(tabVisible) ?? null);

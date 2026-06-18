@@ -607,3 +607,297 @@ none
 none
 
 ---
+
+## [J-CC-01] Smoke: Колл-центр — взыскание (роль call_center)
+
+**Status:** RESOLVED 2026-06-18
+**Resolution:**
+- Пустые договоры у должников: `scripts/backfill-debtor-contracts.ts` (идемпотентный, добавлен в predeploy) создаёт активный договор для учеников со счетами, но без договора, и привязывает их счета (`contractId`) → вкладка «Договор и платежи» показывает договор, баланс=остаток долга, график=реальные счета.
+- Молчаливый 403 на `/grades`: профиль теперь тянет оценки только если роль их видит (`tabVisible('grades')`) — call_center/психолог больше не дёргают защищённый endpoint (`src/app/(dashboard)/students/[id]/page.tsx`).
+
+**Status (исходный):** ЧАСТИЧНО PASSED / 1 MINOR BUG
+**Severity:** MINOR
+**Actor:** call_center (callcenter1 / erudit2025)
+**Category:** call-center, RBAC, contracts
+**Started:** 2026-06-16T00:00:00Z
+**Duration:** ~3m
+
+### Observations
+
+#### STEP 1 — Страница Колл-центра
+- PASS  Раздел «Колл-центр» найден в меню и открывается без ошибок (/call-center)
+- PASS  3 карточки статистики присутствуют: ДОЛЖНИКОВ (8), СУММА ДОЛГА (113 000 сом), ПЕНЯ (848 сом)
+- PASS  Должники сгруппированы по классам: карточки 2а (1 чел.), 7а (5 чел.), 7б (2 чел.)
+- PASS  Клик по карточке класса (7а) разворачивает список учеников-должников с ФИО, телефоном, суммой долга, количеством дней просрочки
+
+#### STEP 2 — Действие «Звонок»
+- PASS  У каждого должника есть бейдж приоритета (ВЫСОКИЙ / НИЗКИЙ)
+- PASS  Кнопка «Звонок» присутствует рядом с каждым учеником
+- PASS  Клик «Звонок» открывает модальное окно «Результат звонка — [ФИО]» с полем «Исход звонка» и «Комментарий»
+- PASS  Опции исхода в select: Связались, Нет контакта, Обещал оплатить, Отказ, Закрыто (все 5 вариантов)
+- PASS  После сохранения статус отображается прямо в строке ученика: «Связались: Тест — обещал оплатить до пятницы (16.06.2026)»
+
+#### STEP 3 — Профиль ученика (RBAC)
+- PASS  Клик по имени ученика открывает профиль /students/{id}
+- PASS  В профиле отображается ТОЛЬКО вкладка «Договоры» — ровно 1 tab
+- PASS  Вкладка «Оценки» ОТСУТСТВУЕТ (RBAC соблюдён на уровне UI)
+- BUG   На клиенте в консоли появляется ошибка 403 от GET /api/v1/students/{id}/grades — страница профиля, по всей видимости, инициирует prefetch оценок вне зависимости от роли, и получает 403. Видимого UI-эффекта нет, но лишний сетевой запрос к защищённому ресурсу раскрывает существование endpoint-а
+
+#### STEP 4 — Вкладка «Договоры»
+- PASS  Вкладка «Договоры» открывается и показывает заголовок «Договор и платежи»
+- FAIL  Контент: «Договоров пока нет.» — у должника Асанов Азамат (7А, долг 21 000 сом) нет ни одного привязанного договора. Это либо баг данных (seed не создаёт договоры для должников из колл-центра), либо баг логики связи ученик→договор
+
+### Repro (баг данных / договоры)
+1. Войти как callcenter1 / erudit2025
+2. Перейти «Колл-центр», кликнуть класс 7а
+3. Кликнуть «Асанов Азамат» → /students/cmpjtf3kp00qiukogce63qnmg
+4. Вкладка «Договоры» → раздел «Договор и платежи»
+5. Ожидаемо: график платежей / договор об оплате
+6. Фактически: «Договоров пока нет.»
+
+### Repro (silent 403 grades prefetch)
+1. Войти как callcenter1
+2. Открыть любой профиль ученика через колл-центр
+3. Открыть DevTools → Network
+4. Ожидаемо: нет запросов к /api/.../grades
+5. Фактически: GET /api/v1/students/{id}/grades → 403, console.error в браузере
+
+### Screenshot
+`journey-results/screenshots/step4-contracts.png`
+`journey-results/screenshots/step3-student-profile.png`
+`journey-results/screenshots/step2-after-save.png`
+
+### Console / network errors
+- `[console.error] Failed to load resource: the server responded with a status of 403 ()` при открытии профиля ученика
+- `[HTTP 403] https://bilimos.kg/api/v1/students/cmpjtf3kp00qiukogce63qnmg/grades`
+
+### Suggested fix
+1. Договоры: скрипт `scripts/seed-demo.ts` должен создавать объекты Contract и PaymentSchedule для учеников, фигурирующих в долгах колл-центра (Асанов Азамат и др.). Либо убедиться, что логика выборки должников опирается на те же записи Contract, что отображает вкладка.
+2. Grades prefetch: компонент StudentProfile должен условно пропускать useEffect/fetch оценок если текущая роль — call_center (проверять сессию перед запросом).
+
+---
+
+## [J-PSY-SMOKE] Smoke-тест кабинета психолога (bilimos.kg)
+
+**Status:** RESOLVED 2026-06-18 (BAG-1 MAJOR закрыт коммитом `ee06769` — `onClick` перенесён на всю карточку ученика в `DrilldownByClass`; задеплоено). BAG-2 (/psychologist/students → 404) — навигация штатно идёт через `/students`, не баг.
+
+**Status (исходный):** PARTIAL (2 PASS, 1 FAIL, 1 PARTIAL)
+**Severity:** MAJOR (Item 2 — drill-down полностью не работает)
+**Actor:** psychologist1 / erudit2025
+**Category:** psychologist-module
+**Started:** 2026-06-16T00:00Z (UTC)
+**Duration:** ~8m
+
+---
+
+### LOGIN
+
+PASS. Логин `psychologist1` + пароль `erudit2025` — успешный вход. Редирект на `/psychologist`. Никаких ошибок в консоли при логине.
+
+---
+
+### ITEM 1 — Кабинет психолога
+
+**PASS**
+
+- Страница `/psychologist` загружается без ошибок (заголовок страницы: "Bilim OS - School ERP System", HTTP 200).
+- 4 статистических карточки присутствуют и показывают реальные данные:
+  - ОТКРЫТЫХ КЕЙСОВ: **7**
+  - В ЗОНЕ РИСКА: **3**
+  - КРИТИЧЕСКИХ: **1**
+  - КОНСУЛЬТАЦИЙ: **5**
+- Кейсы СГРУППИРОВАНЫ по классам (карточки: `1а — 3 ученик(ов) · открытых 3`, `2а — 1 ученик(ов) · открытых 1`, `7а — 3 ученик(ов) · открытых 3`). Это НЕ плоская таблица. Требование выполнено.
+- Есть фильтры по цвету риска: ЗЕЛЁНЫЙ / ЖЁЛТЫЙ / КРАСНЫЙ.
+- Кнопка «Новый кейс» присутствует.
+
+**Ложная тревога в скрипте:** первый тест пометил страницу как `is500=true` — это был артефакт, строка `rgba(15,23,42,0.06)` из CSS содержала подстроку "500". Реальная страница загрузилась корректно.
+
+---
+
+### ITEM 2 — Drill-down (класс → ученик → кейс)
+
+**FAIL — MAJOR BUG**
+
+**Шаг 1 (класс → список учеников):** PASS.
+- Клик по карточке класса `1а` работает: карточки классов сворачиваются и появляются карточки учеников этого класса:
+  - `Абдуллаев Максим — 2 кейс(ов) — ЖЁЛТЫЙ`
+  - `Касымова Алия — 1 кейс(ов) — ЗЕЛЁНЫЙ`
+  - `Демонстрова Самира — 1 кейс(ов) — ЗЕЛЁНЫЙ`
+- Бейджи риска (ЖЁЛТЫЙ, ЗЕЛЁНЫЙ) присутствуют.
+
+**Шаг 2 (клик на ученика → панель/модал с кейсами):** FAIL.
+- Клик на карточку ученика (`Абдуллаев Максим`) **не делает ничего**:
+  - URL остаётся `/psychologist`
+  - Модальное окно не открывается (`[role="dialog"]` = 0)
+  - Drawer не появляется
+  - API-запросы не уходят (0 запросов после клика)
+- Карточка визуально выглядит кликабельной (Mantine Card), но `onClick` обработчик либо отсутствует, либо вызывает setState без видимого эффекта.
+
+**Шаг 3 (кейс → detail):** НЕ ДОСТИГНУТ из-за шага 2.
+- Прямой URL `/psychologist/cases` → 404.
+
+**Репро:**
+1. Войти как `psychologist1`
+2. Перейти на `/psychologist`
+3. Кликнуть карточку класса `1а` — студенты появляются
+4. Кликнуть на карточку ученика `Абдуллаев Максим`
+5. Ожидалось: открытие модала/панели со списком кейсов этого ученика (риск-бейджи, статусы)
+6. Фактически: ничего не происходит, URL не меняется, модал не открывается
+
+---
+
+### ITEM 3 — Новый кейс
+
+**PASS**
+
+- Кнопка «Новый кейс» видна и кликабельна.
+- Модальное окно открывается.
+- В дропдауне студентов класс указан рядом с ФИО — формат `Абдуллаев Максим (1а)`, `Демонстрова Самира (1а)` и т.д. Требование выполнено.
+
+---
+
+### ITEM 4 — Профиль ученика (RBAC: вкладка «Оценки»)
+
+**PASS** (критическое требование выполнено)
+
+- Путь к профилю: `/students` → клик на строку → `/students/cmpjtfzda0103ukogube1ck0y`
+- Вкладка **«Оценки» ОТСУТСТВУЕТ** у роли `psychologist` — требование RBAC соблюдено.
+- Видимые вкладки профиля (все `[role="tab"]`):
+  `Лента`, `Договоры`, `Посещаемость`, `Анкета`, `Медицина`, `Поведение`, `Беседы`, `Аналитика`, `Портфолио`, `Документы`
+- Вкладки `Лента`, `Анкета`, `Медицина`, `Беседы` — присутствуют (требования выполнены).
+- **Примечание:** `/psychologist/students` → 404. Навигация к профилю происходит через общую страницу `/students`, не через отдельный маршрут психолога.
+
+**Дополнительная находка:** При загрузке профиля `HTTP 403` на `GET /api/v1/students/{id}/grades` — сервер правильно блокирует запрос оценок для роли психолога. Хорошо.
+
+---
+
+### Console / network errors
+
+```
+[HTTP 403] https://bilimos.kg/api/v1/students/cmpjtfzda0103ukogube1ck0y/grades
+  — ожидаемо, RBAC работает корректно
+
+[HTTP 404] https://bilimos.kg/psychologist/students
+  — маршрут /psychologist/students не существует (навигация через /students)
+
+[HTTP 404] https://bilimos.kg/psychologist/cases
+  — прямой маршрут к кейсам не существует
+```
+
+Ошибок в JS-консоли (`console.error`) — нет.
+
+---
+
+### Список багов
+
+**БАГ 1 — MAJOR:** Клик на карточку ученика в раскрытом классе ничего не делает.
+- Воспроизводится стабильно.
+- Эффект: вся цепочка drill-down (ученик → список кейсов → детали кейса) недоступна.
+- Предполагаемая причина: в компоненте студенческой карточки отсутствует/сломан `onClick` — возможно, не передан `onStudentClick` проп или `router.push` вызывается с undefined ID.
+- Направление фикса: проверить `onClick` на Mantine Card в компоненте кабинета психолога; добавить навигацию на `/psychologist/students/{id}` или открытие Sheet/Drawer с кейсами.
+
+**БАГ 2 — MINOR:** `/psychologist/students` → 404.
+- Маршрут отсутствует, навигация через `/students` работает, но выглядит как незавершённая архитектура.
+
+---
+
+### Screenshots
+
+`journey-results/screenshots/PSY_FINAL_cabinet_clean.png`
+`journey-results/screenshots/PSY_FINAL_class_expanded.png`
+`journey-results/screenshots/PSY_FINAL_after_student_click.png`
+`journey-results/screenshots/PSY_ITEM3_modal.png`
+`journey-results/screenshots/PSY_ITEM4_profile_final.png`
+
+---
+
+## [SMOKE-2026-06-16] Smoke Test: Secretary — CRM / Appointments / Classes / Student Profile / Events
+
+**Status:** PARTIAL PASS (4 of 5 checks fully confirmed; 1 check partial)
+**Actor:** secretary (secretary1)
+**Category:** smoke / regression
+**Started:** 2026-06-16T00:00:00Z
+**Duration:** ~25m (6 automated passes)
+
+---
+
+### CHECK 1 — Приёмная (CRM): PASS with one gap
+
+**Kanban board:** PASS. Loads at `/admission` with columns Заявка → Тестирование → Психолог → Директор → Договор → Зачислен → Отказ. Cards visible with candidate names, phone numbers, source channel.
+
+**Date filter «Зачисления: с/по»:** PASS. Label "Зачисления: с по" with two date inputs visible above the board.
+
+**«Профиль» button in «Зачислен» column:** PASS. Found on all 4 cards in Зачислен column. Clicking navigates to `/students/<id>` (student profile). Confirmed.
+
+**«Перейти сразу к этапу» chevron:** PARTIAL. Each card has two icon-only (empty-text) buttons alongside the stage-move and Отказ buttons — `['', 'Тестирование', '', 'Отказ']`. These may be chevron/dropdown triggers, but the smoke test did NOT click them to confirm a stage-jump dropdown opens. Cannot confirm or deny this feature from the automated run.
+
+---
+
+### CHECK 2 — Запись к директору: PASS
+
+Created a record via "+ Записать на встречу" modal. Fields filled: Тема встречи = "Тест дымовой — smoke test topic", Желаемые дата и время = 20.06.2026 16:00. After clicking "Записать" the record appeared in the list with badge **ОЖИДАЕТ**. No console or network errors.
+
+---
+
+### CHECK 3 — Классы (Classes): PASS
+
+Opened "Классы" from sidebar (navigates to `/classes`). Shows 18 classes across Начальная/Средняя/Старшая with "Состав" button per row. Clicking "Состав" navigates to `/students?classId=...` and shows the filtered student list (165 rows total when unfiltered). No errors.
+
+---
+
+### CHECK 4 — Профиль ученика (Student profile): PASS
+
+Opened student Сыдыкова Айпери (2А класс) at `/students/cmqfbvlwc0002qv0kgxr6y9f3`.
+
+**Tab «Договоры»:**
+- "Договор и платежи" section loads. Contract #23 (ACTIVE), 650 000 сом base, 20% discount, 520 000 сом итого.
+- **БАЛАНС card:** visible (0 сом из 520 000, Аванс 0, Прогресс 0%).
+- **«График платежей»:** visible — shows "Счёта по этому договору не сгенерированы" (no bills generated for this contract — data state, not a bug).
+- **«Продлить договор» button:** visible and present.
+
+**Tab «Беседы»:**
+- Section "Воспитательные беседы" with "+ Добавить беседу" button loads.
+- Clicked "+ Добавить беседу" → modal "Воспитательная беседа" opened.
+- Filled: "С кем беседа" = "С учеником" (Mantine combobox), "Содержание беседы" = "Тестовая беседа — smoke test".
+- Clicked "Сохранить" → toast **"Записано — Беседа добавлена"** appeared. Conversation visible in list with tag "С УЧЕНИКОМ" and date 16.06.2026.
+- No console or network errors.
+
+---
+
+### CHECK 5 — Мероприятия (Events): PASS
+
+Calendar at `/events` renders as a mini monthly calendar (June 2026, Mo–Su grid) with a day-detail sidebar on the right. **Loads in ~5 seconds** (shows spinner during load).
+
+Created event via "+ Добавить мероприятие":
+- Form fields: Название, Дата, Дата окончания, Место проведения, Описание.
+- Filled: Название = "Дымовой тест мероприятия", Дата = 16.06.2026.
+- Clicked "Создать" → modal closed. Event appeared in the right-side panel under "16.06.2026" as "Дымовой тест мероприятия". Also visible as a dot on the calendar grid.
+- No errors.
+
+---
+
+### Bugs / Observations
+
+**BUG-1 (MINOR):** Pages `/students`, `/events` show a loading spinner for 5–8 seconds on first navigation before data appears. On initial automated run (waitUntil: 'networkidle' + 2s) these pages appeared empty. With an 8s wait they load correctly. Suggests a slow API or hydration issue. No network 4xx/5xx — just latency.
+- Screenshot: `journey-results/screenshots/smoke_check4_students_list.png` (shows spinner at 2s), `journey-results/screenshots/smoke6_students_8s.png` (loaded at 8s).
+
+**BUG-2 (MINOR):** `/reserve` (Очередь в классы) showed infinite spinner on first run (2s wait + networkidle) and then loaded on second run after 5s wait. Intermittent slow load. No errors in network log.
+- Screenshot: `journey-results/screenshots/smoke_check3_classes.png` (spinner), `journey-results/screenshots/smoke6_reserve_5s.png` (loaded).
+
+**BUG-3 (MINOR, UX):** The date filter label "Зачисления:" appears without specific "с / по" sub-labels — two date inputs render without visible placeholder or label text, making it unclear which is "from" and which is "to" for users. The label "Зачисления: с по" shows as one line visually.
+
+**NOT A BUG:** Stage-jump chevron (empty icon buttons next to "Тестирование", "Отказ") present but not confirmed to open a dropdown. Would need manual click test to verify.
+
+**NOT A BUG:** «График платежей» shows "Счёта не сгенерированы" — expected for a contract with no billing records created.
+
+---
+
+### Screenshots (key)
+- `journey-results/screenshots/smoke_check1_crm_page.png` — CRM Kanban
+- `journey-results/screenshots/smoke2_check2_after_save.png` — Запись к директору with ОЖИДАЕТ
+- `journey-results/screenshots/smoke2_check3_classes.png` — Классы page with Состав buttons
+- `journey-results/screenshots/smoke2_check4_dogovor_tab.png` — Договоры tab with БАЛАНС
+- `journey-results/screenshots/smoke5_besedu_saved.png` — Беседы saved confirmation
+- `journey-results/screenshots/smoke6_events_june16.png` — Event visible in calendar
+
+---
