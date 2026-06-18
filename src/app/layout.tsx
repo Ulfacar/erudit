@@ -2,12 +2,15 @@ import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { DatesProvider } from '@mantine/dates';
 import { QueryProvider } from '@/shared/providers/query-provider';
 import { SessionProvider } from '@/shared/providers/session-provider';
 import { eruditTheme } from '@/theme/erudit-theme';
+import 'dayjs/locale/ru';
 
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
+import '@mantine/dates/styles.css';
 import './globals.css';
 
 const inter = Inter({
@@ -43,8 +46,10 @@ export default function RootLayout({
         <SessionProvider>
           <QueryProvider>
             <MantineProvider theme={eruditTheme} forceColorScheme="light">
-              <Notifications position="top-right" />
-              {children}
+              <DatesProvider settings={{ locale: 'ru', firstDayOfWeek: 1 }}>
+                <Notifications position="top-right" />
+                {children}
+              </DatesProvider>
             </MantineProvider>
           </QueryProvider>
         </SessionProvider>

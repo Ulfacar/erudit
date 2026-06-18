@@ -200,7 +200,7 @@ function NewAppointmentModal({ defaultDay, onClose, onDone }: { defaultDay: stri
         <Select label="С кем" data={Object.entries(WITH).map(([v, l]) => ({ value: v, label: l }))} value={withType}
           onChange={(v) => { setWithType(v ?? 'student'); setWithId(null); setWithNameText(''); }} />
         {personList ? (
-          <Select label={withType === 'student' ? 'Ученик' : 'Учитель'} placeholder="Найти" searchable data={personList} value={withId} onChange={setWithId} />
+          <Select label={withType === 'student' ? 'Ученик' : 'Учитель'} placeholder="Найти" searchable withAsterisk data={personList} value={withId} onChange={setWithId} />
         ) : (
           <TextInput label={withType === 'parent' ? 'Родитель (ФИО)' : 'Название семинара'} value={withNameText} onChange={(e) => setWithNameText(e.currentTarget.value)} />
         )}
