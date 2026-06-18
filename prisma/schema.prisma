@@ -1187,6 +1187,25 @@ model DirectorAppointment {
   @@index([desiredAt])
 }
 
+// Календарь психолога: приёмы (ученик/учитель/родитель) и семинары/тренинги.
+model PsyAppointment {
+  id             String   @id @default(cuid())
+  psychologistId String   // user.id психолога-владельца календаря
+  at             DateTime // дата+время встречи
+  durationMin    Int?     // длительность, мин (опц.)
+  kind           String   @default("individual") // individual | personal | group
+  withType       String   // student | teacher | parent | seminar
+  withId         String?  // id ученика/учителя/родителя (для seminar — пусто)
+  withName       String?  // отображаемое имя/название (денормализация для списка)
+  topic          String   // тема встречи
+  status         String   @default("scheduled") // scheduled | done | cancelled
+  note           String?
+  branchId       String?
+  createdAt      DateTime @default(now())
+
+  @@index([psychologistId, at])
+}
+
 // ============ STUDIOS / CLUBS ============
 
 model Studio {

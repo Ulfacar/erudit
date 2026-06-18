@@ -152,6 +152,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/branches', label: 'Филиалы', roles: ['super_admin', 'analyst'] },
   // Психологическая служба (eSPSMS) — кейс-менеджмент психолога
   { href: '/psychologist', label: 'Кабинет психолога', roles: PSY_STAFF },
+  { href: '/psychologist/calendar', label: 'Календарь психолога', roles: PSY_STAFF },
   { href: '/psychologist/methods', label: 'Конструктор методик', roles: ['senior_psychologist', 'super_admin'] },
   { href: '/psychologist/overview', label: 'Психология: сводка', roles: ['super_admin', 'analyst', 'zavuch', 'senior_psychologist', 'safeguarding_lead'] },
   { href: '/safeguarding', label: 'Координатор безопасности', roles: ['safeguarding_lead', 'zavuch', 'super_admin'] },
