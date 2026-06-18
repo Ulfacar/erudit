@@ -202,6 +202,7 @@ model Student {
   class       Class         @relation(fields: [classId], references: [id])
   enrolledAt  DateTime      @default(now())
   branchId    String? // филиал ученика (multi-branch)
+  psyCode     String?       @unique // персональный номер участника психослужбы (У-####), для конфиденциальности
 
   groups      ClassGroup[]    @relation("StudentGroups")
   grades      Grade[]

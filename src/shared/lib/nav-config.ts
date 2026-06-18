@@ -65,8 +65,9 @@ export const SIDEBAR_NAV: NavRoute[] = [
   },
   // Админская «Главная» — всешкольная статистика; учителю не показываем (у него «Сегодня»)
   { href: '/dashboard', label: 'Главная', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
-  // Ядро экосистемы: граф связей + CRM-воронка приёмной + база знаний
-  { href: '/core', label: 'Граф ядра', roles: [...ADMIN_SECRETARY, 'senior_psychologist', 'safeguarding_lead', 'psychologist', 'call_center', 'hr', 'accountant'] },
+  // Ядро экосистемы: граф связей + CRM-воронка приёмной + база знаний.
+  // По ТЗ Эмира (18.06): «Граф ядра» виден только школе самой — super_admin.
+  { href: '/core', label: 'Граф ядра', roles: ['super_admin'] },
   { href: '/admission', label: 'Приёмная (CRM)', roles: ADMIN_SECRETARY },
   { href: '/reserve', label: 'Очередь в классы', roles: ADMIN_SECRETARY },
   { href: '/operations/transition', label: 'Перевод года', roles: ADMIN_AND_VICE },

@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
-  Alert, Badge, Button, Card, Group, Loader, Modal, Paper, Select, SimpleGrid, Stack, Text,
+  Alert, Badge, Button, Group, Loader, Modal, Paper, Select, SimpleGrid, Stack, Text,
   Textarea, TextInput, Title,
 } from '@mantine/core';
 import { IconBrain, IconUserPlus, IconAlertTriangle, IconActivity, IconFlame, IconClipboardHeart } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
-import { fmtDate } from '@/shared/components/ui/resource-helpers';
 import { DrilldownByClass, type DrillGroup } from '@/shared/components/DrilldownByClass';
+import { StudentPsyCard } from './StudentPsyCard';
 
 const RISK = {
   green: { label: 'Зелёный', color: 'green', rank: 0 },
@@ -44,7 +43,7 @@ function PsychologistCabinet() {
   const [cases, setCases] = useState<PsyCase[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [open, setOpen] = useState(false);
-  const [studentModal, setStudentModal] = useState<{ name: string; cases: PsyCase[] } | null>(null);
+  const [cardStudentId, setCardStudentId] = useState<string | null>(null);
 
   // форма создания
   const [studentId, setStudentId] = useState<string | null>(null);
@@ -150,7 +149,7 @@ function PsychologistCabinet() {
               primary: info?.name ?? '—',
               secondary: `${sCases.length} кейс(ов)`,
               right: <Badge color={riskColor(w)} variant="light">{RISK[(['green', 'yellow', 'red'] as const)[w]].label}</Badge>,
-              onClick: () => setStudentModal({ name: info?.name ?? '—', cases: sCases }),
+              onClick: () => setCardStudentId(sid),
             };
           }),
         };
@@ -189,26 +188,8 @@ function PsychologistCabinet() {
         )}
       </Paper>
 
-      {/* Кейсы выбранного ученика */}
-      <Modal opened={!!studentModal} onClose={() => setStudentModal(null)} title={`Кейсы — ${studentModal?.name ?? ''}`} centered size="lg">
-        <Stack gap="sm">
-          {studentModal?.cases.map((c) => (
-            <Card key={c.id} withBorder radius="md" padding="sm" component={Link} href={`/psychologist/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <Group justify="space-between" wrap="nowrap">
-                <Group gap={6} wrap="nowrap">
-                  <Text fw={500}>{c.title}</Text>
-                  {c.isIntake && <Badge size="xs" color="grape" variant="light">входная диагностика</Badge>}
-                </Group>
-                <Group gap="xs" wrap="nowrap">
-                  <Badge color={RISK[c.riskLevel].color} variant="light">{RISK[c.riskLevel].label}</Badge>
-                  <Badge color={STATUS[c.status].color} variant="outline">{STATUS[c.status].label}</Badge>
-                  <Text size="xs" c="dimmed">{c._count?.sessions ?? 0} сесс. · {fmtDate(c.updatedAt)}</Text>
-                </Group>
-              </Group>
-            </Card>
-          ))}
-        </Stack>
-      </Modal>
+      {/* Анкета выбранного ученика */}
+      <StudentPsyCard studentId={cardStudentId} onClose={() => setCardStudentId(null)} />
 
       <Modal opened={open} onClose={() => setOpen(false)} title="Новый кейс" centered size="lg">
         <Stack gap="md">

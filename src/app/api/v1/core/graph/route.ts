@@ -37,7 +37,7 @@ const MAX_PARENTS = 40;
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'senior_psychologist', 'safeguarding_lead', 'psychologist', 'call_center', 'hr', 'accountant'] });
+    const auth = await withAuth(request, { roles: ['super_admin'] });
     if (auth.response) return auth.response;
 
     const [
