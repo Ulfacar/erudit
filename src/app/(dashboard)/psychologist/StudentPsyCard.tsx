@@ -6,8 +6,9 @@ import {
   Anchor, Avatar, Badge, Box, Button, Card, Divider, Drawer, FileButton, Group,
   Loader, Paper, SimpleGrid, Stack, Text, Title,
 } from '@mantine/core';
-import { IconFileText, IconUpload, IconUsers, IconCalendarEvent } from '@tabler/icons-react';
+import { IconFileText, IconUpload, IconUsers, IconCalendarEvent, IconUserPlus } from '@tabler/icons-react';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
+import { NewPsyCaseModal } from './NewPsyCaseModal';
 
 const RISK: Record<string, { label: string; color: string }> = {
   green: { label: 'Зелёный', color: 'green' }, yellow: { label: 'Жёлтый', color: 'yellow' }, red: { label: 'Красный', color: 'red' },
@@ -38,11 +39,12 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function StudentPsyCard({ studentId, onClose }: { studentId: string | null; onClose: () => void }) {
+export function StudentPsyCard({ studentId, onClose, onChanged }: { studentId: string | null; onClose: () => void; onChanged?: () => void }) {
   const [data, setData] = useState<CardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [openParent, setOpenParent] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [newCase, setNewCase] = useState(false);
   const resetRef = useRef<() => void>(null);
 
   async function load() {
@@ -77,17 +79,22 @@ export function StudentPsyCard({ studentId, onClose }: { studentId: string | nul
       ) : (
         <Stack gap="lg">
           {/* Шапка */}
-          <Group gap="md" wrap="nowrap">
-            <Avatar src={p.photo ?? undefined} size={64} radius="md" color="grape">
-              {p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}
-            </Avatar>
-            <div style={{ minWidth: 0 }}>
-              <Title order={3}>{p.name}</Title>
-              <Group gap="xs" mt={4}>
-                <Badge variant="light" color="blue">{p.className}</Badge>
-                {p.psyCode && <Badge variant="light" color="grape">№ {p.psyCode}</Badge>}
-              </Group>
-            </div>
+          <Group justify="space-between" wrap="nowrap" align="flex-start">
+            <Group gap="md" wrap="nowrap">
+              <Avatar src={p.photo ?? undefined} size={64} radius="md" color="grape">
+                {p.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}
+              </Avatar>
+              <div style={{ minWidth: 0 }}>
+                <Title order={3}>{p.name}</Title>
+                <Group gap="xs" mt={4}>
+                  <Badge variant="light" color="blue">{p.className}</Badge>
+                  {p.psyCode && <Badge variant="light" color="grape">№ {p.psyCode}</Badge>}
+                </Group>
+              </div>
+            </Group>
+            <Button size="xs" variant="light" leftSection={<IconUserPlus size={14} />} onClick={() => setNewCase(true)}>
+              Новый кейс
+            </Button>
           </Group>
 
           {/* Родители (кликабельны → работа с родителем) */}
@@ -195,6 +202,14 @@ export function StudentPsyCard({ studentId, onClose }: { studentId: string | nul
             </Stack>
           )}
           <Box />
+
+          <NewPsyCaseModal
+            opened={newCase}
+            subjectType="student"
+            preset={{ id: p.id, name: p.name }}
+            onClose={() => setNewCase(false)}
+            onCreated={() => { setNewCase(false); load(); onChanged?.(); }}
+          />
         </Stack>
       )}
     </Drawer>

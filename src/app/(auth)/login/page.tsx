@@ -73,7 +73,8 @@ function landingForRole(role?: string): string {
     zavhoz: '/workspace/maintenance',
   };
   if (role && staffHome[role]) return staffHome[role];
-  return '/dashboard';
+  // админ/завуч/секретарь/аналитик/специалист — на «Главную»-хаб (Этап 9)
+  return '/home';
 }
 
 export default function LoginPage() {

@@ -26,13 +26,13 @@ export async function GET(request: NextRequest) {
     // зона риска (yellow/red) по параллелям классов
     const atRisk = cases.filter((c) => c.riskLevel !== 'green');
     const students = await prisma.student.findMany({
-      where: { id: { in: [...new Set(atRisk.map((c) => c.studentId))] } },
+      where: { id: { in: [...new Set(atRisk.map((c) => c.studentId).filter((x): x is string => !!x))] } },
       select: { id: true, class: { select: { grade: true } } },
     });
     const gradeOf = (sid: string) => students.find((s) => s.id === sid)?.class?.grade ?? null;
     const riskByGrade: Record<number, number> = {};
     for (const c of atRisk) {
-      const g = gradeOf(c.studentId);
+      const g = c.studentId ? gradeOf(c.studentId) : null;
       if (g != null) riskByGrade[g] = (riskByGrade[g] ?? 0) + 1;
     }
 

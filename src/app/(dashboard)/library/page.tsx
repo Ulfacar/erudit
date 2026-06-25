@@ -1,9 +1,11 @@
 'use client';
 
-import { Badge } from '@mantine/core';
-import { IconBook2 } from '@tabler/icons-react';
+import { Badge, Button } from '@mantine/core';
+import { IconBook2, IconQrcode } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
+import { buildTextbookCodes, printQrLabels } from '@/shared/lib/qr-print';
 
 const CATS = [
   { value: 'textbook', label: 'Учебник' },
@@ -21,6 +23,26 @@ export default function LibraryPage() {
         endpoint="/api/v1/library"
         createLabel="Добавить книгу"
         canDelete
+        rowActions={(row) => (
+          <Button
+            size="compact-xs"
+            variant="light"
+            color="cyan"
+            leftSection={<IconQrcode size={14} />}
+            onClick={async () => {
+              const count = Number(row.total ?? 1) || 1;
+              const codes = buildTextbookCodes(String(row.id), count);
+              const caption = String(row.title ?? 'Учебник');
+              try {
+                await printQrLabels(codes.map((code) => ({ code, caption })), `QR — ${caption}`);
+              } catch {
+                notifications.show({ color: 'red', title: 'Ошибка', message: 'Не удалось сгенерировать QR-коды' });
+              }
+            }}
+          >
+            QR ({Number(row.total ?? 1) || 1})
+          </Button>
+        )}
         columns={[
           { key: 'title', label: 'Название' },
           { key: 'author', label: 'Автор' },

@@ -27,6 +27,7 @@ export const ALL_ROLES: AppRole[] = [
   'senior_psychologist',
   'safeguarding_lead',
   'call_center',
+  'event_manager',
 ]
 
 export const ROLE_LABELS: Record<AppRole, string> = {
@@ -49,6 +50,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   senior_psychologist: 'Старший психолог',
   safeguarding_lead: 'Координатор безопасности',
   call_center: 'Колл-центр',
+  event_manager: 'Ивент-менеджер',
 }
 
 export const ADMIN_ROLES: AppRole[] = ['super_admin', 'analyst']

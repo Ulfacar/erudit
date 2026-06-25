@@ -17,10 +17,20 @@ interface FoundLoan extends Loan { student: { firstName: string; lastName: strin
 
 const barcodeSupported = () => typeof window !== 'undefined' && 'BarcodeDetector' in window;
 
-/** Модалка сканирования штрихкода камерой (прогрессивное улучшение, есть не везде). */
-function ScannerModal({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
+/**
+ * Модалка сканирования штрихкода/QR камерой (прогрессивное улучшение, есть не везде).
+ * continuous=true — режим «массовой выдачи»: камера не закрывается после скана,
+ * коды считываются один за другим (как касса), с дебаунсом повторов того же кода.
+ */
+function ScannerModal({
+  onCode, onClose, continuous = false, scannedLog = [],
+}: {
+  onCode: (code: string) => void; onClose: () => void; continuous?: boolean; scannedLog?: string[];
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [err, setErr] = useState('');
+  // дебаунс: один и тот же код не выдаём повторно в течение окна
+  const lastRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -35,7 +45,16 @@ function ScannerModal({ onCode, onClose }: { onCode: (code: string) => void; onC
           if (stopped || !videoRef.current) return;
           try {
             const codes = await detector.detect(videoRef.current);
-            if (codes && codes.length > 0 && codes[0].rawValue) { onCode(String(codes[0].rawValue)); return; }
+            const raw = codes && codes.length > 0 && codes[0].rawValue ? String(codes[0].rawValue) : '';
+            if (raw) {
+              if (!continuous) { onCode(raw); return; }
+              // массовый режим: игнорируем тот же код ~2.5 с (один кадр = много detect'ов)
+              const now = performance.now();
+              if (raw !== lastRef.current.code || now - lastRef.current.at > 2500) {
+                lastRef.current = { code: raw, at: now };
+                onCode(raw);
+              }
+            }
           } catch { /* кадр не распознан — продолжаем */ }
           raf = requestAnimationFrame(tick);
         };
@@ -45,16 +64,30 @@ function ScannerModal({ onCode, onClose }: { onCode: (code: string) => void; onC
       }
     })();
     return () => { stopped = true; cancelAnimationFrame(raf); stream?.getTracks().forEach((t) => t.stop()); };
-  }, [onCode]);
+  }, [onCode, continuous]);
 
   return (
-    <Modal opened onClose={onClose} title="Сканирование штрихкода" centered>
+    <Modal opened onClose={onClose} title={continuous ? 'Массовая выдача — сканируйте подряд' : 'Сканирование штрихкода'} centered>
       <Stack gap="sm">
         {err ? <Alert color="orange">{err}</Alert> : (
           <video ref={videoRef} style={{ width: '100%', borderRadius: 8, background: '#000' }} muted playsInline />
         )}
-        <Text size="xs" c="dimmed">Наведите камеру на штрихкод учебника.</Text>
-        <Group justify="flex-end"><Button variant="subtle" color="gray" onClick={onClose}>Закрыть</Button></Group>
+        <Text size="xs" c="dimmed">
+          {continuous
+            ? 'Наводите камеру на учебники по очереди — каждый сразу выдаётся выбранному ученику. По окончании нажмите «Готово».'
+            : 'Наведите камеру на штрихкод учебника.'}
+        </Text>
+        {continuous && (
+          <Group justify="space-between" align="center">
+            <Badge variant="light" color="teal">Выдано: {scannedLog.length}</Badge>
+            {scannedLog.length > 0 && <Text size="xs" c="dimmed" truncate>последний: {scannedLog[scannedLog.length - 1]}</Text>}
+          </Group>
+        )}
+        <Group justify="flex-end">
+          <Button variant={continuous ? 'filled' : 'subtle'} color={continuous ? 'teal' : 'gray'} onClick={onClose}>
+            {continuous ? 'Готово' : 'Закрыть'}
+          </Button>
+        </Group>
       </Stack>
     </Modal>
   );
@@ -77,7 +110,8 @@ function LibraryIssue() {
   const [finding, setFinding] = useState(false);
 
   // сканер
-  const [scanFor, setScanFor] = useState<'issue' | 'find' | null>(null);
+  const [scanFor, setScanFor] = useState<'issue' | 'find' | 'bulk' | null>(null);
+  const [bulkLog, setBulkLog] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/v1/students').then((r) => r.json()).then((j) => { setStudents(j.data ?? []); setLoadingStudents(false); }).catch(() => setLoadingStudents(false));
@@ -104,6 +138,21 @@ function LibraryIssue() {
     if (!j.success) { notifications.show({ color: 'red', title: 'Не выдан', message: j.error?.message ?? 'Ошибка' }); return; }
     notifications.show({ color: 'green', title: 'Выдан', message: `Учебник ${c}${title ? ` («${title}»)` : ''} привязан` });
     setCode(''); setTitle(''); loadLoans(studentId);
+  }
+
+  // массовая выдача: один код за раз, сразу к выбранному ученику, без закрытия камеры
+  async function bulkIssue(scannedCode: string) {
+    const c = scannedCode.trim();
+    if (!studentId || !c) return;
+    const res = await fetch('/api/v1/library/loans', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: c, studentId }),
+    });
+    const j = await res.json();
+    if (!j.success) { notifications.show({ color: 'red', title: 'Не выдан', message: j.error?.message ?? c }); return; }
+    setBulkLog((prev) => [...prev, c]);
+    notifications.show({ color: 'green', title: 'Выдан', message: c });
+    loadLoans(studentId);
   }
 
   async function returnLoan(id: string) {
@@ -146,6 +195,7 @@ function LibraryIssue() {
                   <TextInput label="Название (необязательно)" placeholder="Математика 5 кл." value={title} onChange={(e) => setTitle(e.currentTarget.value)} style={{ flex: 1 }} />
                   <Button leftSection={<IconPlus size={16} />} onClick={() => issue()} loading={issuing}>Выдать</Button>
                   {barcodeSupported() && <Button variant="light" leftSection={<IconCamera size={16} />} onClick={() => setScanFor('issue')}>Камера</Button>}
+                  {barcodeSupported() && <Button variant="light" color="teal" leftSection={<IconCamera size={16} />} onClick={() => { setBulkLog([]); setScanFor('bulk'); }}>Массовая выдача</Button>}
                 </Group>
 
                 <Text fw={600} mt="lg" mb="sm">На руках у ученика ({loans.length})</Text>
@@ -189,12 +239,14 @@ function LibraryIssue() {
         </Tabs.Panel>
       </Tabs>
 
-      {scanFor && (
+      {scanFor === 'bulk' ? (
+        <ScannerModal continuous scannedLog={bulkLog} onClose={() => setScanFor(null)} onCode={bulkIssue} />
+      ) : scanFor ? (
         <ScannerModal
           onClose={() => setScanFor(null)}
           onCode={(c) => { const mode = scanFor; setScanFor(null); if (mode === 'issue') { setCode(c); issue(c); } else { setFindCode(c); find(c); } }}
         />
-      )}
+      ) : null}
     </Stack>
   );
 }

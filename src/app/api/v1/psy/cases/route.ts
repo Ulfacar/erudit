@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const where = await caseWhereForScope(scope);
 
   const { searchParams } = new URL(request.url);
-  for (const p of ['studentId', 'status', 'riskLevel'] as const) {
+  for (const p of ['studentId', 'status', 'riskLevel', 'subjectType'] as const) {
     const v = searchParams.get(p);
     if (v) (where as Record<string, unknown>)[p] = v;
   }
@@ -39,10 +39,17 @@ export async function POST(request: NextRequest) {
   if (auth.response) return auth.response;
 
   const body = await request.json().catch(() => ({}));
-  const { studentId, title, reason, riskLevel, riskJustification } = body as Record<string, string>;
+  const { studentId, title, reason, riskLevel, riskJustification, subjectId, subjectName } = body as Record<string, string>;
+  // Этап 9: субъект кейса — ученик (по умолчанию) / родитель / учитель / группа.
+  const subjectType = (['student', 'parent', 'teacher', 'group'].includes(body.subjectType) ? body.subjectType : 'student') as 'student' | 'parent' | 'teacher' | 'group';
 
-  if (!studentId || !title?.trim()) {
-    return errorResponse('VALIDATION_ERROR', 'Нужны ученик и название кейса');
+  if (!title?.trim()) {
+    return errorResponse('VALIDATION_ERROR', 'Нужно название кейса');
+  }
+  if (subjectType === 'student') {
+    if (!studentId) return errorResponse('VALIDATION_ERROR', 'Нужен ученик');
+  } else if (!subjectId || !subjectName?.trim()) {
+    return errorResponse('VALIDATION_ERROR', 'Нужно выбрать субъект кейса');
   }
   const risk = (['green', 'yellow', 'red'].includes(riskLevel) ? riskLevel : 'green') as 'green' | 'yellow' | 'red';
   // Патч безопасности: красный риск требует текстового обоснования.
@@ -53,7 +60,10 @@ export async function POST(request: NextRequest) {
   try {
     const created = await prisma.psyCase.create({
       data: {
-        studentId,
+        subjectType,
+        studentId: subjectType === 'student' ? studentId : null,
+        subjectId: subjectType === 'student' ? studentId : subjectId,
+        subjectName: subjectType === 'student' ? null : subjectName!.trim(),
         ownerId: auth.session.user.id,
         title: title.trim(),
         reason: reason?.trim() || null,
@@ -64,8 +74,10 @@ export async function POST(request: NextRequest) {
     });
     // UC-5: красный риск → слепой safeguarding-алерт координаторам.
     if (risk === 'red') await emitSafeguardingAlert(created.id, riskJustification!.trim());
-    // Ядро: импульс «психолог открыл кейс» в нейро-граф (live-событие).
-    await emitEvent('psych.case.opened', { actorUserId: auth.session.user.id, studentId, payload: { caseId: created.id, risk } });
+    // Ядро: импульс «психолог открыл кейс» в нейро-граф (live-событие) — только по ученику.
+    if (subjectType === 'student') {
+      await emitEvent('psych.case.opened', { actorUserId: auth.session.user.id, studentId: studentId!, payload: { caseId: created.id, risk } });
+    }
     return successResponse(created, 201);
   } catch (e) {
     console.error('POST psy/cases error:', e);

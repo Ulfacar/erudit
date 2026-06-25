@@ -67,7 +67,7 @@ export function maskText(text: string, entities: Array<{ marker: string; variant
 export async function deidentifyForCase(caseId: string, text: string): Promise<DeidResult> {
   const c = await prisma.psyCase.findUnique({ where: { id: caseId }, select: { studentId: true } });
   const entities: Array<{ marker: string; variants: string[] }> = [];
-  if (c) {
+  if (c?.studentId) {
     const st = await prisma.student.findUnique({
       where: { id: c.studentId },
       select: { firstName: true, lastName: true, middleName: true },

@@ -76,8 +76,9 @@ enum Role {
   cook // повар/столовая
   zavhoz // завхоз/АХЧ
   senior_psychologist // старший психолог: конструктор методик + надзор/эскалация (eSPSMS)
-  safeguarding_lead // координатор безопасности: слепые экстренные уведомления (eSPSMS)
+  safeguarding_lead // координатор безопасности / воспитатель: происшествия, беседы, воспит. мероприятия
   call_center // колл-центр: обзвон задолжников, обещания оплаты
+  event_manager // ивент-менеджер: школьные мероприятия, заслуги участникам
 }
 
 // ============ SCHOOL STRUCTURE ============
@@ -846,9 +847,21 @@ enum PsyOutcome {
   referred // вне полномочий — направление к узкому специалисту
 }
 
+// Этап 9: субъект кейса психолога — 4 кабинета (ученик/родитель/учитель/группа-класс).
+enum PsySubject {
+  student
+  parent
+  teacher
+  group
+}
+
 model PsyCase {
   id                String        @id @default(cuid())
-  studentId         String
+  // Этап 9: кейс может вестись не только по ученику, но и по родителю/учителю/группе.
+  subjectType       PsySubject    @default(student)
+  subjectId         String? // id субъекта при parent/teacher/group; для student дублирует studentId
+  subjectName       String? // кэш имени субъекта (родитель/учитель/класс) для отображения
+  studentId         String? // заполняется при subjectType=student (обратная совместимость)
   ownerId           String        // user.id психолога-владельца
   title             String
   reason            String?       @db.VarChar(1000)

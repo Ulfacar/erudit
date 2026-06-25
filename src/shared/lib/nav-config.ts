@@ -54,6 +54,9 @@ const PSY_STAFF: Role[] = ['psychologist', 'senior_psychologist', 'specialist', 
 export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/diary', label: 'Дневник', roles: ['student', 'parent'] },
   { href: '/today', label: 'Сегодня', roles: ['teacher', 'curator', 'super_admin', 'zavuch'] },
+  // «Главная» — хаб быстрых ссылок (карточки-иконки меню роли). По встрече с Эмиром (Этап 9):
+  // снять шум сайдбара, дать быстрый вход. Для ролей с большим меню.
+  { href: '/home', label: 'Главная', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist', 'teacher', 'curator'] },
   { href: '/agent', label: 'Панель агента', roles: [...ALL_AUTH, ...NEW_STAFF] },
   {
     href: '/journal',
@@ -63,8 +66,10 @@ export const SIDEBAR_NAV: NavRoute[] = [
       { href: '/journal/attendance', label: 'Посещаемость', roles: STAFF_TIER },
     ],
   },
-  // Админская «Главная» — всешкольная статистика; учителю не показываем (у него «Сегодня»)
-  { href: '/dashboard', label: 'Главная', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
+  // Всешкольная статистика/аналитика; учителю не показываем (у него «Сегодня»).
+  // По встрече с Эмиром (Этап 9): дешборд переименован в «Аналитику школы», а быстрый
+  // вход вынесен в новую «Главную» (/home).
+  { href: '/dashboard', label: 'Аналитика школы', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
   // Ядро экосистемы: граф связей + CRM-воронка приёмной + база знаний.
   // По ТЗ Эмира (18.06): «Граф ядра» виден только школе самой — super_admin.
   { href: '/core', label: 'Граф ядра', roles: ['super_admin'] },

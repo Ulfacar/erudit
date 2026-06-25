@@ -31,7 +31,8 @@ interface Session {
 }
 interface TestResult { id: string; aiInterpretation: string | null; isHumanVerified: boolean; rawScores?: { methodology?: string } | null }
 interface PsyCase {
-  id: string; studentId: string; title: string; reason: string | null;
+  id: string; studentId: string | null; subjectType?: 'student' | 'parent' | 'teacher' | 'group'; subjectName?: string | null;
+  title: string; reason: string | null;
   riskLevel: keyof typeof RISK; status: keyof typeof STATUS; summary: string | null;
   courseRound?: number; outcome?: string;
   sessions: Session[]; tests: TestResult[];
@@ -86,8 +87,13 @@ function CaseDetail() {
     const j = await fetch(`/api/v1/psy/cases/${id}`).then((r) => r.json()).catch(() => ({}));
     if (j.success) {
       setC(j.data);
-      const s = await fetch(`/api/v1/students/${j.data.studentId}`).then((r) => r.json()).catch(() => ({}));
-      if (s.success) setStudentName(`${s.data.lastName} ${s.data.firstName}`);
+      // Имя субъекта: для ученика тянем из карточки, для остальных — из subjectName кейса.
+      if (j.data.studentId) {
+        const s = await fetch(`/api/v1/students/${j.data.studentId}`).then((r) => r.json()).catch(() => ({}));
+        if (s.success) setStudentName(`${s.data.lastName} ${s.data.firstName}`);
+      } else {
+        setStudentName(j.data.subjectName ?? '');
+      }
     }
     setLoading(false);
   }, [id]);
@@ -245,7 +251,7 @@ function CaseDetail() {
           <IconBrain size={26} color="#9c36b5" />
           <div>
             <Title order={2}>{c.title}</Title>
-            <Text c="dimmed" size="sm">Ученик: {studentName || c.studentId}</Text>
+            <Text c="dimmed" size="sm">{({ student: 'Ученик', parent: 'Родитель', teacher: 'Учитель', group: 'Группа' }[c.subjectType ?? 'student'])}: {studentName || c.subjectName || '—'}</Text>
             {c.reason && <Text size="sm" mt={4}>{c.reason}</Text>}
           </div>
         </Group>

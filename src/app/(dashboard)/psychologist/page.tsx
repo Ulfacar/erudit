@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, Badge, Button, Group, Loader, Modal, Paper, Select, SimpleGrid, Stack, Text,
-  Textarea, TextInput, Title,
+  Badge, Button, Card, Group, Loader, Paper, SegmentedControl, SimpleGrid, Stack, Text, Title,
 } from '@mantine/core';
+import Link from 'next/link';
 import { IconBrain, IconUserPlus, IconAlertTriangle, IconActivity, IconFlame, IconClipboardHeart } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { DrilldownByClass, type DrillGroup } from '@/shared/components/DrilldownByClass';
 import { StudentPsyCard } from './StudentPsyCard';
+import { NewPsyCaseModal, type SubjectType } from './NewPsyCaseModal';
 
 const RISK = {
   green: { label: 'Зелёный', color: 'green', rank: 0 },
@@ -22,12 +23,18 @@ const STATUS = {
   closed: { label: 'Закрыт', color: 'teal' },
 } as const;
 
+const CABINETS: { value: SubjectType; label: string }[] = [
+  { value: 'student', label: 'Ученики' },
+  { value: 'parent', label: 'Родители' },
+  { value: 'group', label: 'Группы' },
+  { value: 'teacher', label: 'Учителя' },
+];
+
 interface Student { id: string; firstName: string; lastName: string; middleName?: string | null; class?: { grade: number; letter: string } | null }
 interface PsyCase {
-  id: string; studentId: string; title: string; riskLevel: keyof typeof RISK;
-  status: keyof typeof STATUS; updatedAt: string; isIntake?: boolean; _count?: { sessions: number };
+  id: string; subjectType: SubjectType; studentId: string | null; subjectId: string | null; subjectName: string | null;
+  title: string; riskLevel: keyof typeof RISK; status: keyof typeof STATUS; updatedAt: string; isIntake?: boolean; _count?: { sessions: number };
 }
-interface ActiveCase { id: string; ownerName: string; isMine: boolean; riskLevel: keyof typeof RISK }
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   return (
@@ -38,22 +45,16 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   );
 }
 
+const worstRank = (list: PsyCase[]) => list.reduce((m, c) => Math.max(m, RISK[c.riskLevel].rank), 0);
+const riskColor = (rank: number) => (rank === 2 ? 'red' : rank === 1 ? 'yellow' : 'green');
+
 function PsychologistCabinet() {
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<PsyCase[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [cabinet, setCabinet] = useState<SubjectType>('student');
   const [open, setOpen] = useState(false);
   const [cardStudentId, setCardStudentId] = useState<string | null>(null);
-
-  // форма создания
-  const [studentId, setStudentId] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
-  const [reason, setReason] = useState('');
-  const [risk, setRisk] = useState<keyof typeof RISK>('green');
-  const [justification, setJustification] = useState('');
-  const [active, setActive] = useState<ActiveCase[]>([]);
-  const [err, setErr] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const studentInfo = useMemo(() => {
     const m: Record<string, { name: string; className: string }> = {};
@@ -77,73 +78,40 @@ function PsychologistCabinet() {
   }
   useEffect(() => { load(); }, []);
 
-  // при выборе ученика — проверяем активные кейсы (UC-1)
-  useEffect(() => {
-    if (!studentId) { setActive([]); return; }
-    fetch(`/api/v1/psy/cases/active?studentId=${studentId}`)
-      .then((r) => r.json()).then((j) => setActive(j.data ?? [])).catch(() => setActive([]));
-  }, [studentId]);
-
-  function resetForm() {
-    setStudentId(null); setTitle(''); setReason(''); setRisk('green'); setJustification(''); setActive([]); setErr('');
-  }
-
-  async function create() {
-    setErr('');
-    if (!studentId || !title.trim()) { setErr('Выберите ученика и укажите название'); return; }
-    if (risk === 'red' && !justification.trim()) { setErr('Для красного риска нужно обоснование'); return; }
-    setSaving(true);
-    const res = await fetch('/api/v1/psy/cases', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, title, reason, riskLevel: risk, riskJustification: justification }),
-    });
-    const j = await res.json();
-    setSaving(false);
-    if (!j.success) { setErr(j.error?.message ?? 'Ошибка'); return; }
-    setOpen(false); resetForm(); load();
-  }
-
-  async function requestCollab(caseId: string) {
-    await fetch(`/api/v1/psy/cases/${caseId}/collaborators`, { method: 'POST' });
-    setErr('Запрос со-терапевтического доступа отправлен владельцу кейса.');
-  }
-
-  const foreignActive = active.filter((a) => !a.isMine);
-
-  // Дашборд «моя работа»
+  // Дашборд «моя работа» — по всем кабинетам
   const inRisk = cases.filter((c) => c.riskLevel !== 'green' && c.status !== 'closed').length;
   const critical = cases.filter((c) => c.riskLevel === 'red' && c.status !== 'closed').length;
   const sessions = cases.reduce((s, c) => s + (c._count?.sessions ?? 0), 0);
   const openCount = cases.filter((c) => c.status !== 'closed').length;
 
-  // Группировка кейсов по классам → ученики → их кейсы
-  const groups = useMemo<DrillGroup[]>(() => {
+  // Кейсы текущего кабинета
+  const cabinetCases = useMemo(() => cases.filter((c) => c.subjectType === cabinet), [cases, cabinet]);
+
+  // Ученики: группировка по классам → ученики → кейсы
+  const studentGroups = useMemo<DrillGroup[]>(() => {
     const byClass = new Map<string, PsyCase[]>();
-    for (const c of cases) {
-      const cls = studentInfo[c.studentId]?.className ?? 'Без класса';
+    for (const c of cabinetCases) {
+      const cls = studentInfo[c.studentId ?? '']?.className ?? 'Без класса';
       if (!byClass.has(cls)) byClass.set(cls, []);
       byClass.get(cls)!.push(c);
     }
-    const worst = (list: PsyCase[]) => list.reduce((m, c) => Math.max(m, RISK[c.riskLevel].rank), 0);
-    const riskColor = (rank: number) => (rank === 2 ? 'red' : rank === 1 ? 'yellow' : 'green');
-
     return [...byClass.entries()]
       .sort((a, b) => a[0].localeCompare(b[0], 'ru'))
       .map(([cls, list]) => {
-        // уникальные ученики класса
         const byStudent = new Map<string, PsyCase[]>();
         for (const c of list) {
-          if (!byStudent.has(c.studentId)) byStudent.set(c.studentId, []);
-          byStudent.get(c.studentId)!.push(c);
+          const sid = c.studentId ?? '';
+          if (!byStudent.has(sid)) byStudent.set(sid, []);
+          byStudent.get(sid)!.push(c);
         }
         const open = list.filter((c) => c.status !== 'closed').length;
         return {
           key: cls, title: cls,
-          count: open, countColor: riskColor(worst(list.filter((c) => c.status !== 'closed'))),
+          count: open, countColor: riskColor(worstRank(list.filter((c) => c.status !== 'closed'))),
           subtitle: `${byStudent.size} ученик(ов) · открытых ${open}`,
           items: [...byStudent.entries()].map(([sid, sCases]) => {
             const info = studentInfo[sid];
-            const w = worst(sCases);
+            const w = worstRank(sCases);
             return {
               id: sid,
               primary: info?.name ?? '—',
@@ -154,7 +122,18 @@ function PsychologistCabinet() {
           }),
         };
       });
-  }, [cases, studentInfo]);
+  }, [cabinetCases, studentInfo]);
+
+  // Родители/Учителя/Группы: плоская группировка по субъекту → кейсы
+  const subjectGroups = useMemo(() => {
+    const m = new Map<string, { name: string; list: PsyCase[] }>();
+    for (const c of cabinetCases) {
+      const key = c.subjectId ?? c.id;
+      if (!m.has(key)) m.set(key, { name: c.subjectName ?? '—', list: [] });
+      m.get(key)!.list.push(c);
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  }, [cabinetCases]);
 
   return (
     <Stack gap="lg" p="md">
@@ -163,12 +142,11 @@ function PsychologistCabinet() {
           <IconBrain size={26} color="#9c36b5" />
           <Title order={2}>Кабинет психолога</Title>
         </Group>
-        <Button leftSection={<IconUserPlus size={16} />} onClick={() => { resetForm(); setOpen(true); }}>
+        <Button leftSection={<IconUserPlus size={16} />} onClick={() => setOpen(true)}>
           Новый кейс
         </Button>
       </Group>
 
-      {/* Моя работа */}
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
         <StatCard icon={<IconActivity size={15} color="#1971c2" />} label="Открытых кейсов" value={String(openCount)} color="#1971c2" />
         <StatCard icon={<IconAlertTriangle size={15} color="#f08c00" />} label="В зоне риска" value={String(inRisk)} color="#f08c00" />
@@ -176,61 +154,59 @@ function PsychologistCabinet() {
         <StatCard icon={<IconClipboardHeart size={15} color="#2f9e44" />} label="Консультаций" value={String(sessions)} color="#2f9e44" />
       </SimpleGrid>
 
-      <Group gap="xs">
-        {Object.entries(RISK).map(([k, v]) => <Badge key={k} color={v.color} variant="light">{v.label}</Badge>)}
-      </Group>
+      <SegmentedControl
+        value={cabinet}
+        onChange={(v) => setCabinet(v as SubjectType)}
+        data={CABINETS}
+        fullWidth
+      />
 
       <Paper withBorder p="md" radius="md">
         {loading ? (
           <Group justify="center" p="xl"><Loader /></Group>
+        ) : cabinet === 'student' ? (
+          <DrilldownByClass groups={studentGroups} emptyText="Пока нет кейсов по ученикам. Создайте первый — «Новый кейс»." />
+        ) : subjectGroups.length === 0 ? (
+          <Text c="dimmed" ta="center" py="md">Пока нет кейсов в этом кабинете. Создайте первый — «Новый кейс».</Text>
         ) : (
-          <DrilldownByClass groups={groups} emptyText="Пока нет кейсов. Создайте первый — «Новый кейс»." />
+          <Stack gap="md">
+            {subjectGroups.map((g) => (
+              <div key={g.name}>
+                <Group gap="xs" mb={6}>
+                  <Text fw={600}>{g.name}</Text>
+                  <Badge variant="light" color={riskColor(worstRank(g.list.filter((c) => c.status !== 'closed')))}>
+                    открытых {g.list.filter((c) => c.status !== 'closed').length}
+                  </Badge>
+                </Group>
+                <Stack gap={6}>
+                  {g.list.map((c) => (
+                    <Card key={c.id} withBorder radius="sm" padding="sm" component={Link} href={`/psychologist/cases/${c.id}`}
+                      style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <Group justify="space-between" wrap="nowrap">
+                        <Text fw={500}>{c.title}</Text>
+                        <Group gap="xs" wrap="nowrap">
+                          <Badge color={RISK[c.riskLevel].color} variant="light">{RISK[c.riskLevel].label}</Badge>
+                          <Badge color={STATUS[c.status].color} variant="outline">{STATUS[c.status].label}</Badge>
+                        </Group>
+                      </Group>
+                    </Card>
+                  ))}
+                </Stack>
+              </div>
+            ))}
+          </Stack>
         )}
       </Paper>
 
       {/* Анкета выбранного ученика */}
-      <StudentPsyCard studentId={cardStudentId} onClose={() => setCardStudentId(null)} />
+      <StudentPsyCard studentId={cardStudentId} onClose={() => setCardStudentId(null)} onChanged={load} />
 
-      <Modal opened={open} onClose={() => setOpen(false)} title="Новый кейс" centered size="lg">
-        <Stack gap="md">
-          <Select
-            label="Ученик" placeholder="Найти ученика" searchable required
-            data={students.map((s) => ({ value: s.id, label: `${s.lastName} ${s.firstName}${s.class ? ` (${s.class.grade}${s.class.letter})` : ''}` }))}
-            value={studentId} onChange={setStudentId}
-          />
-          {foreignActive.length > 0 && (
-            <Alert color="orange" icon={<IconAlertTriangle size={16} />} title="Ученик уже в работе">
-              <Stack gap="xs">
-                {foreignActive.map((a) => (
-                  <Group key={a.id} justify="space-between">
-                    <Text size="sm">У коллеги <b>{a.ownerName}</b> (риск: {RISK[a.riskLevel].label})</Text>
-                    <Button size="xs" variant="light" onClick={() => requestCollab(a.id)}>Запросить со-доступ</Button>
-                  </Group>
-                ))}
-              </Stack>
-            </Alert>
-          )}
-          <TextInput label="Название кейса" placeholder="Напр.: адаптация, тревожность" required value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
-          <Textarea label="Причина обращения" autosize minRows={2} value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
-          <Select
-            label="Стартовый уровень риска" required
-            data={Object.entries(RISK).map(([k, v]) => ({ value: k, label: v.label }))}
-            value={risk} onChange={(v) => setRisk((v as keyof typeof RISK) ?? 'green')}
-          />
-          {risk === 'red' && (
-            <Textarea
-              label="Обоснование критического риска" required autosize minRows={2}
-              description="Обязательно. Сгенерирует слепое safeguarding-уведомление координатору."
-              value={justification} onChange={(e) => setJustification(e.currentTarget.value)}
-            />
-          )}
-          {err && <Text c="red" size="sm">{err}</Text>}
-          <Group justify="flex-end">
-            <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
-            <Button onClick={create} loading={saving}>Создать кейс</Button>
-          </Group>
-        </Stack>
-      </Modal>
+      <NewPsyCaseModal
+        opened={open}
+        subjectType={cabinet}
+        onClose={() => setOpen(false)}
+        onCreated={() => { setOpen(false); load(); }}
+      />
     </Stack>
   );
 }

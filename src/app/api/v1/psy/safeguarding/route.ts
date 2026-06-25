@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const alerts = await prisma.psyAlert.findMany({ orderBy: [{ status: 'asc' }, { createdAt: 'desc' }] });
     const caseIds = [...new Set(alerts.map((a) => a.caseId))];
     const cases = await prisma.psyCase.findMany({ where: { id: { in: caseIds } }, select: { id: true, studentId: true, riskLevel: true } });
-    const studentIds = [...new Set(cases.map((c) => c.studentId))];
+    const studentIds = [...new Set(cases.map((c) => c.studentId).filter((x): x is string => !!x))];
     const students = await prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, firstName: true, lastName: true } });
 
     const initials = (sid: string) => {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       const c = cases.find((x) => x.id === a.caseId);
       return {
         id: a.id, status: a.status, createdAt: a.createdAt, reason: a.reason,
-        studentInitials: c ? initials(c.studentId) : '—',
+        studentInitials: c && c.studentId ? initials(c.studentId) : '—',
         riskLevel: c?.riskLevel ?? 'red',
         escalatedAt: a.escalatedAt, remindCount: a.remindCount,
       };

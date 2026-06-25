@@ -308,7 +308,8 @@ export default function StudentProfilePage() {
 
   const tabVisible = useMemo(() => {
     let allowed: readonly string[] = TAB_ORDER;
-    if (role === 'call_center') allowed = ['contracts'];
+    // Эмир (Этап 9): бухгалтер видит только договор — ни оценок, ни анкеты.
+    if (role === 'call_center' || role === 'accountant') allowed = ['contracts'];
     else if (role === 'psychologist' || role === 'senior_psychologist') {
       allowed = TAB_ORDER.filter((t) => t !== 'grades');
     }

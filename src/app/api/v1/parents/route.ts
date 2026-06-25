@@ -6,7 +6,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 export async function GET(request: NextRequest) {
   try {
     const auth = await withAuth(request, {
-      roles: ['super_admin', 'analyst', 'zavuch', 'secretary'],
+      roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'psychologist', 'senior_psychologist', 'specialist'],
     });
     if (auth.response) return auth.response;
 

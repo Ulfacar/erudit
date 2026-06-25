@@ -52,6 +52,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   senior_psychologist: 'Старший психолог',
   safeguarding_lead: 'Координатор безопасности',
   call_center: 'Колл-центр',
+  event_manager: 'Ивент-менеджер',
 };
 
 interface SessionUser {
