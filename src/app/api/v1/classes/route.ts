@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response;
 
     const body = await request.json();
-    const { grade, letter, levelId, curatorId } = body;
+    const { grade, letter, levelId, curatorId, capacity } = body;
 
     if (!grade || !letter || !levelId) {
       return errorResponse('VALIDATION_ERROR', 'Поля grade, letter и levelId обязательны');
@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         letter: letter.toUpperCase(),
         levelId,
         curatorId: curatorId || null,
+        capacity: capacity == null || capacity === '' ? null : Number(capacity),
       },
       include: {
         level: true,

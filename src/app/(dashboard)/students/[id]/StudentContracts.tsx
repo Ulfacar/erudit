@@ -124,7 +124,13 @@ export function StudentContracts({ studentId, studentName, className }: { studen
                           <Button size="xs" variant="light" leftSection={<IconRefresh size={14} />} onClick={() => setRenewOpen(true)}>Продлить договор</Button>
                         )}
                         <Button size="xs" variant="default" leftSection={<IconPrinter size={14} />}
-                          onClick={() => printContract(active, studentName, className)}>Скачать PDF</Button>
+                          onClick={() => printContract(active, studentName, className, {
+                            installments: invoices.map((inv) => ({
+                              date: inv.dueDate,
+                              amount: inv.amount,
+                              note: /предопл|взнос|долг/i.test(inv.title) ? inv.title : '',
+                            })),
+                          })}>Скачать PDF</Button>
                       </Group>
                     </Group>
                     {active.startDate && <Text size="sm" c="dimmed" mb="md">Начало: {fmtDate(active.startDate)}</Text>}
@@ -325,7 +331,8 @@ function PaymentModal({ invoice, onClose, onDone }: { invoice: Invoice; onClose:
 function ContractModal({ studentId, renew, carriedDebt = 0, onClose, onDone }: { studentId: string; renew?: boolean; carriedDebt?: number; onClose: () => void; onDone: () => void }) {
   const [f, setF] = useState({
     number: '', year: '2026–2027', baseAmount: 650000, discountPct: 0, discountNote: '', prepaymentPct: 20,
-    scheduleType: 'monthly', scheduleMonths: 9, paymentDay: 10, repFio: '', repInn: '', repPhone: '', startDate: '', gen: true,
+    scheduleType: 'monthly', scheduleMonths: 9, paymentDay: 10, repFio: '', repInn: '', repPhone: '',
+    repPassport: '', repIssuedBy: '', repAddress: '', startDate: '', gen: true,
   });
   const [err, setErr] = useState(''); const [saving, setSaving] = useState(false);
   const set = (k: string, v: unknown) => setF((s) => ({ ...s, [k]: v }));
@@ -339,7 +346,7 @@ function ContractModal({ studentId, renew, carriedDebt = 0, onClose, onDone }: {
         studentId, number: f.number, year: f.year, baseAmount: f.baseAmount, discountPct: f.discountPct,
         discountNote: f.discountNote, prepaymentPct: f.prepaymentPct, scheduleType: f.scheduleType,
         scheduleMonths: f.scheduleMonths, paymentDay: f.paymentDay, startDate: f.startDate || null,
-        representative: { fio: f.repFio, inn: f.repInn, phone: f.repPhone }, generateInvoices: f.gen,
+        representative: { fio: f.repFio, inn: f.repInn, phone: f.repPhone, passport: f.repPassport, issuedBy: f.repIssuedBy, address: f.repAddress }, generateInvoices: f.gen,
         renew: renew ?? false,
       }),
     });
@@ -376,6 +383,11 @@ function ContractModal({ studentId, renew, carriedDebt = 0, onClose, onDone }: {
           <TextInput label="ФИО" value={f.repFio} onChange={(e) => set('repFio', e.currentTarget.value)} />
           <TextInput label="ИНН" value={f.repInn} onChange={(e) => set('repInn', e.currentTarget.value)} />
           <TextInput label="Телефон" value={f.repPhone} onChange={(e) => set('repPhone', e.currentTarget.value)} />
+        </Group>
+        <Group grow>
+          <TextInput label="Паспорт (ID)" value={f.repPassport} onChange={(e) => set('repPassport', e.currentTarget.value)} />
+          <TextInput label="Кем/когда выдан" value={f.repIssuedBy} onChange={(e) => set('repIssuedBy', e.currentTarget.value)} />
+          <TextInput label="Адрес" value={f.repAddress} onChange={(e) => set('repAddress', e.currentTarget.value)} />
         </Group>
         <Checkbox label="Сгенерировать счета по графику" checked={f.gen} onChange={(e) => set('gen', e.currentTarget.checked)} />
         {err && <Text c="red" size="sm">{err}</Text>}

@@ -69,7 +69,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { grade, letter, levelId, curatorId } = body;
+    const { grade, letter, levelId, curatorId, capacity } = body;
 
     const existing = await prisma.class.findUnique({ where: { id } });
     if (!existing) {
@@ -110,6 +110,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         ...(letter !== undefined && { letter: letter.toUpperCase() }),
         ...(levelId !== undefined && { levelId }),
         ...(curatorId !== undefined && { curatorId: curatorId || null }),
+        ...(capacity !== undefined && { capacity: capacity === null || capacity === '' ? null : Number(capacity) }),
       },
       include: {
         level: true,

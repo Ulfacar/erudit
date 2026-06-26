@@ -52,6 +52,7 @@ interface ClassItem {
   level: { id: string; name: string; fromGrade: number; toGrade: number };
   curator: Teacher | null;
   studentCount: number;
+  capacity?: number | null;
 }
 
 /* ── Table styles (matching dashboard) ── */
@@ -91,6 +92,7 @@ function ClassesContent() {
   const [formLetter, setFormLetter] = useState('');
   const [formLevelId, setFormLevelId] = useState<string | null>(null);
   const [formCuratorId, setFormCuratorId] = useState<string | null>(null);
+  const [formCapacity, setFormCapacity] = useState<number | string>('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [editClassId, setEditClassId] = useState<string | null>(null);
@@ -131,6 +133,7 @@ function ClassesContent() {
     setFormLetter('');
     setFormLevelId(activeTab);
     setFormCuratorId(null);
+    setFormCapacity('');
     setFormError('');
     setEditClassId(null);
     setModalOpen(true);
@@ -158,6 +161,7 @@ function ClassesContent() {
           letter: formLetter.trim().toUpperCase(),
           levelId: formLevelId,
           curatorId: formCuratorId,
+          capacity: formCapacity === '' ? null : Number(formCapacity),
         }),
       });
       const data = await res.json();
@@ -294,6 +298,7 @@ function ClassesContent() {
                                   setFormLetter(cls.letter);
                                   setFormLevelId(cls.levelId);
                                   setFormCuratorId(cls.curator?.id || '');
+                                  setFormCapacity(cls.capacity ?? '');
                                   setEditClassId(cls.id);
                                   setModalOpen(true);
                                 }}
@@ -385,6 +390,14 @@ function ClassesContent() {
             value={formLevelId}
             onChange={setFormLevelId}
             required
+          />
+          <NumberInput
+            label="Наполняемость (мест)"
+            placeholder="Например: 25"
+            min={1}
+            max={40}
+            value={formCapacity}
+            onChange={setFormCapacity}
           />
           <TextInput
             label="ID куратора (необязательно)"
