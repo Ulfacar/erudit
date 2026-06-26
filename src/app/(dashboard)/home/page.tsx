@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { Paper, SimpleGrid, Stack, Text, Title, ThemeIcon } from '@mantine/core';
 import { IconLayoutGrid } from '@tabler/icons-react';
 import { useRole } from '@/shared/hooks/useRole';
-import { SIDEBAR_NAV, filterNavByRole } from '@/shared/lib/nav-config';
+import { SIDEBAR_NAV, filterNavByRole, flattenNavLeaves } from '@/shared/lib/nav-config';
 import { SIDEBAR_ICONS } from '@/shared/lib/sidebar-icons';
 
 // Личные «ленты» роли (дневник/сегодня) и сама «Главная» в хабе не нужны — это вход в разделы.
@@ -18,10 +18,12 @@ const SKIP = new Set(['/home', '/diary', '/today']);
 export default function HomePage() {
   const { role } = useRole();
 
-  const items = useMemo(
-    () => filterNavByRole(SIDEBAR_NAV, role).filter((r) => !SKIP.has(r.href)),
-    [role],
-  );
+  // Разворачиваем сворачиваемые разделы в плоские листья — хаб остаётся гранулярным.
+  // Под-страницы (напр. /schedule/bells) скрываем, если их родитель-лист уже показан.
+  const items = useMemo(() => {
+    const leaves = flattenNavLeaves(filterNavByRole(SIDEBAR_NAV, role)).filter((r) => !SKIP.has(r.href));
+    return leaves.filter((l) => !leaves.some((p) => p !== l && l.href.startsWith(p.href + '/')));
+  }, [role]);
 
   return (
     <Stack gap="lg" p="md">

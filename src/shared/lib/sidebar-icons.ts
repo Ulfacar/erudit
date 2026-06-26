@@ -43,6 +43,17 @@ import {
 } from '@tabler/icons-react';
 
 export const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
+  // Разделы-обёртки (сворачиваемые группы сайдбара)
+  '/g/intake': IconUsersGroup,
+  '/g/students': IconUsers,
+  '/g/academics': IconBook2,
+  '/g/finance': IconCalculator,
+  '/g/psy': IconBrain,
+  '/g/hr': IconId,
+  '/g/life': IconSchool,
+  '/g/comms': IconMessage,
+  '/g/admin': IconShield,
+  '/call-center': IconSpeakerphone,
   '/diary': IconNotebook,
   '/today': IconCalendarEvent,
   '/agent': IconRobot,

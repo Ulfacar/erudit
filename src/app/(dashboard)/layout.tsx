@@ -29,6 +29,7 @@ import { useRole } from '@/shared/hooks/useRole';
 import {
   SIDEBAR_NAV,
   filterNavByRole,
+  flattenNavLeaves,
   type NavRoute,
 } from '@/shared/lib/nav-config';
 import { IconBell, IconChevronDown, IconLogout } from '@tabler/icons-react';
@@ -117,6 +118,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const visibleSidebar = useMemo(() => filterNavByRole(SIDEBAR_NAV, role), [role]);
 
+  // Заголовок страницы в шапке — ищем активный лист (в т.ч. внутри сворачиваемых разделов).
+  const pageTitle = useMemo(() => {
+    const leaves = flattenNavLeaves(visibleSidebar);
+    const exact = leaves.find((l) => pathname === l.href);
+    if (exact) return exact.label;
+    const prefix = leaves
+      .filter((l) => pathname.startsWith(l.href + '/'))
+      .sort((a, b) => b.href.length - a.href.length)[0];
+    return prefix?.label ?? 'Bilim OS';
+  }, [visibleSidebar, pathname]);
+
   const today = formatToday();
 
   return (
@@ -144,7 +156,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Group gap="md">
               <Burger opened={mobileOpened} onClick={toggleMobile} hiddenFrom="sm" size="sm" />
               <Text size="lg" fw={600} c="var(--mantine-color-gray-9)" style={{ letterSpacing: '-0.01em' }}>
-                {visibleSidebar.find((s) => pathname === s.href || pathname.startsWith(s.href + '/'))?.label ?? 'Bilim OS'}
+                {pageTitle}
               </Text>
             </Group>
 
@@ -216,22 +228,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               const ItemIcon = SIDEBAR_ICONS[item.href];
 
               if (hasChildren) {
+                const childOpen = item.children!.some(
+                  (c) => pathname === c.href || pathname.startsWith(c.href + '/'),
+                );
                 return (
                   <NavLink
                     key={item.href}
                     label={item.label}
                     leftSection={ItemIcon ? <ItemIcon size={16} stroke={1.5} /> : undefined}
-                    defaultOpened={isActive}
+                    defaultOpened={childOpen || (!item.group && isActive)}
                     childrenOffset={28}
                   >
-                    <NavLink
-                      component={Link}
-                      href={item.href}
-                      label={item.label}
-                      active={pathname === item.href}
-                      fz={12}
-                      onClick={closeMobile}
-                    />
+                    {/* у раздела-обёртки (group) своей страницы нет — self-link не рендерим */}
+                    {!item.group && (
+                      <NavLink
+                        component={Link}
+                        href={item.href}
+                        label={item.label}
+                        active={pathname === item.href}
+                        fz={12}
+                        onClick={closeMobile}
+                      />
+                    )}
                     {item.children!.map((child) => (
                       <NavLink
                         key={child.href}
