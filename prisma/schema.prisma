@@ -1374,16 +1374,19 @@ model Contract {
 
 // Резерв/очередь в класс (на первый класс ~100 человек в очереди).
 model ClassReserveEntry {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   classId     String
   leadId      String?
   childName   String
+  parentName  String?
   parentPhone String?
-  position    Int      @default(0)
-  status      String   @default("waiting") // waiting | enrolled | cancelled
+  dateOfBirth DateTime?
+  desiredYear String?
+  position    Int       @default(0)
+  status      String    @default("waiting") // waiting | enrolled | cancelled
   branchId    String?
   note        String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([classId, position])
 }

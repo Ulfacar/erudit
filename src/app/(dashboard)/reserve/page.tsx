@@ -6,7 +6,7 @@ import { IconUsersGroup, IconPlus, IconCheck, IconX } from '@tabler/icons-react'
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 interface Cls { id: string; grade: number; letter: string; capacity?: number | null; studentCount?: number }
-interface Entry { id: string; childName: string; parentPhone: string | null; position: number; note: string | null }
+interface Entry { id: string; childName: string; parentName: string | null; parentPhone: string | null; dateOfBirth: string | null; desiredYear: string | null; position: number; note: string | null }
 
 function Reserve() {
   const [classes, setClasses] = useState<Cls[]>([]);
@@ -48,6 +48,7 @@ function Reserve() {
 function QueueModal({ cls, onClose }: { cls: Cls; onClose: () => void }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [name, setName] = useState(''); const [phone, setPhone] = useState('');
+  const [parent, setParent] = useState(''); const [dob, setDob] = useState(''); const [year, setYear] = useState('');
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -59,8 +60,11 @@ function QueueModal({ cls, onClose }: { cls: Cls; onClose: () => void }) {
 
   async function add() {
     if (!name.trim()) return;
-    await fetch('/api/v1/class-reserve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ classId: cls.id, childName: name, parentPhone: phone }) });
-    setName(''); setPhone(''); load();
+    await fetch('/api/v1/class-reserve', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ classId: cls.id, childName: name, parentName: parent, parentPhone: phone, dateOfBirth: dob || null, desiredYear: year }),
+    });
+    setName(''); setPhone(''); setParent(''); setDob(''); setYear(''); load();
   }
   async function setStatus(id: string, status: string) {
     await fetch('/api/v1/class-reserve', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) });
@@ -68,26 +72,36 @@ function QueueModal({ cls, onClose }: { cls: Cls; onClose: () => void }) {
   }
 
   return (
-    <Modal opened onClose={onClose} title={`Очередь в ${cls.grade}${cls.letter}`} centered size="lg">
+    <Modal opened onClose={onClose} title={`Очередь в ${cls.grade}${cls.letter}`} centered size="xl">
       <Stack gap="md">
-        <Group align="flex-end" gap="xs">
-          <TextInput style={{ flex: 1 }} label="ФИО ребёнка" value={name} onChange={(e) => setName(e.currentTarget.value)} />
-          <TextInput label="Телефон" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
-          <Button leftSection={<IconPlus size={16} />} onClick={add}>В очередь</Button>
-        </Group>
+        <Stack gap="xs">
+          <Group align="flex-end" gap="xs">
+            <TextInput style={{ flex: 1 }} label="ФИО ребёнка" required value={name} onChange={(e) => setName(e.currentTarget.value)} />
+            <TextInput label="Дата рождения" type="date" value={dob} onChange={(e) => setDob(e.currentTarget.value)} />
+            <TextInput label="Год поступления" placeholder="2027–2028" w={130} value={year} onChange={(e) => setYear(e.currentTarget.value)} />
+          </Group>
+          <Group align="flex-end" gap="xs">
+            <TextInput style={{ flex: 1 }} label="ФИО родителя" value={parent} onChange={(e) => setParent(e.currentTarget.value)} />
+            <TextInput label="Телефон" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} />
+            <Button leftSection={<IconPlus size={16} />} onClick={add}>В очередь</Button>
+          </Group>
+        </Stack>
         {loading ? <Group justify="center"><Loader size="sm" /></Group>
           : entries.length === 0 ? <Text c="dimmed">Очередь пуста.</Text>
           : (
             <Table>
-              <Table.Thead><Table.Tr><Table.Th>#</Table.Th><Table.Th>Ребёнок</Table.Th><Table.Th>Телефон</Table.Th><Table.Th></Table.Th></Table.Tr></Table.Thead>
+              <Table.Thead><Table.Tr><Table.Th>#</Table.Th><Table.Th>ФИО ребёнка</Table.Th><Table.Th>Дата рожд.</Table.Th><Table.Th>Год</Table.Th><Table.Th>Родитель</Table.Th><Table.Th>Телефон</Table.Th><Table.Th></Table.Th></Table.Tr></Table.Thead>
               <Table.Tbody>
                 {entries.map((e) => (
                   <Table.Tr key={e.id}>
                     <Table.Td>{e.position}</Table.Td>
-                    <Table.Td>{e.childName}</Table.Td>
+                    <Table.Td fw={500}>{e.childName}</Table.Td>
+                    <Table.Td>{e.dateOfBirth ? new Date(e.dateOfBirth).toLocaleDateString('ru-RU') : '—'}</Table.Td>
+                    <Table.Td>{e.desiredYear ?? '—'}</Table.Td>
+                    <Table.Td>{e.parentName ?? '—'}</Table.Td>
                     <Table.Td>{e.parentPhone ?? '—'}</Table.Td>
                     <Table.Td>
-                      <Group gap={4} justify="flex-end">
+                      <Group gap={4} justify="flex-end" wrap="nowrap">
                         <Button size="compact-xs" variant="light" color="green" leftSection={<IconCheck size={12} />} onClick={() => setStatus(e.id, 'enrolled')}>Зачислить</Button>
                         <Button size="compact-xs" variant="subtle" color="red" leftSection={<IconX size={12} />} onClick={() => setStatus(e.id, 'cancelled')}>Снять</Button>
                       </Group>

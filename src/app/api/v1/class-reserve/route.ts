@@ -27,13 +27,18 @@ export async function POST(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...ROLES] });
   if (auth.response) return auth.response;
   const body = await request.json().catch(() => ({}));
-  const { classId, childName, parentPhone, note } = body as Record<string, string>;
-  if (!classId || !childName?.trim()) return errorResponse('VALIDATION_ERROR', 'Нужны класс и имя ребёнка');
+  const { classId, childName, parentName, parentPhone, dateOfBirth, desiredYear, note } = body as Record<string, string>;
+  if (!classId || !childName?.trim()) return errorResponse('VALIDATION_ERROR', 'Нужны класс и ФИО ребёнка');
   try {
     const last = await prisma.classReserveEntry.findFirst({ where: { classId, status: 'waiting' }, orderBy: { position: 'desc' }, select: { position: true } });
     const cls = await prisma.class.findUnique({ where: { id: classId }, select: { branchId: true } });
     const entry = await prisma.classReserveEntry.create({
-      data: { classId, childName: childName.trim(), parentPhone: parentPhone || null, note: note || null, position: (last?.position ?? 0) + 1, branchId: cls?.branchId ?? null },
+      data: {
+        classId, childName: childName.trim(),
+        parentName: parentName?.trim() || null, parentPhone: parentPhone || null,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null, desiredYear: desiredYear?.trim() || null,
+        note: note || null, position: (last?.position ?? 0) + 1, branchId: cls?.branchId ?? null,
+      },
     });
     return successResponse(entry, 201);
   } catch (e) {
