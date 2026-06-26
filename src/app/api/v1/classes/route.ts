@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
       letter: c.letter,
       levelId: c.levelId,
       level: c.level,
+      branchId: c.branchId,
+      capacity: c.capacity,
       curatorId: c.curatorId,
       curator: c.curator,
       studentCount: c._count.students,

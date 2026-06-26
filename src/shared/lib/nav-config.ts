@@ -75,7 +75,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/core', label: 'Граф ядра', roles: ['super_admin'] },
   { href: '/admission', label: 'Приёмная (CRM)', roles: ADMIN_SECRETARY },
   { href: '/reserve', label: 'Очередь в классы', roles: ADMIN_SECRETARY },
-  { href: '/operations/transition', label: 'Перевод года', roles: ADMIN_AND_VICE },
+  { href: '/operations/transition', label: 'Перевод года', roles: ADMIN_SECRETARY },
   { href: '/withdrawals', label: 'Отчисления', roles: ADMIN_SECRETARY },
   { href: '/director-appointments', label: 'Запись к директору', roles: ADMIN_SECRETARY },
   { href: '/group-transfers', label: 'Переводы между группами', roles: ['super_admin', 'zavuch', 'teacher', 'curator'] },
