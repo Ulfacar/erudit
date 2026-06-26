@@ -41,10 +41,16 @@ const STAFF_TABS = [
   { id: 'hr', label: 'HR (кадры)', login: 'hr1', emoji: '📋', color: '#2f9e44' },
   { id: 'call_center', label: 'Колл-центр', login: 'callcenter1', emoji: '🎧', color: '#1971c2' },
   { id: 'senior_psychologist', label: 'Ст. психолог', login: 'senior_psy', emoji: '🧩', color: '#ae3ec9' },
-  { id: 'safeguarding_lead', label: 'Безопасность', login: 'safeguard', emoji: '🛡️', color: '#e8590c' },
+  { id: 'safeguarding_lead', label: 'Воспит. работа', login: 'safeguard', emoji: '🎭', color: '#e8590c' },
+  { id: 'event_manager', label: 'Ивент-менеджер', login: 'event1', emoji: '🎉', color: '#e64980' },
   { id: 'librarian', label: 'Библиотека', login: 'librarian1', emoji: '📚', color: '#1971c2' },
   { id: 'cook', label: 'Столовая', login: 'cook1', emoji: '🍲', color: '#f08c00' },
   { id: 'zavhoz', label: 'АХЧ', login: 'zavhoz1', emoji: '🔧', color: '#495057' },
+  // Завучи (наследуют доступ zavuch)
+  { id: 'zavuch_primary', label: 'Завуч (мл.)', login: 'zavuch_primary1', emoji: '🧒', color: '#1c7ed6' },
+  { id: 'zavuch_senior', label: 'Завуч (ст.)', login: 'zavuch_senior1', emoji: '🎓', color: '#1c7ed6' },
+  { id: 'zavuch_academic', label: 'Завуч (учеб.)', login: 'zavuch_academic1', emoji: '📚', color: '#3b5bdb' },
+  { id: 'cambridge_coord', label: 'Кэмбридж', login: 'cambridge1', emoji: '🌐', color: '#7048e8' },
 ];
 
 const ALL_TABS = [...ROLE_TABS, ...STAFF_TABS];

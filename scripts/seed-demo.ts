@@ -7,7 +7,7 @@ async function main() {
   console.log('--- seed-demo: добавляем недостающие demo-данные ---')
 
   // 0. Демо-юзеры для недостающих ролей (analyst, secretary, curator, specialist)
-  const missingRoles: Array<{ login: string; role: Role; email: string }> = [
+  const missingRoles: Array<{ login: string; role: Role; email: string; star?: number }> = [
     { login: 'analyst1', role: 'analyst', email: 'analyst@erudit.kg' },
     { login: 'secretary1', role: 'secretary', email: 'secretary@erudit.kg' },
     { login: 'curator1', role: 'curator', email: 'curator@erudit.kg' },
@@ -25,6 +25,12 @@ async function main() {
     { login: 'safeguard', role: 'safeguarding_lead', email: 'safeguard@erudit.kg' },
     // финансы
     { login: 'callcenter1', role: 'call_center', email: 'callcenter@erudit.kg' },
+    // Ивент-менеджер + завучи (наследуют доступ zavuch); 4★ для полноты демо
+    { login: 'event1', role: 'event_manager', email: 'event@erudit.kg', star: 4 },
+    { login: 'zavuch_primary1', role: 'zavuch_primary', email: 'zavuch.primary@erudit.kg', star: 4 },
+    { login: 'zavuch_senior1', role: 'zavuch_senior', email: 'zavuch.senior@erudit.kg', star: 4 },
+    { login: 'zavuch_academic1', role: 'zavuch_academic', email: 'zavuch.academic@erudit.kg', star: 4 },
+    { login: 'cambridge1', role: 'cambridge_coord', email: 'cambridge@erudit.kg', star: 4 },
   ]
   const pwHash = await hash('erudit2025', 10)
   for (const u of missingRoles) {
@@ -36,7 +42,7 @@ async function main() {
         email: u.email,
         password: pwHash,
         role: u.role,
-        starLevel: 1,
+        starLevel: u.star ?? 1,
         isActive: true,
       },
     })

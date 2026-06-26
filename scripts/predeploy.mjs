@@ -46,7 +46,7 @@ for (let i = 0; i < delays.length; i++) {
 }
 
 // Сиды — идемпотентные, НЕ фатальные.
-for (const seed of ['scripts/backfill-branches.ts', 'scripts/seed-psy-templates.ts', 'scripts/seed-demo-intake.ts', 'scripts/backfill-debtor-contracts.ts', 'scripts/backfill-psy-codes.ts']) {
+for (const seed of ['scripts/backfill-branches.ts', 'scripts/seed-psy-templates.ts', 'scripts/seed-demo-intake.ts', 'scripts/backfill-debtor-contracts.ts', 'scripts/backfill-psy-codes.ts', 'scripts/seed-roles.ts']) {
   try { run(`npx tsx ${seed}`); }
   catch (e) { console.warn(`[predeploy] сид ${seed} пропущен (не критично): ${e.message}`); }
 }
