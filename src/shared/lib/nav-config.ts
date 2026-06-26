@@ -1,4 +1,5 @@
 import type { Role } from '@prisma/client'
+import { roleMatches } from '@/shared/lib/role-access'
 
 /**
  * Source of truth for sidebar / hub visibility AND for per-route gating.
@@ -200,7 +201,7 @@ export function filterNavByRole<T extends NavRoute>(items: T[], role: Role | nul
   if (!role) return []
   const out: T[] = []
   for (const item of items) {
-    if (!item.roles.includes(role)) continue
+    if (!roleMatches(item.roles, role)) continue
     if (item.children) {
       const children = filterNavByRole(item.children as T[], role)
       if (item.group && children.length === 0) continue

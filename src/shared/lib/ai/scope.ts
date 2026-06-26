@@ -53,6 +53,10 @@ export const ROLE_LABELS: Record<Role, string> = {
   safeguarding_lead: 'Координатор безопасности',
   call_center: 'Колл-центр',
   event_manager: 'Ивент-менеджер',
+  zavuch_primary: 'Завуч по младшим классам',
+  zavuch_senior: 'Завуч по старшим классам',
+  zavuch_academic: 'Завуч по учебной части',
+  cambridge_coord: 'Кэмбридж-координатор',
 };
 
 interface SessionUser {

@@ -53,6 +53,10 @@ const ROLE_LABEL: Record<string, string> = {
   librarian: 'Библиотекарь',
   cook: 'Повар',
   zavhoz: 'Завхоз',
+  zavuch_primary: 'Завуч по младшим классам',
+  zavuch_senior: 'Завуч по старшим классам',
+  zavuch_academic: 'Завуч по учебной части',
+  cambridge_coord: 'Кэмбридж-координатор',
 };
 
 /** Домашняя страница узких ролей — их собственный кабинет. */

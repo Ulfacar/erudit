@@ -5,6 +5,7 @@ import { Box, Stack, Text, ThemeIcon } from '@mantine/core'
 import { IconLock } from '@tabler/icons-react'
 import type { Role } from '@prisma/client'
 import { useRole } from '@/shared/hooks/useRole'
+import { roleMatches } from '@/shared/lib/role-access'
 
 interface RoleGateProps {
   roles?: Role[]
@@ -21,7 +22,7 @@ export function RoleGate({ roles, minStarLevel, fallback, silent, children }: Ro
 
   if (isLoading) return null
 
-  const roleOk = !roles || roles.length === 0 || (role !== null && roles.includes(role))
+  const roleOk = roleMatches(roles, role)
   const starOk = minStarLevel === undefined || starLevel >= minStarLevel
 
   if (roleOk && starOk) return <>{children}</>

@@ -1,5 +1,6 @@
 import { getServerSession, type AppSession } from '@/shared/lib/auth'
 import { errorResponse } from '@/shared/lib/api-response'
+import { roleMatches } from '@/shared/lib/role-access'
 import type { Role } from '@prisma/client'
 
 interface AuthOptions {
@@ -38,7 +39,7 @@ export async function withAuth(
   }
 
   if (options?.roles && options.roles.length > 0) {
-    if (!options.roles.includes(session.user.role as Role)) {
+    if (!roleMatches(options.roles, session.user.role as Role)) {
       return {
         response: errorResponse(
           'FORBIDDEN',
