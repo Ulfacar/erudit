@@ -34,31 +34,8 @@ import {
 } from '@/shared/lib/nav-config';
 import { IconBell, IconChevronDown, IconLogout } from '@tabler/icons-react';
 import { SIDEBAR_ICONS } from '@/shared/lib/sidebar-icons';
+import { ROLE_LABELS } from '@/shared/constants/roles';
 
-
-const ROLE_LABEL: Record<string, string> = {
-  super_admin: 'Суперадмин',
-  analyst: 'Аналитик',
-  zavuch: 'Завуч',
-  secretary: 'Секретарь',
-  teacher: 'Педагог',
-  curator: 'Куратор',
-  specialist: 'Специалист',
-  student: 'Ученик',
-  parent: 'Родитель',
-  accountant: 'Бухгалтер',
-  psychologist: 'Психолог',
-  doctor: 'Врач',
-  hr: 'Кадровик',
-  librarian: 'Библиотекарь',
-  cook: 'Повар',
-  zavhoz: 'Завхоз',
-  safeguarding_lead: 'Завуч по воспитательной работе',
-  zavuch_primary: 'Завуч по младшим классам',
-  zavuch_senior: 'Завуч по старшим классам',
-  zavuch_academic: 'Завуч по учебной части',
-  cambridge_coord: 'Кэмбридж-координатор',
-};
 
 /** Домашняя страница узких ролей — их собственный кабинет. */
 const ROLE_HOME: Record<string, string> = {
@@ -188,13 +165,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Avatar>
                     <Box visibleFrom="sm">
                       <Text size="xs" fw={500} lh={1.2}>{login ?? '—'}</Text>
-                      <Text size="xs" c="dimmed" lh={1.2}>{role ? ROLE_LABEL[role] ?? role : '—'}</Text>
+                      <Text size="xs" c="dimmed" lh={1.2}>{role ? ROLE_LABELS[role] ?? role : '—'}</Text>
                     </Box>
                     <Box visibleFrom="sm" component="span"><IconChevronDown size={14} stroke={1.5} style={{ color: 'var(--mantine-color-dimmed)' }} /></Box>
                   </Group>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Label>{login ?? '—'} · {role ? ROLE_LABEL[role] ?? role : '—'}</Menu.Label>
+                  <Menu.Label>{login ?? '—'} · {role ? ROLE_LABELS[role] ?? role : '—'}</Menu.Label>
                   <Menu.Item
                     color="red"
                     leftSection={<IconLogout size={16} stroke={1.5} />}
