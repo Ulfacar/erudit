@@ -53,6 +53,7 @@ const ROLE_LABEL: Record<string, string> = {
   librarian: 'Библиотекарь',
   cook: 'Повар',
   zavhoz: 'Завхоз',
+  safeguarding_lead: 'Завуч по воспитательной работе',
   zavuch_primary: 'Завуч по младшим классам',
   zavuch_senior: 'Завуч по старшим классам',
   zavuch_academic: 'Завуч по учебной части',

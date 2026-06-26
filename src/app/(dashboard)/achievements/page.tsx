@@ -23,7 +23,7 @@ const CATS = [
 
 export default function AchievementsPage() {
   return (
-    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'teacher', 'curator', 'secretary']}>
+    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'teacher', 'curator', 'secretary', 'event_manager', 'safeguarding_lead']}>
       <ResourcePage
         title="Достижения учеников"
         icon={<IconTrophy size={22} color="#f59f00" />}

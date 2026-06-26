@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActionIcon, Button, Group, Indicator, Loader, Modal, Paper, Stack, Text, Textarea, TextInput, Title,
+  ActionIcon, Badge, Button, Checkbox, Group, Indicator, Loader, Modal, Paper, ScrollArea, Select, Stack, Text, Textarea, TextInput, Title, Tooltip,
 } from '@mantine/core';
 import { Calendar } from '@mantine/dates';
-import { IconConfetti, IconMapPin, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconConfetti, IconMapPin, IconPlus, IconStar, IconStarFilled, IconTrash, IconUsers } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { useRole } from '@/shared/hooks/useRole';
@@ -20,11 +20,12 @@ const localKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).pad
 
 function EventsCalendar() {
   const { has } = useRole();
-  const canEdit = has('super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator');
+  const canEdit = has('super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'safeguarding_lead', 'event_manager');
   const [events, setEvents] = useState<SchoolEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string>(() => localKey(new Date()));
   const [addOpen, setAddOpen] = useState(false);
+  const [partEvent, setPartEvent] = useState<SchoolEvent | null>(null);
 
   async function load() {
     const j = await fetch('/api/v1/events').then((r) => r.json()).catch(() => ({ data: [] }));
@@ -94,7 +95,14 @@ function EventsCalendar() {
                         {e.endDate && <Text size="xs" c="dimmed">по {fmtDate(e.endDate)}</Text>}
                         {e.description && <Text size="sm" mt={4}>{e.description}</Text>}
                       </div>
-                      {canEdit && <ActionIcon variant="subtle" color="red" onClick={() => remove(e.id)}><IconTrash size={16} /></ActionIcon>}
+                      {canEdit && (
+                        <Group gap={4} wrap="nowrap">
+                          <Tooltip label="Участники и «кто отличился»">
+                            <ActionIcon variant="subtle" color="pink" onClick={() => setPartEvent(e)}><IconUsers size={16} /></ActionIcon>
+                          </Tooltip>
+                          <ActionIcon variant="subtle" color="red" onClick={() => remove(e.id)}><IconTrash size={16} /></ActionIcon>
+                        </Group>
+                      )}
                     </Group>
                   </Paper>
                 ))}
@@ -105,7 +113,105 @@ function EventsCalendar() {
       )}
 
       {addOpen && <AddEventModal defaultDate={selected} onClose={() => setAddOpen(false)} onDone={() => { setAddOpen(false); load(); }} />}
+      {partEvent && <ParticipantsModal event={partEvent} onClose={() => setPartEvent(null)} />}
     </Stack>
+  );
+}
+
+interface Stud { id: string; firstName: string; lastName: string; class?: { grade: number; letter: string } | null }
+interface Part { studentId: string; distinguished: boolean; note: string | null }
+
+function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: () => void }) {
+  const [students, setStudents] = useState<Stud[] | null>(null);
+  const [parts, setParts] = useState<Record<string, { distinguished: boolean }>>({});
+  const [cls, setCls] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/v1/students').then((r) => r.json()).catch(() => ({ data: [] })),
+      fetch(`/api/v1/events/${event.id}/participants`).then((r) => r.json()).catch(() => ({ data: [] })),
+    ]).then(([s, p]) => {
+      setStudents(s.data ?? []);
+      const map: Record<string, { distinguished: boolean }> = {};
+      for (const it of (p.data ?? []) as Part[]) map[it.studentId] = { distinguished: it.distinguished };
+      setParts(map);
+    });
+  }, [event.id]);
+
+  const classOptions = useMemo(() => {
+    const set = new Map<string, string>();
+    for (const s of students ?? []) if (s.class) set.set(`${s.class.grade}${s.class.letter}`, `${s.class.grade}${s.class.letter}`);
+    return [...set.keys()].sort((a, b) => a.localeCompare(b, 'ru')).map((v) => ({ value: v, label: v }));
+  }, [students]);
+
+  const shown = useMemo(
+    () => (students ?? []).filter((s) => !cls || (s.class && `${s.class.grade}${s.class.letter}` === cls)),
+    [students, cls],
+  );
+
+  function toggle(id: string) {
+    setParts((m) => { const n = { ...m }; if (n[id]) delete n[id]; else n[id] = { distinguished: false }; return n; });
+  }
+  function star(id: string) {
+    setParts((m) => ({ ...m, [id]: { distinguished: !m[id]?.distinguished } }));
+  }
+
+  async function save() {
+    setSaving(true);
+    const participants = Object.entries(parts).map(([studentId, v]) => ({ studentId, distinguished: v.distinguished }));
+    const res = await fetch(`/api/v1/events/${event.id}/participants`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participants }),
+    });
+    const j = await res.json(); setSaving(false);
+    if (!j.success) { notifications.show({ color: 'red', title: 'Ошибка', message: j.error?.message ?? 'Не удалось' }); return; }
+    notifications.show({ color: 'green', title: 'Сохранено', message: `Участников: ${j.data.count}${j.data.achievementsCreated ? ` · достижений начислено: ${j.data.achievementsCreated}` : ''}` });
+    onClose();
+  }
+
+  const chosen = Object.keys(parts).length;
+  const distinguished = Object.values(parts).filter((v) => v.distinguished).length;
+
+  return (
+    <Modal opened onClose={onClose} title={`Участники — ${event.title}`} centered size="lg">
+      {students === null ? <Group justify="center" p="xl"><Loader /></Group> : (
+        <Stack gap="sm">
+          <Group justify="space-between">
+            <Select placeholder="Все классы" clearable data={classOptions} value={cls} onChange={setCls} w={180} />
+            <Group gap="xs">
+              <Badge variant="light">участников: {chosen}</Badge>
+              <Badge variant="light" color="yellow" leftSection={<IconStarFilled size={11} />}>отличились: {distinguished}</Badge>
+            </Group>
+          </Group>
+          <Text size="xs" c="dimmed">Отметьте участников; звёздочка — «кто отличился» (создаст достижение ученику).</Text>
+          <ScrollArea h={360}>
+            <Stack gap={4}>
+              {shown.map((s) => {
+                const p = parts[s.id];
+                return (
+                  <Group key={s.id} justify="space-between" wrap="nowrap" px={4}>
+                    <Checkbox
+                      checked={!!p}
+                      onChange={() => toggle(s.id)}
+                      label={`${s.lastName} ${s.firstName}${s.class ? ` · ${s.class.grade}${s.class.letter}` : ''}`}
+                    />
+                    {p && (
+                      <ActionIcon variant="subtle" color={p.distinguished ? 'yellow' : 'gray'} onClick={() => star(s.id)}>
+                        {p.distinguished ? <IconStarFilled size={16} /> : <IconStar size={16} />}
+                      </ActionIcon>
+                    )}
+                  </Group>
+                );
+              })}
+            </Stack>
+          </ScrollArea>
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+            <Button loading={saving} onClick={save}>Сохранить</Button>
+          </Group>
+        </Stack>
+      )}
+    </Modal>
   );
 }
 

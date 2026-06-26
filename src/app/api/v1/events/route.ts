@@ -5,7 +5,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { sendWebPush, isWebPushConfigured } from '@/shared/lib/agent/webpush';
 
-const WRITE = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'safeguarding_lead'] as const;
+const WRITE = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'safeguarding_lead', 'event_manager'] as const;
 
 // GET/DELETE — из общего CRUD; POST переопределён, чтобы уведомлять учеников/родителей.
 const crud = createCrud({

@@ -704,9 +704,11 @@ model Achievement {
   place       String?  // 1 место, призёр, участник и т.п.
   date        DateTime
   authorId    String
+  eventId     String?  // источник — школьное мероприятие (SchoolEvent), если достижение из ивента
   createdAt   DateTime @default(now())
 
   @@index([studentId])
+  @@index([eventId])
 }
 
 // ============ PORTFOLIO ============
@@ -1186,6 +1188,19 @@ model SchoolEvent {
   updatedAt   DateTime @updatedAt
 
   @@index([date])
+}
+
+// Участник мероприятия + отметка «отличился» (→ создаёт Achievement). Свободные FK (стиль проекта).
+model EventParticipant {
+  id            String   @id @default(cuid())
+  eventId       String
+  studentId     String
+  distinguished Boolean  @default(false) // «кто отличился»
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@unique([eventId, studentId])
+  @@index([eventId])
 }
 
 // Запись к директору (ассистент бронирует встречу, директор подтверждает/отклоняет)

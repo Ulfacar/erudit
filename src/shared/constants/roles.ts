@@ -52,7 +52,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   cook: 'Повар',
   zavhoz: 'Завхоз',
   senior_psychologist: 'Старший психолог',
-  safeguarding_lead: 'Координатор безопасности',
+  safeguarding_lead: 'Завуч по воспитательной работе',
   call_center: 'Колл-центр',
   event_manager: 'Ивент-менеджер',
   zavuch_primary: 'Завуч по младшим классам',
