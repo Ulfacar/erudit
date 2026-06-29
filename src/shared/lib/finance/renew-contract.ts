@@ -1,5 +1,6 @@
 import { prisma } from '@/shared/lib/prisma';
 import type { PaymentSchedule } from '@prisma/client';
+import { verifiedPaidTotal } from './invoice-status';
 
 const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
@@ -43,18 +44,20 @@ export async function createContractWithInvoices(input: CreateContractInput) {
 
   const student = await prisma.student.findUnique({ where: { id: input.studentId }, select: { branchId: true } });
   // предыдущий активный договор → в историю (completed) + связь
-  const prev = await prisma.contract.findFirst({ where: { studentId: input.studentId, status: 'active' }, orderBy: { createdAt: 'desc' } });
+  const prev = input.renew === true
+    ? await prisma.contract.findFirst({ where: { studentId: input.studentId, status: 'active' }, orderBy: { createdAt: 'desc' } })
+    : null;
 
   // при продлении переносим непогашенный долг прежнего договора в первый платёж нового
   let carried = 0;
   if (input.renew === true && prev) {
-    const prevInvs = await prisma.feeInvoice.findMany({ where: { contractId: prev.id, status: { not: 'cancelled' } }, include: { payments: { select: { amount: true } } } });
+    const prevInvs = await prisma.feeInvoice.findMany({ where: { contractId: prev.id, status: { not: 'cancelled' } }, include: { payments: { select: { amount: true, verified: true } } } });
     for (const inv of prevInvs) {
-      const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+      const paid = verifiedPaidTotal(inv.payments);
       carried += Math.max(0, inv.amount - paid);
     }
   }
-  if (prev) await prisma.contract.update({ where: { id: prev.id }, data: { status: 'completed' } });
+  if (input.renew === true && prev) await prisma.contract.update({ where: { id: prev.id }, data: { status: 'completed' } });
 
   const branch = student?.branchId ? await prisma.branch.findUnique({ where: { id: student.branchId }, select: { requisites: true } }) : null;
 

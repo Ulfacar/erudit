@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       canSeeFinance
         ? prisma.feeInvoice.aggregate({ where: { status: { not: 'cancelled' } }, _sum: { amount: true } })
         : Promise.resolve(null),
-      canSeeFinance ? prisma.payment.aggregate({ _sum: { amount: true } }) : Promise.resolve(null),
+      canSeeFinance ? prisma.payment.aggregate({ where: { verified: true }, _sum: { amount: true } }) : Promise.resolve(null),
       canSeeFinance
         ? prisma.feeInvoice.findMany({ where: { status: { in: ['pending', 'partial'] } }, select: { studentId: true } })
         : Promise.resolve(null),

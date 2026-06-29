@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { computePenalty } from '@/shared/lib/finance/penalty';
+import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
 
 /**
  * Счета «мои»: родитель видит счета своих детей, ученик — свои.
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     const [invoices, students] = await Promise.all([
       prisma.feeInvoice.findMany({
         where: { studentId: { in: studentIds } },
-        include: { payments: { select: { amount: true, paidAt: true, method: true } } },
+        include: { payments: { select: { amount: true, paidAt: true, method: true, verified: true } } },
         orderBy: { dueDate: 'desc' },
       }),
       prisma.student.findMany({
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
         amount: inv.amount,
         status: inv.status,
         dueDate: inv.dueDate,
-        paid: inv.payments.reduce((s, p) => s + p.amount, 0),
+        paid: verifiedPaidTotal(inv.payments),
         remaining,
         penalty,
         overdueDays,

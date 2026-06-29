@@ -119,7 +119,7 @@ export async function computeInsights(opts?: { includeFinance?: boolean }): Prom
     try {
       const [invoiceAgg, paymentAgg, debtors] = await Promise.all([
         prisma.feeInvoice.aggregate({ where: { status: { not: 'cancelled' } }, _sum: { amount: true } }),
-        prisma.payment.aggregate({ _sum: { amount: true } }),
+        prisma.payment.aggregate({ where: { verified: true }, _sum: { amount: true } }),
         prisma.feeInvoice.findMany({ where: { status: { in: ['pending', 'partial'] } }, select: { studentId: true } }),
       ]);
       const debt = (invoiceAgg._sum.amount ?? 0) - (paymentAgg._sum.amount ?? 0);
@@ -142,7 +142,7 @@ export async function computeInsights(opts?: { includeFinance?: boolean }): Prom
     try {
       const overdue = await prisma.feeInvoice.findMany({
         where: { status: { in: ['pending', 'partial'] }, dueDate: { lt: new Date(now) } },
-        select: { amount: true, status: true, dueDate: true, studentId: true, payments: { select: { amount: true } } },
+        select: { amount: true, status: true, dueDate: true, studentId: true, payments: { select: { amount: true, verified: true } } },
       });
       let totalPenalty = 0;
       const penaltyStudents = new Set<string>();

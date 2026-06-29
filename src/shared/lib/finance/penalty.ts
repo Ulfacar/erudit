@@ -14,7 +14,7 @@ export interface PenaltyInput {
   amount: number;
   status: string; // pending | partial | paid | cancelled
   dueDate?: string | Date | null;
-  payments?: Array<{ amount: number }> | null;
+  payments?: Array<{ amount: number; verified: boolean }> | null;
 }
 
 export interface PenaltyResult {
@@ -24,7 +24,7 @@ export interface PenaltyResult {
 }
 
 export function computePenalty(invoice: PenaltyInput, now: Date = new Date()): PenaltyResult {
-  const paid = (invoice.payments ?? []).reduce((s, p) => s + p.amount, 0);
+  const paid = (invoice.payments ?? []).reduce((s, p) => s + (p.verified ? p.amount : 0), 0);
   const remaining = Math.max(invoice.amount - paid, 0);
 
   if (!invoice.dueDate || remaining <= 0 || invoice.status === 'paid' || invoice.status === 'cancelled') {

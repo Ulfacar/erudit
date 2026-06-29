@@ -17,7 +17,7 @@ function rowPenalty(r: Record<string, unknown>): { penalty: number; overdueDays:
     amount: Number(r.amount ?? 0),
     status: String(r.status ?? ''),
     dueDate: (r.dueDate as string) ?? null,
-    payments: (r.payments as Array<{ amount: number }>) ?? [],
+    payments: (r.payments as Array<{ amount: number; verified: boolean }>) ?? [],
   });
   return { penalty, overdueDays };
 }
@@ -39,7 +39,7 @@ const PAY_METHODS = [
 interface InvoiceOption {
   id: string; studentId: string; title: string; period: string | null;
   amount: number; status: string; dueDate: string | null;
-  payments: Array<{ amount: number }>;
+  payments: Array<{ amount: number; verified: boolean }>;
 }
 
 /** Модал «Принять оплату»: выбор открытого счёта → сумма → платёж. */
@@ -70,7 +70,7 @@ function AcceptPaymentModal({ opened, onClose, onSuccess }: { opened: boolean; o
 
   const selected = (invoices ?? []).find((i) => i.id === invoiceId) ?? null;
   const selectedRemaining = selected
-    ? selected.amount - (selected.payments ?? []).reduce((s, p) => s + p.amount, 0)
+    ? selected.amount - (selected.payments ?? []).reduce((s, p) => s + (p.verified ? p.amount : 0), 0)
     : 0;
 
   async function submit() {
@@ -132,7 +132,7 @@ function AcceptPaymentModal({ opened, onClose, onSuccess }: { opened: boolean; o
 interface InvoiceRow {
   id: string; studentId: string; title: string; period: string | null;
   amount: number; status: string; dueDate: string | null; createdAt?: string | null;
-  payments?: Array<{ amount: number }>;
+  payments?: Array<{ amount: number; verified: boolean }>;
 }
 
 /** Модал редактирования счёта (PUT /fee-invoices/[id]). */

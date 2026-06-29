@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
 
 const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'secretary'] as const;
 
@@ -25,12 +26,12 @@ export async function POST(request: NextRequest) {
   try {
     const invoice = await prisma.feeInvoice.findUnique({
       where: { id: invoiceId },
-      include: { payments: { select: { amount: true } } },
+      include: { payments: { select: { amount: true, verified: true } } },
     });
     if (!invoice) return errorResponse('NOT_FOUND', 'Счёт не найден', 404);
     if (!invoice.contractId) return errorResponse('VALIDATION_ERROR', 'Счёт не привязан к договору');
 
-    const paid = invoice.payments.reduce((s, p) => s + p.amount, 0);
+    const paid = verifiedPaidTotal(invoice.payments);
     const shortfall = invoice.amount - paid;
     if (shortfall <= 0) return errorResponse('VALIDATION_ERROR', 'По счёту нет недоплаты');
 

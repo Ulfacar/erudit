@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { putObject, dataUrlToBuffer, isStorageConfigured } from '@/shared/lib/storage/minio';
+import { recalculateFeeInvoiceStatus } from '@/shared/lib/finance/invoice-status';
 
 const VERIFY_ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] as const;
 
@@ -40,7 +41,14 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   if (Object.keys(data).length === 0) return errorResponse('VALIDATION_ERROR', 'Нет полей для обновления');
 
   try {
-    const updated = await prisma.payment.update({ where: { id }, data });
+    const updated = await prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.update({ where: { id }, data });
+      await recalculateFeeInvoiceStatus(tx, payment.invoiceId);
+      return tx.payment.findUniqueOrThrow({
+        where: { id },
+        include: { invoice: { select: { id: true, amount: true, status: true } } },
+      });
+    });
     return successResponse(updated);
   } catch (e) {
     console.error('PATCH payments/[id] error:', e);

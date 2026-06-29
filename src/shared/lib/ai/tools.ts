@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { type AssistantScope, studentInScope, classInScope } from '@/shared/lib/ai/scope';
 import { computeInsights } from '@/shared/lib/ai/insights';
 import { computePenalty } from '@/shared/lib/finance/penalty';
+import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
 
 /**
  * Инструменты AI-ассистента ядра. Каждый тул — это серверный запрос к Prisma,
@@ -189,12 +190,12 @@ const studentFinance: ToolExecutor = async (args, scope) => {
 
   const invoices = await prisma.feeInvoice.findMany({
     where: { studentId },
-    select: { title: true, amount: true, status: true, dueDate: true, payments: { select: { amount: true } } },
+    select: { title: true, amount: true, status: true, dueDate: true, payments: { select: { amount: true, verified: true } } },
     orderBy: { createdAt: 'desc' },
     take: 12,
   });
   const totalDue = invoices.filter((i) => i.status !== 'cancelled').reduce((s, i) => s + i.amount, 0);
-  const totalPaid = invoices.flatMap((i) => i.payments).reduce((s, p) => s + p.amount, 0);
+  const totalPaid = invoices.reduce((sum, invoice) => sum + verifiedPaidTotal(invoice.payments), 0);
   let totalPenalty = 0;
   const rows = invoices.map((i) => {
     const { penalty, overdueDays } = computePenalty(i);
@@ -202,7 +203,7 @@ const studentFinance: ToolExecutor = async (args, scope) => {
     return {
       название: i.title,
       сумма: i.amount,
-      оплачено: i.payments.reduce((s, p) => s + p.amount, 0),
+      оплачено: verifiedPaidTotal(i.payments),
       статус: i.status,
       срок: i.dueDate?.toISOString().slice(0, 10) ?? null,
       ...(penalty > 0 ? { пеня: penalty, просрочка_дней: overdueDays } : {}),
@@ -327,8 +328,8 @@ const financeSummary: ToolExecutor = async (_args, scope) => {
 
   const [invoiceAgg, paymentAgg, monthPayments, byStatus, expenseAgg, debtors] = await Promise.all([
     prisma.feeInvoice.aggregate({ where: { status: { not: 'cancelled' } }, _sum: { amount: true }, _count: true }),
-    prisma.payment.aggregate({ _sum: { amount: true } }),
-    prisma.payment.aggregate({ where: { paidAt: { gte: monthStart } }, _sum: { amount: true } }),
+    prisma.payment.aggregate({ where: { verified: true }, _sum: { amount: true } }),
+    prisma.payment.aggregate({ where: { verified: true, paidAt: { gte: monthStart } }, _sum: { amount: true } }),
     prisma.feeInvoice.groupBy({ by: ['status'], _count: true }),
     prisma.expense.aggregate({ where: { date: { gte: monthStart } }, _sum: { amount: true } }),
     prisma.feeInvoice.findMany({

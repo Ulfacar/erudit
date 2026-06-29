@@ -1,4 +1,5 @@
 import { computePenalty } from '@/shared/lib/finance/penalty';
+import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
 import { invoiceStatusLabel } from '@/shared/lib/finance/invoice-status';
 
 export interface PrintableInvoice {
@@ -9,7 +10,7 @@ export interface PrintableInvoice {
   status: string;
   dueDate?: string | null;
   createdAt?: string | null;
-  payments?: Array<{ amount: number }> | null;
+  payments?: Array<{ amount: number; verified: boolean }> | null;
 }
 
 const fmtSom = (n: number) => `${n.toLocaleString('ru-RU')} сом`;
@@ -21,7 +22,7 @@ const fmtD = (v?: string | null) => (v ? new Date(v).toLocaleDateString('ru-RU')
  */
 export function printInvoice(inv: PrintableInvoice, studentName: string) {
   const { remaining, penalty, overdueDays } = computePenalty(inv);
-  const paid = (inv.payments ?? []).reduce((s, p) => s + p.amount, 0);
+  const paid = verifiedPaidTotal(inv.payments ?? []);
 
   const html = `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><title>Счёт — ${inv.title}</title>

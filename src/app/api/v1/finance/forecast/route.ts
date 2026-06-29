@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   try {
     const invoices = await prisma.feeInvoice.findMany({
       where: { status: { in: ['pending', 'partial'] }, dueDate: { not: null } },
-      include: { payments: { select: { amount: true } } },
+      include: { payments: { select: { amount: true, verified: true } } },
     });
 
     const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;

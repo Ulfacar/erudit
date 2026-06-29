@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { canAccessStudent } from '@/shared/lib/student-access';
+import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
 
 /**
  * GET /api/v1/students/[id]/timeline — единая лента событий ученика из разных
@@ -59,9 +60,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
     }
     for (const inv of invoices) {
       for (const pay of inv.payments) {
+        if (!pay.verified) continue;
         items.push({ date: pay.paidAt.toISOString(), type: 'finance', title: 'Оплата', detail: `${pay.amount} сом${pay.method ? ' · ' + pay.method : ''} — «${inv.title}»`, source: 'бухгалтерия' });
       }
-      const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+      const paid = verifiedPaidTotal(inv.payments);
       if (inv.status !== 'paid' && inv.dueDate && inv.dueDate < new Date() && paid < inv.amount) {
         items.push({ date: inv.dueDate.toISOString(), type: 'overdue', title: 'Просрочка оплаты', detail: `«${inv.title}» — осталось ${inv.amount - paid} сом`, source: 'финансы' });
       }

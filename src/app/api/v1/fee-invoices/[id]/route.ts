@@ -6,7 +6,7 @@ import { createCrudId } from '@/shared/lib/crud';
 const handlers = createCrudId({
   model: 'feeInvoice',
   writeRoles: ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'],
-  include: { payments: { select: { amount: true } } },
+  include: { payments: { select: { amount: true, verified: true } } },
 });
 
 export const PUT = handlers.PUT;

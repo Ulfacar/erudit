@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { computePenalty } from '@/shared/lib/finance/penalty';
+import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
 
 /**
  * Финансовая сводка для собственника/бухгалтера: KPI, должники, динамика.
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const [invoices, students, expenses] = await Promise.all([
       prisma.feeInvoice.findMany({
         where: { status: { not: 'cancelled' } },
-        include: { payments: { select: { amount: true, paidAt: true } } },
+        include: { payments: { select: { amount: true, paidAt: true, verified: true } } },
       }),
       prisma.student.findMany({
         select: { id: true, firstName: true, lastName: true, class: { select: { grade: true, letter: true } } },
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     for (const inv of invoices) {
       const { remaining, penalty, overdueDays } = computePenalty(inv);
-      const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+      const paid = verifiedPaidTotal(inv.payments);
       totalAmount += inv.amount;
       totalPaid += paid;
       totalRemaining += remaining;
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest) {
     const monthByKey = new Map(months.map((m) => [m.key, m]));
     for (const inv of invoices) {
       for (const p of inv.payments) {
+        if (!p.verified) continue;
         const d = new Date(p.paidAt);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         const m = monthByKey.get(key);

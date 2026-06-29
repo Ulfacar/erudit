@@ -20,7 +20,7 @@ interface Contract {
 }
 interface Invoice {
   id: string; title: string; period: string | null; amount: number; status: string; dueDate: string | null;
-  payments: { amount: number }[];
+  payments: { amount: number; verified: boolean }[];
 }
 
 const STATUS: Record<string, { label: string; color: string }> = {
@@ -39,7 +39,7 @@ const dispStatus = (inv: Invoice) => (isOverdue(inv) ? 'overdue' : inv.status);
 const SCHEDULE_LABEL: Record<string, string> = { monthly: 'Ежемесячно', quarterly: 'По триместрам', yearly: 'За год' };
 
 const som = (n: number) => `${n.toLocaleString('ru-RU')} сом`;
-const paidOf = (inv: Invoice) => inv.payments.reduce((s, p) => s + p.amount, 0);
+const paidOf = (inv: Invoice) => inv.payments.reduce((s, p) => s + (p.verified ? p.amount : 0), 0);
 
 export function StudentContracts({ studentId, studentName, className }: { studentId: string; studentName: string; className?: string }) {
   const { has } = useRole();

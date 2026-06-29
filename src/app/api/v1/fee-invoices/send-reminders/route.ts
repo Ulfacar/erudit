@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     const invoices = await prisma.feeInvoice.findMany({
       where: { status: { in: ['pending', 'partial'] }, dueDate: { not: null, lt: new Date() } },
-      include: { payments: { select: { amount: true } } },
+      include: { payments: { select: { amount: true, verified: true } } },
     });
 
     let count = 0;

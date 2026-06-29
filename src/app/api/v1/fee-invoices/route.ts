@@ -15,7 +15,7 @@ const handlers = createCrud({
   createFields: ['studentId', 'contractId', 'title', 'period', 'amount', 'status', 'dueDate'],
   dateFields: ['dueDate'],
   intFields: ['amount'],
-  include: { payments: { select: { amount: true } } },
+  include: { payments: { select: { amount: true, verified: true } } },
   orderBy: { dueDate: 'asc' },
   filterableParams: ['status', 'studentId', 'contractId'],
 });
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     const rows = await prisma.feeInvoice.findMany({
       where,
-      include: { payments: { select: { amount: true } } },
+      include: { payments: { select: { amount: true, verified: true } } },
       orderBy: { dueDate: 'asc' },
     });
 

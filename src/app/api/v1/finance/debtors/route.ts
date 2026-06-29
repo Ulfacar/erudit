@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const invoices = await prisma.feeInvoice.findMany({
       where: { status: { in: ['pending', 'partial'] }, dueDate: { not: null, lt: new Date() } },
-      include: { payments: { select: { amount: true } } },
+      include: { payments: { select: { amount: true, verified: true } } },
     });
     type Row = { studentId: string; remaining: number; penalty: number; overdueDays: number };
     const byStudent = new Map<string, Row>();

@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { recalculateFeeInvoiceStatus } from '@/shared/lib/finance/invoice-status';
 
 /**
  * Регистрация платежа по счёту. Транзакционно: платёж + пересчёт статуса счёта
@@ -26,7 +27,6 @@ export async function POST(request: NextRequest) {
 
     const invoice = await prisma.feeInvoice.findUnique({
       where: { id: invoiceId },
-      include: { payments: { select: { amount: true } } },
     });
     if (!invoice) return errorResponse('NOT_FOUND', 'Счёт не найден', 404);
     if (invoice.status === 'cancelled') return errorResponse('VALIDATION_ERROR', 'Счёт отменён');
@@ -41,13 +41,10 @@ export async function POST(request: NextRequest) {
           verifiedAt: preVerified ? new Date() : null,
         },
       });
-      const paidBefore = invoice.payments.reduce((s, p) => s + p.amount, 0);
-      const paidTotal = paidBefore + amount;
-      const status = paidTotal >= invoice.amount ? 'paid' : paidTotal > 0 ? 'partial' : 'pending';
-      return tx.feeInvoice.update({
+      await recalculateFeeInvoiceStatus(tx, invoiceId);
+      return tx.feeInvoice.findUniqueOrThrow({
         where: { id: invoiceId },
-        data: { status },
-        include: { payments: { select: { amount: true, paidAt: true, method: true } } },
+        include: { payments: { select: { amount: true, paidAt: true, method: true, verified: true } } },
       });
     });
 
