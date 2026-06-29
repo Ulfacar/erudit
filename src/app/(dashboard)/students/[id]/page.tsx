@@ -162,6 +162,17 @@ interface Achievement {
   date: string;
 }
 
+interface RoleFeedback {
+  id: string;
+  studentId: string;
+  authorId: string;
+  authorRole: string;
+  kind: 'recommendation' | 'report';
+  audience: 'child' | 'parent' | 'staff';
+  text: string;
+  createdAt: string;
+}
+
 /* ── Status config ── */
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   permanent: { label: 'Постоянный', color: '#40c057', bg: 'rgba(64,192,87,0.15)' },
@@ -337,7 +348,7 @@ function StarBadge({ level }: { level: number }) {
    Эмир: психолог не видит «Оценки»; колл-центр видит только договор+платежи. */
 const TAB_ORDER = [
   'timeline', 'contracts', 'grades', 'attendance', 'questionnaire',
-  'medical', 'behavior', 'talks', 'analytics', 'portfolio', 'documents',
+  'medical', 'behavior', 'talks', 'feedback', 'analytics', 'portfolio', 'documents',
 ] as const;
 
 export default function StudentProfilePage() {
@@ -784,6 +795,11 @@ export default function StudentProfilePage() {
             {tabVisible('talks') && (
               <Tabs.Tab value="talks" leftSection={<IconMessageCircle size={16} />}>
                 Беседы
+              </Tabs.Tab>
+            )}
+            {tabVisible('feedback') && (
+              <Tabs.Tab value="feedback" leftSection={<IconMessageCircle size={16} />}>
+                Рекомендации
               </Tabs.Tab>
             )}
             {tabVisible('analytics') && (
@@ -1529,6 +1545,10 @@ export default function StudentProfilePage() {
           {/* ══════════════════════════════════════════════
                Story 2.4: ANALYTICS TAB (Аналитика)
              ══════════════════════════════════════════════ */}
+          <Tabs.Panel value="feedback">
+            <RoleFeedbackPanel studentId={studentId} />
+          </Tabs.Panel>
+
           <Tabs.Panel value="analytics">
             <AnalyticsTab
               student={student}
@@ -1609,6 +1629,147 @@ export default function StudentProfilePage() {
 /* ══════════════════════════════════════════════
    ANALYTICS TAB COMPONENT
    ══════════════════════════════════════════════ */
+
+const FEEDBACK_KIND_LABELS: Record<RoleFeedback['kind'], string> = {
+  recommendation: 'Рекомендация',
+  report: 'Отчет',
+};
+
+const FEEDBACK_AUDIENCE_LABELS: Record<RoleFeedback['audience'], string> = {
+  child: 'Ребенок',
+  parent: 'Родитель',
+  staff: 'Сотрудники',
+};
+
+const FEEDBACK_WRITE_ROLES = new Set([
+  'super_admin',
+  'analyst',
+  'zavuch',
+  'curator',
+  'teacher',
+  'event_manager',
+  'safeguarding_lead',
+  'psychologist',
+  'specialist',
+]);
+
+function RoleFeedbackPanel({ studentId }: { studentId: string }) {
+  const { role } = useRole();
+  const canWrite = FEEDBACK_WRITE_ROLES.has(role ?? '');
+  const [items, setItems] = useState<RoleFeedback[] | null>(null);
+  const [kind, setKind] = useState<RoleFeedback['kind']>('recommendation');
+  const [audience, setAudience] = useState<RoleFeedback['audience']>('parent');
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setItems(null);
+    const res = await fetch(`/api/v1/role-feedback?studentId=${studentId}`).then((r) => r.json()).catch(() => ({ data: [] }));
+    setItems(res.success ? res.data : []);
+  }, [studentId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function submit() {
+    const bodyText = text.trim();
+    if (!bodyText) return;
+    setSaving(true);
+    const res = await fetch('/api/v1/role-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId, kind, audience, text: bodyText }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!json.success) {
+      notifications.show({ color: 'red', title: 'Ошибка', message: json.error?.message ?? 'Не удалось сохранить запись' });
+      return;
+    }
+    setText('');
+    notifications.show({ color: 'green', title: 'Сохранено', message: 'Запись добавлена' });
+    load();
+  }
+
+  return (
+    <Stack gap="md" p="md">
+      <Group justify="space-between">
+        <Title order={5} c="var(--mantine-color-text)">Рекомендации и отчеты</Title>
+      </Group>
+
+      {canWrite && (
+        <Paper withBorder radius={6} p="md" style={{ background: '#fbfcfd', borderColor: SURFACE_BORDER }}>
+          <Stack gap="sm">
+            <Group grow align="flex-end">
+              <Select
+                label="Тип"
+                value={kind}
+                onChange={(value) => setKind((value as RoleFeedback['kind']) ?? 'recommendation')}
+                data={[
+                  { value: 'recommendation', label: FEEDBACK_KIND_LABELS.recommendation },
+                  { value: 'report', label: FEEDBACK_KIND_LABELS.report },
+                ]}
+              />
+              <Select
+                label="Кому видно"
+                value={audience}
+                onChange={(value) => setAudience((value as RoleFeedback['audience']) ?? 'parent')}
+                data={[
+                  { value: 'child', label: FEEDBACK_AUDIENCE_LABELS.child },
+                  { value: 'parent', label: FEEDBACK_AUDIENCE_LABELS.parent },
+                  { value: 'staff', label: FEEDBACK_AUDIENCE_LABELS.staff },
+                ]}
+              />
+            </Group>
+            <Textarea
+              label="Текст"
+              minRows={3}
+              autosize
+              value={text}
+              onChange={(event) => setText(event.currentTarget.value)}
+            />
+            <Group justify="flex-end">
+              <Button onClick={submit} loading={saving} disabled={!text.trim()} leftSection={<IconPlus size={16} />}>
+                Добавить
+              </Button>
+            </Group>
+          </Stack>
+        </Paper>
+      )}
+
+      {items === null ? (
+        <Text c={TEXT_DIM} size="sm">Загрузка...</Text>
+      ) : items.length === 0 ? (
+        <Box p="xl" style={{ textAlign: 'center', border: `1px dashed ${SURFACE_BORDER}`, borderRadius: 6 }}>
+          <Text c={TEXT_DIM}>Записей пока нет</Text>
+        </Box>
+      ) : (
+        <Stack gap="sm">
+          {items.map((item) => (
+            <Paper key={item.id} withBorder radius={6} p="md" style={{ background: '#fbfcfd', borderColor: SURFACE_BORDER }}>
+              <Group justify="space-between" align="flex-start" gap="sm">
+                <Box style={{ flex: 1 }}>
+                  <Group gap={6}>
+                    <Badge size="sm" radius="sm" variant="light" color={item.kind === 'recommendation' ? 'blue' : 'grape'}>
+                      {FEEDBACK_KIND_LABELS[item.kind] ?? item.kind}
+                    </Badge>
+                    <Badge size="sm" radius="sm" variant="light" color="gray">
+                      {FEEDBACK_AUDIENCE_LABELS[item.audience] ?? item.audience}
+                    </Badge>
+                    <Badge size="sm" radius="sm" variant="light" color="teal">
+                      {item.authorRole}
+                    </Badge>
+                  </Group>
+                  <Text size="sm" mt="xs" style={{ whiteSpace: 'pre-line' }}>{item.text}</Text>
+                </Box>
+                <Text size="xs" c={TEXT_DIM}>{formatDateShort(item.createdAt)}</Text>
+              </Group>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
 
 interface AnalyticsCategory {
   key: string;

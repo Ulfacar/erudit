@@ -6,6 +6,18 @@ import { withAuth } from '@/shared/lib/api-auth';
 const WRITE = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'safeguarding_lead', 'event_manager'] as const;
 
 interface RouteParams { params: Promise<{ id: string }> }
+type Activity = 'active' | 'passive' | null;
+
+function parseActivity(value: unknown): Activity | 'invalid' {
+  if (value === undefined || value === null || value === '') return null;
+  if (value === 'active' || value === 'passive') return value;
+  return 'invalid';
+}
+
+function achievementDescription(note: string | null, activity: Activity) {
+  const activityText = activity === 'active' ? 'Активное участие' : activity === 'passive' ? 'Пассивное участие' : null;
+  return [activityText, note].filter(Boolean).join('\n') || null;
+}
 
 /** GET — участники мероприятия (с отметкой «отличился»). */
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -32,11 +44,22 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
   const body = await request.json().catch(() => ({}));
   const incoming = Array.isArray(body.participants) ? body.participants : [];
-  const rows: { studentId: string; distinguished: boolean; note: string | null }[] = incoming
+  const parsedRows: { studentId: string; distinguished: boolean; note: string | null; activity: Activity | 'invalid' }[] = incoming
     .filter((p: { studentId?: string }) => p.studentId)
-    .map((p: { studentId: string; distinguished?: boolean; note?: string }) => ({
-      studentId: String(p.studentId), distinguished: p.distinguished === true, note: p.note?.trim() || null,
-    }));
+    .map((p: { studentId: string; distinguished?: boolean; note?: string; activity?: unknown }) => {
+      const activity = parseActivity(p.activity);
+      return {
+        studentId: String(p.studentId),
+        distinguished: p.distinguished === true,
+        note: p.note?.trim() || null,
+        activity,
+      };
+    });
+
+  if (parsedRows.some((row) => row.activity === 'invalid')) {
+    return errorResponse('VALIDATION_ERROR', 'activity должен быть active, passive или null');
+  }
+  const rows = parsedRows as { studentId: string; distinguished: boolean; note: string | null; activity: Activity }[];
 
   try {
     const event = await prisma.schoolEvent.findUnique({ where: { id }, select: { id: true, title: true, date: true } });
@@ -63,12 +86,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       for (const r of rows) {
         await tx.eventParticipant.upsert({
           where: { eventId_studentId: { eventId: id, studentId: r.studentId } },
-          update: { distinguished: r.distinguished, note: r.note },
+          update: { distinguished: r.distinguished, note: r.note, activity: r.activity },
           create: {
             eventId: id,
             studentId: r.studentId,
             distinguished: r.distinguished,
             note: r.note,
+            activity: r.activity,
           },
         });
 
@@ -78,7 +102,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             data: {
               studentId: r.studentId,
               title: event.title,
-              description: r.note,
+              description: achievementDescription(r.note, r.activity),
               category: 'social',
               level: 'school',
               place: 'отличился',
@@ -92,7 +116,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         } else if (r.distinguished && existing) {
           await tx.achievement.updateMany({
             where: { eventId: id, studentId: r.studentId },
-            data: { description: r.note },
+            data: { description: achievementDescription(r.note, r.activity) },
           });
         } else if (!r.distinguished && existing) {
           await tx.achievement.deleteMany({

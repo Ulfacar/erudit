@@ -1219,10 +1219,25 @@ model EventParticipant {
   studentId     String
   distinguished Boolean  @default(false) // «кто отличился»
   note          String?
+  activity      String?
   createdAt     DateTime @default(now())
 
   @@unique([eventId, studentId])
   @@index([eventId])
+}
+
+model RoleFeedback {
+  id         String   @id @default(cuid())
+  studentId  String
+  authorId   String
+  authorRole String
+  kind       String
+  audience   String
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([studentId])
 }
 
 // Запись к директору (ассистент бронирует встречу, директор подтверждает/отклоняет)

@@ -197,6 +197,43 @@ function PaymentsTab({ studentId }: { studentId: string }) {
 }
 
 /* ── Grade colors ── */
+function RoleFeedbackTab({ items }: { items: RoleFeedback[] | null }) {
+  if (!items) return <Center py="lg"><Loader size="sm" /></Center>;
+  if (items.length === 0) {
+    return (
+      <Paper withBorder p="lg" radius="md" ta="center">
+        <ThemeIcon variant="light" color="teal" size={44} radius="xl" mx="auto"><IconCheck size={24} /></ThemeIcon>
+        <Text mt="sm" c="dimmed">Рекомендаций пока нет.</Text>
+      </Paper>
+    );
+  }
+
+  return (
+    <Stack gap="sm">
+      {items.map((item) => (
+        <Paper key={item.id} withBorder p="md" radius="lg" style={{ border: '1px solid #e6e9ee' }}>
+          <Group justify="space-between" align="flex-start" gap="sm">
+            <div style={{ flex: 1 }}>
+              <Group gap={6} mb={6}>
+                <Badge variant="light" color={item.kind === 'recommendation' ? 'blue' : 'grape'} radius="sm">
+                  {item.kind === 'recommendation' ? 'Рекомендация' : 'Отчет'}
+                </Badge>
+                <Badge variant="light" color="gray" radius="sm">
+                  {item.audience === 'child' ? 'Ребенок' : item.audience === 'parent' ? 'Родитель' : 'Сотрудники'}
+                </Badge>
+              </Group>
+              <Text size="sm" style={{ whiteSpace: 'pre-line' }}>{item.text}</Text>
+            </div>
+            <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+              {new Date(item.createdAt).toLocaleDateString('ru-RU')}
+            </Text>
+          </Group>
+        </Paper>
+      ))}
+    </Stack>
+  );
+}
+
 const GRADE_COLORS: Record<number, { bg: string; color: string }> = {
   5: { bg: '#d3f9d8', color: '#2f9e44' },
   4: { bg: '#dbeafe', color: '#1864ab' },
@@ -226,6 +263,7 @@ interface SubjectGrades {
 
 interface AttendanceRec { date: string; status: string }
 interface Homework { id: string; description: string; dueDate: string; subject: { id: string; name: string }; teacher: { firstName: string; lastName: string }; class: { grade: number; letter: string }; done?: boolean }
+interface RoleFeedback { id: string; kind: string; audience: string; text: string; authorRole: string; createdAt: string }
 
 interface ScheduleEntry {
   id: string;
@@ -246,6 +284,7 @@ function DiaryContent() {
   const [attendance, setAttendance] = useState<AttendanceRec[] | null>(null);
   const [homework, setHomework] = useState<Homework[] | null>(null);
   const [schedule, setSchedule] = useState<ScheduleEntry[] | null>(null);
+  const [feedback, setFeedback] = useState<RoleFeedback[] | null>(null);
   const [dataKey, setDataKey] = useState<string | null>(null);
 
   const isParent = me?.role === 'parent';
@@ -272,12 +311,14 @@ function DiaryContent() {
       fetch(`/api/v1/attendance?studentId=${studentId}&${range}`).then((r) => r.json()).catch(() => null),
       classId ? fetch(`/api/v1/homework?classId=${classId}&studentId=${studentId}`).then((r) => r.json()).catch(() => null) : Promise.resolve(null),
       classId ? fetch(`/api/v1/schedule?classId=${classId}`).then((r) => r.json()).catch(() => null) : Promise.resolve(null),
-    ]).then(([g, a, h, s]) => {
+      fetch(`/api/v1/role-feedback?studentId=${studentId}`).then((r) => r.json()).catch(() => null),
+    ]).then(([g, a, h, s, f]) => {
       if (cancelled) return;
       setGrades(g?.success ? g.data : []);
       setAttendance(a?.success ? a.data : []);
       setHomework(h?.success ? h.data : []);
       setSchedule(s?.success ? s.data : []);
+      setFeedback(f?.success ? f.data : []);
       setDataKey(studentId);
     });
     return () => { cancelled = true; };
@@ -394,6 +435,7 @@ function DiaryContent() {
           <Tabs.Tab value="homework" leftSection={<IconNotebook size={16} />}>Домашние задания</Tabs.Tab>
           <Tabs.Tab value="schedule" leftSection={<IconCalendar size={16} />}>Расписание</Tabs.Tab>
           <Tabs.Tab value="notes" leftSection={<IconMessageDots size={16} />}>Заметки</Tabs.Tab>
+          <Tabs.Tab value="feedback" leftSection={<IconMessageDots size={16} />}>Рекомендации</Tabs.Tab>
           <Tabs.Tab value="payments" leftSection={<IconCash size={16} />}>Оплата</Tabs.Tab>
         </Tabs.List>
 
@@ -527,6 +569,10 @@ function DiaryContent() {
         {/* ── Заметки от учителей ── */}
         <Tabs.Panel value="notes">
           {studentId ? <NotesTab studentId={studentId} /> : <Text c="dimmed">Нет данных.</Text>}
+        </Tabs.Panel>
+
+        <Tabs.Panel value="feedback">
+          <RoleFeedbackTab items={feedback} />
         </Tabs.Panel>
 
         {/* ── Оплата ── */}

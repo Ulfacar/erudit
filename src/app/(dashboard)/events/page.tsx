@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActionIcon, Badge, Button, Checkbox, Group, Indicator, Loader, Modal, Paper, ScrollArea, Select, Stack, Text, Textarea, TextInput, Title, Tooltip,
+  ActionIcon, Badge, Button, Checkbox, Group, Indicator, Loader, Modal, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, Tooltip,
 } from '@mantine/core';
 import { Calendar } from '@mantine/dates';
 import { IconClipboardCheck, IconConfetti, IconMapPin, IconPlus, IconStar, IconStarFilled, IconTrash, IconUsers } from '@tabler/icons-react';
@@ -127,11 +127,13 @@ function EventsCalendar() {
 }
 
 interface Stud { id: string; firstName: string; lastName: string; class?: { grade: number; letter: string } | null }
-interface Part { studentId: string; distinguished: boolean; note: string | null }
+type Activity = 'active' | 'passive' | null;
+interface Part { studentId: string; distinguished: boolean; note: string | null; activity: Activity }
+interface PartState { distinguished: boolean; note: string; activity: Activity }
 
 function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: () => void }) {
   const [students, setStudents] = useState<Stud[] | null>(null);
-  const [parts, setParts] = useState<Record<string, { distinguished: boolean; note: string }>>({});
+  const [parts, setParts] = useState<Record<string, PartState>>({});
   const [cls, setCls] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -141,8 +143,8 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
       fetch(`/api/v1/events/${event.id}/participants`).then((r) => r.json()).catch(() => ({ data: [] })),
     ]).then(([s, p]) => {
       setStudents(s.data ?? []);
-      const map: Record<string, { distinguished: boolean; note: string }> = {};
-      for (const it of (p.data ?? []) as Part[]) map[it.studentId] = { distinguished: it.distinguished, note: it.note ?? '' };
+      const map: Record<string, PartState> = {};
+      for (const it of (p.data ?? []) as Part[]) map[it.studentId] = { distinguished: it.distinguished, note: it.note ?? '', activity: it.activity ?? null };
       setParts(map);
     });
   }, [event.id]);
@@ -159,18 +161,21 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
   );
 
   function toggle(id: string) {
-    setParts((m) => { const n = { ...m }; if (n[id]) delete n[id]; else n[id] = { distinguished: false, note: '' }; return n; });
+    setParts((m) => { const n = { ...m }; if (n[id]) delete n[id]; else n[id] = { distinguished: false, note: '', activity: null }; return n; });
   }
   function star(id: string) {
-    setParts((m) => ({ ...m, [id]: { distinguished: !m[id]?.distinguished, note: m[id]?.note ?? '' } }));
+    setParts((m) => ({ ...m, [id]: { distinguished: !m[id]?.distinguished, note: m[id]?.note ?? '', activity: m[id]?.activity ?? null } }));
   }
   function note(id: string, value: string) {
-    setParts((m) => ({ ...m, [id]: { distinguished: m[id]?.distinguished ?? false, note: value } }));
+    setParts((m) => ({ ...m, [id]: { distinguished: m[id]?.distinguished ?? false, note: value, activity: m[id]?.activity ?? null } }));
+  }
+  function activity(id: string, value: string) {
+    setParts((m) => ({ ...m, [id]: { distinguished: m[id]?.distinguished ?? false, note: m[id]?.note ?? '', activity: value === 'active' || value === 'passive' ? value : null } }));
   }
 
   async function save() {
     setSaving(true);
-    const participants = Object.entries(parts).map(([studentId, v]) => ({ studentId, distinguished: v.distinguished, note: v.note.trim() || null }));
+    const participants = Object.entries(parts).map(([studentId, v]) => ({ studentId, distinguished: v.distinguished, note: v.note.trim() || null, activity: v.activity }));
     const res = await fetch(`/api/v1/events/${event.id}/participants`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participants }),
     });
@@ -214,14 +219,25 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
                       )}
                     </Group>
                     {p && (
+                      <Stack gap={6} mt={6}>
+                        <SegmentedControl
+                          size="xs"
+                          value={p.activity ?? 'none'}
+                          onChange={(value) => activity(s.id, value)}
+                          data={[
+                            { value: 'none', label: 'Не указано' },
+                            { value: 'active', label: 'Активно' },
+                            { value: 'passive', label: 'Пассивно' },
+                          ]}
+                        />
                       <Textarea
                         autosize
                         minRows={1}
-                        mt={6}
                         placeholder="Комментарий/результат"
                         value={p.note}
                         onChange={(e) => note(s.id, e.currentTarget.value)}
                       />
+                      </Stack>
                     )}
                   </Paper>
                 );

@@ -50,11 +50,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
     for (const p of eventParts) {
       const event = eventMap.get(p.eventId);
       if (!event) continue;
+      const activity = p.activity === 'active' ? 'Активное участие' : p.activity === 'passive' ? 'Пассивное участие' : null;
       items.push({
         date: event.date.toISOString(),
         type: 'event',
         title: `${p.distinguished ? '★ ' : ''}Участие: ${event.title}`,
-        detail: p.note ?? undefined,
+        detail: [activity, p.note].filter(Boolean).join('\n') || undefined,
         source: 'мероприятия',
       });
     }
