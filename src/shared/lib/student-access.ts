@@ -1,4 +1,32 @@
 import { prisma } from '@/shared/lib/prisma'
+import type { Role } from '@prisma/client'
+
+const STAFF_ROLES: ReadonlySet<Role> = new Set([
+  'super_admin',
+  'analyst',
+  'zavuch',
+  'secretary',
+  'teacher',
+  'curator',
+  'specialist',
+  'accountant',
+  'chief_accountant',
+  'finance_manager',
+  'psychologist',
+  'doctor',
+  'hr',
+  'librarian',
+  'cook',
+  'zavhoz',
+  'senior_psychologist',
+  'safeguarding_lead',
+  'call_center',
+  'event_manager',
+  'zavuch_primary',
+  'zavuch_senior',
+  'zavuch_academic',
+  'cambridge_coord',
+])
 
 export async function canAccessStudent(
   role: string,
@@ -6,6 +34,10 @@ export async function canAccessStudent(
   studentId: string,
 ): Promise<boolean> {
   try {
+    if (STAFF_ROLES.has(role as Role)) {
+      return true
+    }
+
     if (role === 'student') {
       const student = await prisma.student.findUnique({
         where: { id: studentId },
@@ -30,7 +62,7 @@ export async function canAccessStudent(
       return Boolean(parent && parent.children.length > 0)
     }
 
-    return true
+    return false
   } catch {
     return false
   }

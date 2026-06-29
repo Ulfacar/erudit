@@ -17,7 +17,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await withAuth(request);
+    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'hr'] });
     if (auth.response) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;

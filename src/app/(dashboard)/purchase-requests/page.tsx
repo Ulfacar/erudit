@@ -124,7 +124,7 @@ export default function PurchaseRequestsPage() {
                 </Badge>
               ),
             },
-            { key: 'authorName', label: 'Автор', render: (r) => String(r.authorName ?? r.authorId ?? '—') },
+            { key: 'authorName', label: 'Автор', render: (r) => String(r.authorName ?? '—') },
             { key: 'createdAt', label: 'Дата', render: (r) => (r.createdAt ? fmtDate(r.createdAt) : '—') },
             { key: 'decisionNote', label: 'Комментарий', render: (r) => String(r.decisionNote ?? '—') },
           ]}
