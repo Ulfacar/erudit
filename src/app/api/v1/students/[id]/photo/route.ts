@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { canAccessStudent } from '@/shared/lib/student-access';
 import { isStorageConfigured, presignedGet, putObject } from '@/shared/lib/storage/minio';
 
 const WRITE_ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary'] as const;
@@ -60,6 +61,10 @@ export async function GET(
   if (auth.response) return auth.response;
 
   const { id } = await ctx.params;
+  const allowed = await canAccessStudent(auth.session.user.role, auth.session.user.id, id);
+  if (!allowed) {
+    return errorResponse('FORBIDDEN', 'Доступ запрещен', 403);
+  }
 
   try {
     const student = await prisma.student.findUnique({ where: { id }, select: { photo: true } });

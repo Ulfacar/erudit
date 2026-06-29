@@ -30,7 +30,7 @@ function Journal() {
     load();
   }
 
-  const canVerify = has('super_admin', 'analyst', 'zavuch', 'accountant');
+  const canVerify = has('super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager');
 
   if (loading) return <Group justify="center" p="xl"><Loader /></Group>;
   if (!d) return <Stack p="md"><Text c="red">Нет данных.</Text></Stack>;
@@ -82,7 +82,7 @@ function Journal() {
 
 export default function JournalPage() {
   return (
-    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'accountant']}>
+    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager']}>
       <Journal />
     </RoleGate>
   );

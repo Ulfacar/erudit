@@ -4,7 +4,7 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { putObject, dataUrlToBuffer, isStorageConfigured } from '@/shared/lib/storage/minio';
 
-const VERIFY_ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant'] as const;
+const VERIFY_ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] as const;
 
 /**
  * PATCH /api/v1/payments/[id] — бухгалтер подтверждает реальное поступление денег

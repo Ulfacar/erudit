@@ -7,7 +7,7 @@ import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 import { fmtDate, fmtMoney } from '@/shared/components/ui/resource-helpers';
 
-const HR_ROLES = ['super_admin', 'analyst', 'zavuch', 'hr'] as const;
+const HR_ROLES = ['super_admin', 'analyst', 'zavuch', 'hr', 'chief_accountant'] as const;
 
 function HR() {
   const [tab, setTab] = useState<string | null>('candidates');

@@ -42,7 +42,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   specialist: 'Специалист (психолог/логопед/врач)',
   student: 'Ученик',
   parent: 'Родитель',
-  accountant: 'Бухгалтер',
+  accountant: 'Кассир',
+  chief_accountant: 'Бухгалтер',
+  finance_manager: 'Финменеджер',
   psychologist: 'Психолог',
   doctor: 'Врач',
   hr: 'Кадровик (HR)',
@@ -91,6 +93,8 @@ export async function resolveScope(user: SessionUser): Promise<AssistantScope> {
 
     // ── Узкие роли сотрудников: каждый видит свой домен ──
     case 'accountant':
+    case 'chief_accountant':
+    case 'finance_manager':
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: true, canSeePsych: false, allowedSpecialistKinds: [], canSeeSchoolStats: true };
 
     case 'psychologist':

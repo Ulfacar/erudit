@@ -8,7 +8,7 @@ import { computePenalty } from '@/shared/lib/finance/penalty';
  * GET /api/v1/finance/debtors — должники с телефоном родителя (для колл-центра).
  * Сгруппировано по ученику; включает последнее обещание оплаты (StudentNote promise).
  */
-const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'call_center'] as const;
+const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'call_center'] as const;
 
 export async function GET(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...ROLES] });

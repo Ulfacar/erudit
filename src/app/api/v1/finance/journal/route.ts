@@ -8,7 +8,7 @@ import { withAuth } from '@/shared/lib/api-auth';
  * банк), список последних платежей (с филиалом и статусом верификации). Сердце
  * бухгалтерского журнала «кто внёс».
  */
-const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant'] as const;
+const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] as const;
 
 export async function GET(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...ROLES] });

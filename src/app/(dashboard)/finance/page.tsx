@@ -197,7 +197,7 @@ function FinanceContent() {
 
 export default function FinancePage() {
   return (
-    <RoleGate roles={['super_admin', 'analyst', 'accountant']}>
+    <RoleGate roles={['super_admin', 'analyst', 'accountant', 'chief_accountant', 'finance_manager']}>
       <FinanceContent />
     </RoleGate>
   );

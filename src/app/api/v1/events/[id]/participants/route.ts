@@ -42,36 +42,68 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const event = await prisma.schoolEvent.findUnique({ where: { id }, select: { id: true, title: true, date: true } });
     if (!event) return errorResponse('NOT_FOUND', 'Мероприятие не найдено', 404);
 
-    const keepIds = rows.map((r) => r.studentId);
-    // удалить выбывших участников + их достижения по этому событию
-    await prisma.eventParticipant.deleteMany({ where: { eventId: id, studentId: { notIn: keepIds.length ? keepIds : ['__none__'] } } });
-
-    let achievementsCreated = 0;
-    for (const r of rows) {
-      await prisma.eventParticipant.upsert({
-        where: { eventId_studentId: { eventId: id, studentId: r.studentId } },
-        update: { distinguished: r.distinguished, note: r.note },
-        create: { eventId: id, studentId: r.studentId, distinguished: r.distinguished, note: r.note },
+    const achievementsCreated = await prisma.$transaction(async (tx) => {
+      const keepIds = rows.map((r) => r.studentId);
+      await tx.eventParticipant.deleteMany({
+        where: {
+          eventId: id,
+          studentId: { notIn: keepIds.length ? keepIds : ['__none__'] },
+        },
       });
-      const existing = await prisma.achievement.findFirst({ where: { eventId: id, studentId: r.studentId } });
-      if (r.distinguished && !existing) {
-        await prisma.achievement.create({
-          data: {
-            studentId: r.studentId, title: event.title, description: r.note,
-            category: 'social', level: 'school', place: 'отличился',
-            date: event.date, authorId: auth.session.user.id, eventId: id,
+
+      const existingAchievements = await tx.achievement.findMany({
+        where: { eventId: id },
+        select: { studentId: true },
+      });
+      const achievementStudentIds = new Set(
+        existingAchievements.map((achievement) => achievement.studentId),
+      );
+      let created = 0;
+
+      for (const r of rows) {
+        await tx.eventParticipant.upsert({
+          where: { eventId_studentId: { eventId: id, studentId: r.studentId } },
+          update: { distinguished: r.distinguished, note: r.note },
+          create: {
+            eventId: id,
+            studentId: r.studentId,
+            distinguished: r.distinguished,
+            note: r.note,
           },
         });
-        achievementsCreated++;
-      } else if (r.distinguished && existing) {
-        await prisma.achievement.updateMany({
-          where: { eventId: id, studentId: r.studentId },
-          data: { description: r.note },
-        });
-      } else if (!r.distinguished && existing) {
-        await prisma.achievement.deleteMany({ where: { eventId: id, studentId: r.studentId } });
+
+        const existing = achievementStudentIds.has(r.studentId);
+        if (r.distinguished && !existing) {
+          await tx.achievement.create({
+            data: {
+              studentId: r.studentId,
+              title: event.title,
+              description: r.note,
+              category: 'social',
+              level: 'school',
+              place: 'отличился',
+              date: event.date,
+              authorId: auth.session.user.id,
+              eventId: id,
+            },
+          });
+          achievementStudentIds.add(r.studentId);
+          created++;
+        } else if (r.distinguished && existing) {
+          await tx.achievement.updateMany({
+            where: { eventId: id, studentId: r.studentId },
+            data: { description: r.note },
+          });
+        } else if (!r.distinguished && existing) {
+          await tx.achievement.deleteMany({
+            where: { eventId: id, studentId: r.studentId },
+          });
+          achievementStudentIds.delete(r.studentId);
+        }
       }
-    }
+
+      return created;
+    });
 
     return successResponse({ count: rows.length, achievementsCreated });
   } catch (e) {

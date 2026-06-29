@@ -17,7 +17,15 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     data.report = body.report === null || body.report === undefined ? null : String(body.report);
   }
   if ('completedAt' in body) {
-    data.completedAt = body.completedAt ? new Date(String(body.completedAt)) : null;
+    if (body.completedAt) {
+      const completedAt = new Date(String(body.completedAt));
+      if (Number.isNaN(completedAt.getTime())) {
+        return errorResponse('VALIDATION_ERROR', 'Некорректная дата');
+      }
+      data.completedAt = completedAt;
+    } else {
+      data.completedAt = null;
+    }
   }
   if (Object.keys(data).length === 0) {
     return errorResponse('VALIDATION_ERROR', 'Нет полей для обновления');

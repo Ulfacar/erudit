@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server'
 import { prisma } from '@/shared/lib/prisma'
 import { successResponse, errorResponse } from '@/shared/lib/api-response'
 import { withAuth } from '@/shared/lib/api-auth'
+import { canAccessStudent } from '@/shared/lib/student-access'
 
 export async function GET(
   request: NextRequest,
@@ -14,6 +15,10 @@ export async function GET(
     const userId = auth.session.user.id
 
     const { id } = await params
+    const allowed = await canAccessStudent(role, userId, id)
+    if (!allowed) {
+      return errorResponse('FORBIDDEN', 'Доступ запрещен', 403)
+    }
 
     const student = await prisma.student.findUnique({
       where: { id },
@@ -42,22 +47,6 @@ export async function GET(
     // - student: только себя
     // - parent: только своих детей
     // - все остальные роли: разрешено
-    if (role === 'student' && student.user?.id !== userId) {
-      return errorResponse('FORBIDDEN', 'Доступ запрещён', 403)
-    }
-    if (role === 'parent') {
-      const parent = await prisma.parent.findUnique({
-        where: { userId },
-        select: { id: true },
-      })
-      const isOwnChild = parent
-        ? student.parentLinks.some((pl) => pl.parentId === parent.id)
-        : false
-      if (!isOwnChild) {
-        return errorResponse('FORBIDDEN', 'Доступ запрещён', 403)
-      }
-    }
-
     // Compute attendance summary
     const attendanceSummary = {
       total: student.attendance.length,

@@ -10,7 +10,7 @@ import { computePenalty } from '@/shared/lib/finance/penalty';
  */
 export async function GET(request: NextRequest) {
   try {
-    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'accountant'] });
+    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'accountant', 'chief_accountant', 'finance_manager'] });
     if (auth.response) return auth.response;
 
     const [invoices, students, expenses] = await Promise.all([

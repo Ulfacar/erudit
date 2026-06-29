@@ -9,7 +9,7 @@ import { computePenalty } from '@/shared/lib/finance/penalty';
  * по месяцам из неоплаченных счетов (по сроку оплаты) + «мягкий» сигнал от обещаний
  * колл-центра. Помогает предиктить, сколько денег придёт в этом месяце.
  */
-const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant'] as const;
+const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] as const;
 
 export async function GET(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...ROLES] });

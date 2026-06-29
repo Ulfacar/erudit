@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { canAccessStudent } from '@/shared/lib/student-access';
 
 /**
  * GET /api/v1/students/[id]/timeline — единая лента событий ученика из разных
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
   const auth = await withAuth(request);
   if (auth.response) return auth.response;
   const { id } = await ctx.params;
+  const allowed = await canAccessStudent(auth.session.user.role, auth.session.user.id, id);
+  if (!allowed) {
+    return errorResponse('FORBIDDEN', 'Доступ запрещен', 403);
+  }
 
   try {
     const [student, notes, invoices, incidents, psySessions, achievements, eventParts] = await Promise.all([

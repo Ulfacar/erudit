@@ -9,7 +9,7 @@ import { withAuth } from '@/shared/lib/api-auth';
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'zavuch', 'accountant', 'call_center'] });
+    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'call_center'] });
     if (auth.response) return auth.response;
 
     const body = await request.json();
