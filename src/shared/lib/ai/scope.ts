@@ -55,6 +55,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   safeguarding_lead: 'Завуч по воспитательной работе',
   call_center: 'Колл-центр',
   event_manager: 'Ивент-менеджер',
+  media: 'Медиа-центр',
   zavuch_primary: 'Завуч по младшим классам',
   zavuch_senior: 'Завуч по старшим классам',
   zavuch_academic: 'Завуч по учебной части',
@@ -111,6 +112,9 @@ export async function resolveScope(user: SessionUser): Promise<AssistantScope> {
     case 'call_center':
       // колл-центр: финансовый домен (должники/обещания), без психо-данных
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: true, canSeePsych: false, allowedSpecialistKinds: [], canSeeSchoolStats: true };
+
+    case 'media':
+      return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: false, canSeePsych: false, allowedSpecialistKinds: [], canSeeSchoolStats: true };
 
     case 'doctor':
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: false, canSeePsych: true, allowedSpecialistKinds: ['medical'], canSeeSchoolStats: true };

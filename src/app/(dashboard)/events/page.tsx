@@ -5,7 +5,7 @@ import {
   ActionIcon, Badge, Button, Checkbox, Group, Indicator, Loader, Modal, Paper, ScrollArea, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title, Tooltip,
 } from '@mantine/core';
 import { Calendar } from '@mantine/dates';
-import { IconClipboardCheck, IconConfetti, IconMapPin, IconPlus, IconStar, IconStarFilled, IconTrash, IconUsers } from '@tabler/icons-react';
+import { IconClipboardCheck, IconConfetti, IconMapPin, IconPlus, IconStar, IconStarFilled, IconTrash, IconUsers, IconVideo } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { useRole } from '@/shared/hooks/useRole';
@@ -52,6 +52,27 @@ function EventsCalendar() {
     if (!confirm('Удалить мероприятие?')) return;
     const res = await fetch(`/api/v1/events?id=${id}`, { method: 'DELETE' });
     if (res.ok) { notifications.show({ color: 'green', title: 'Удалено', message: 'Мероприятие удалено' }); load(); }
+  }
+
+  async function requestMedia(event: SchoolEvent) {
+    const res = await fetch('/api/v1/media-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: `Съемка: ${event.title}`,
+        source: 'event',
+        eventId: event.id,
+        date: event.date,
+        priority: 'high',
+        location: event.location,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!json.success) {
+      notifications.show({ color: 'red', title: 'Ошибка', message: json.error?.message ?? 'Не удалось создать заявку' });
+      return;
+    }
+    notifications.show({ color: 'green', title: 'Заявка создана', message: 'Медиа-центр получил заявку на съемку' });
   }
 
   return (
@@ -106,6 +127,9 @@ function EventsCalendar() {
                           </Tooltip>
                           <Tooltip label="Итог мероприятия">
                             <ActionIcon variant="subtle" color={e.completedAt ? 'green' : 'gray'} onClick={() => setReportEvent(e)}><IconClipboardCheck size={16} /></ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Заявка в медиа-центр">
+                            <ActionIcon variant="subtle" color="violet" onClick={() => requestMedia(e)}><IconVideo size={16} /></ActionIcon>
                           </Tooltip>
                           <ActionIcon variant="subtle" color="red" onClick={() => remove(e.id)}><IconTrash size={16} /></ActionIcon>
                         </Group>

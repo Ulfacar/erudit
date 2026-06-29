@@ -81,6 +81,7 @@ enum Role {
   safeguarding_lead // координатор безопасности / воспитатель: происшествия, беседы, воспит. мероприятия
   call_center // колл-центр: обзвон задолжников, обещания оплаты
   event_manager // ивент-менеджер: школьные мероприятия, заслуги участникам
+  media // медиа-центр
   // Завучи (наследуют доступ zavuch через ROLE_INHERITS; ступень-скоупинг — отдельно)
   zavuch_primary // завуч по младшим классам
   zavuch_senior // завуч по старшим классам
@@ -1514,6 +1515,27 @@ model MaintenanceRequest {
   resolvedAt  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([status])
+}
+
+model MediaRequest {
+  id            String            @id @default(cuid())
+  title         String
+  description   String?           @db.VarChar(1000)
+  location      String?
+  date          DateTime?
+  priority      IssuePriority     @default(medium)
+  status        MaintenanceStatus @default(open)
+  source        String?
+  eventId       String?
+  requesterId   String
+  requesterName String?
+  requesterRole String?
+  assigneeId    String?
+  assigneeName  String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@index([status])
 }

@@ -40,6 +40,7 @@ import {
   IconTrophy,
   IconUsers,
   IconUsersGroup,
+  IconVideo,
   IconAlertTriangle,
   IconFlame,
 } from '@tabler/icons-react';
@@ -109,5 +110,6 @@ export const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; 
   '/workspace/accounting': IconCalculator,
   '/workspace/kitchen': IconToolsKitchen2,
   '/workspace/maintenance': IconTool,
+  '/media': IconVideo,
   '/purchase-requests': IconShoppingCart,
 };
