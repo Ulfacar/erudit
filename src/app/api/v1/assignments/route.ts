@@ -6,6 +6,7 @@ import { createCrud } from '@/shared/lib/crud';
  */
 export const { GET, POST, DELETE } = createCrud({
   model: 'assignment',
+  listRoles: ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator'],
   writeRoles: ['teacher', 'curator', 'zavuch', 'super_admin'],
   createFields: ['title', 'shortName', 'classId', 'subjectId', 'teacherId', 'periodId', 'categoryId', 'maxPoints', 'date'],
   intFields: ['maxPoints'],

@@ -10,6 +10,7 @@ const WRITE = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'cura
 // GET/DELETE — из общего CRUD; POST переопределён, чтобы уведомлять учеников/родителей.
 const crud = createCrud({
   model: 'schoolEvent',
+  listRoles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist', 'student', 'parent', 'safeguarding_lead', 'event_manager'],
   writeRoles: [...WRITE],
   createFields: ['title', 'description', 'date', 'endDate', 'location', 'audience'],
   dateFields: ['date', 'endDate'],

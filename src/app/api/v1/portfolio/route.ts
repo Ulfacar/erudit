@@ -2,6 +2,7 @@ import { createCrud } from '@/shared/lib/crud';
 
 export const { GET, POST, DELETE } = createCrud({
   model: 'portfolioEntry',
+  listRoles: ['super_admin', 'analyst', 'zavuch'],
   writeRoles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator'],
   createFields: ['studentId', 'type', 'title', 'description', 'fileUrl', 'fileName', 'date'],
   dateFields: ['date'],
