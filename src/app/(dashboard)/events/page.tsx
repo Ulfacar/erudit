@@ -5,7 +5,7 @@ import {
   ActionIcon, Badge, Button, Checkbox, Group, Indicator, Loader, Modal, Paper, ScrollArea, Select, Stack, Text, Textarea, TextInput, Title, Tooltip,
 } from '@mantine/core';
 import { Calendar } from '@mantine/dates';
-import { IconConfetti, IconMapPin, IconPlus, IconStar, IconStarFilled, IconTrash, IconUsers } from '@tabler/icons-react';
+import { IconClipboardCheck, IconConfetti, IconMapPin, IconPlus, IconStar, IconStarFilled, IconTrash, IconUsers } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { useRole } from '@/shared/hooks/useRole';
@@ -13,6 +13,7 @@ import { fmtDate } from '@/shared/components/ui/resource-helpers';
 
 interface SchoolEvent {
   id: string; title: string; description?: string | null; date: string; endDate?: string | null; location?: string | null;
+  report?: string | null; completedAt?: string | null;
 }
 
 const dayKey = (iso: string) => iso.slice(0, 10);
@@ -26,6 +27,7 @@ function EventsCalendar() {
   const [selected, setSelected] = useState<string>(() => localKey(new Date()));
   const [addOpen, setAddOpen] = useState(false);
   const [partEvent, setPartEvent] = useState<SchoolEvent | null>(null);
+  const [reportEvent, setReportEvent] = useState<SchoolEvent | null>(null);
 
   async function load() {
     const j = await fetch('/api/v1/events').then((r) => r.json()).catch(() => ({ data: [] }));
@@ -94,11 +96,16 @@ function EventsCalendar() {
                         {e.location && <Group gap={4} mt={2}><IconMapPin size={12} /><Text size="xs" c="dimmed">{e.location}</Text></Group>}
                         {e.endDate && <Text size="xs" c="dimmed">по {fmtDate(e.endDate)}</Text>}
                         {e.description && <Text size="sm" mt={4}>{e.description}</Text>}
+                        {e.completedAt && <Badge mt={6} size="sm" color="green" variant="light">проведено</Badge>}
+                        {e.report && <Text size="sm" mt={6} c="dimmed" style={{ whiteSpace: 'pre-line' }}>{e.report}</Text>}
                       </div>
                       {canEdit && (
                         <Group gap={4} wrap="nowrap">
                           <Tooltip label="Участники и «кто отличился»">
                             <ActionIcon variant="subtle" color="pink" onClick={() => setPartEvent(e)}><IconUsers size={16} /></ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Итог мероприятия">
+                            <ActionIcon variant="subtle" color={e.completedAt ? 'green' : 'gray'} onClick={() => setReportEvent(e)}><IconClipboardCheck size={16} /></ActionIcon>
                           </Tooltip>
                           <ActionIcon variant="subtle" color="red" onClick={() => remove(e.id)}><IconTrash size={16} /></ActionIcon>
                         </Group>
@@ -114,6 +121,7 @@ function EventsCalendar() {
 
       {addOpen && <AddEventModal defaultDate={selected} onClose={() => setAddOpen(false)} onDone={() => { setAddOpen(false); load(); }} />}
       {partEvent && <ParticipantsModal event={partEvent} onClose={() => setPartEvent(null)} />}
+      {reportEvent && <ReportModal event={reportEvent} onClose={() => setReportEvent(null)} onDone={() => { setReportEvent(null); load(); }} />}
     </Stack>
   );
 }
@@ -123,7 +131,7 @@ interface Part { studentId: string; distinguished: boolean; note: string | null 
 
 function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: () => void }) {
   const [students, setStudents] = useState<Stud[] | null>(null);
-  const [parts, setParts] = useState<Record<string, { distinguished: boolean }>>({});
+  const [parts, setParts] = useState<Record<string, { distinguished: boolean; note: string }>>({});
   const [cls, setCls] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -133,8 +141,8 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
       fetch(`/api/v1/events/${event.id}/participants`).then((r) => r.json()).catch(() => ({ data: [] })),
     ]).then(([s, p]) => {
       setStudents(s.data ?? []);
-      const map: Record<string, { distinguished: boolean }> = {};
-      for (const it of (p.data ?? []) as Part[]) map[it.studentId] = { distinguished: it.distinguished };
+      const map: Record<string, { distinguished: boolean; note: string }> = {};
+      for (const it of (p.data ?? []) as Part[]) map[it.studentId] = { distinguished: it.distinguished, note: it.note ?? '' };
       setParts(map);
     });
   }, [event.id]);
@@ -151,15 +159,18 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
   );
 
   function toggle(id: string) {
-    setParts((m) => { const n = { ...m }; if (n[id]) delete n[id]; else n[id] = { distinguished: false }; return n; });
+    setParts((m) => { const n = { ...m }; if (n[id]) delete n[id]; else n[id] = { distinguished: false, note: '' }; return n; });
   }
   function star(id: string) {
-    setParts((m) => ({ ...m, [id]: { distinguished: !m[id]?.distinguished } }));
+    setParts((m) => ({ ...m, [id]: { distinguished: !m[id]?.distinguished, note: m[id]?.note ?? '' } }));
+  }
+  function note(id: string, value: string) {
+    setParts((m) => ({ ...m, [id]: { distinguished: m[id]?.distinguished ?? false, note: value } }));
   }
 
   async function save() {
     setSaving(true);
-    const participants = Object.entries(parts).map(([studentId, v]) => ({ studentId, distinguished: v.distinguished }));
+    const participants = Object.entries(parts).map(([studentId, v]) => ({ studentId, distinguished: v.distinguished, note: v.note.trim() || null }));
     const res = await fetch(`/api/v1/events/${event.id}/participants`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participants }),
     });
@@ -189,18 +200,30 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
               {shown.map((s) => {
                 const p = parts[s.id];
                 return (
-                  <Group key={s.id} justify="space-between" wrap="nowrap" px={4}>
-                    <Checkbox
-                      checked={!!p}
-                      onChange={() => toggle(s.id)}
-                      label={`${s.lastName} ${s.firstName}${s.class ? ` · ${s.class.grade}${s.class.letter}` : ''}`}
-                    />
+                  <Paper key={s.id} withBorder={!!p} radius="sm" p="xs">
+                    <Group justify="space-between" wrap="nowrap" px={4}>
+                      <Checkbox
+                        checked={!!p}
+                        onChange={() => toggle(s.id)}
+                        label={`${s.lastName} ${s.firstName}${s.class ? ` · ${s.class.grade}${s.class.letter}` : ''}`}
+                      />
+                      {p && (
+                        <ActionIcon variant="subtle" color={p.distinguished ? 'yellow' : 'gray'} onClick={() => star(s.id)}>
+                          {p.distinguished ? <IconStarFilled size={16} /> : <IconStar size={16} />}
+                        </ActionIcon>
+                      )}
+                    </Group>
                     {p && (
-                      <ActionIcon variant="subtle" color={p.distinguished ? 'yellow' : 'gray'} onClick={() => star(s.id)}>
-                        {p.distinguished ? <IconStarFilled size={16} /> : <IconStar size={16} />}
-                      </ActionIcon>
+                      <Textarea
+                        autosize
+                        minRows={1}
+                        mt={6}
+                        placeholder="Комментарий/результат"
+                        value={p.note}
+                        onChange={(e) => note(s.id, e.currentTarget.value)}
+                      />
                     )}
-                  </Group>
+                  </Paper>
                 );
               })}
             </Stack>
@@ -211,6 +234,46 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
           </Group>
         </Stack>
       )}
+    </Modal>
+  );
+}
+
+function ReportModal({ event, onClose, onDone }: { event: SchoolEvent; onClose: () => void; onDone: () => void }) {
+  const [report, setReport] = useState(event.report ?? '');
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    const res = await fetch(`/api/v1/events/${event.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report: report.trim() || null, completedAt: new Date().toISOString() }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!j.success) {
+      notifications.show({ color: 'red', title: 'Ошибка', message: j.error?.message ?? 'Не удалось сохранить итог' });
+      return;
+    }
+    notifications.show({ color: 'green', title: 'Сохранено', message: 'Итог мероприятия обновлён' });
+    onDone();
+  }
+
+  return (
+    <Modal opened onClose={onClose} title={`Итог — ${event.title}`} centered>
+      <Stack gap="sm">
+        <Textarea
+          label="Итог мероприятия"
+          autosize
+          minRows={4}
+          value={report}
+          onChange={(e) => setReport(e.currentTarget.value)}
+        />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button loading={saving} onClick={save}>Сохранить</Button>
+        </Group>
+      </Stack>
     </Modal>
   );
 }

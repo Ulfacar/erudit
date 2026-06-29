@@ -3,7 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 
-const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'secretary'] as const;
+const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'secretary'] as const;
 
 /**
  * POST /api/v1/fee-invoices/carry — перенос недоплаченного остатка счёта.

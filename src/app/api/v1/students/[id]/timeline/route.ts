@@ -16,18 +16,41 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
   const { id } = await ctx.params;
 
   try {
-    const [student, notes, invoices, incidents, psySessions] = await Promise.all([
+    const [student, notes, invoices, incidents, psySessions, achievements, eventParts] = await Promise.all([
       prisma.student.findUnique({ where: { id }, select: { enrolledAt: true } }),
       prisma.studentNote.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, take: 50 }),
       prisma.feeInvoice.findMany({ where: { studentId: id }, include: { payments: true }, orderBy: { createdAt: 'desc' }, take: 30 }),
       prisma.behaviorIncident.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
       prisma.psySession.findMany({ where: { case: { studentId: id } }, select: { date: true }, orderBy: { date: 'desc' }, take: 20 }),
+      prisma.achievement.findMany({ where: { studentId: id }, orderBy: { date: 'desc' }, take: 30 }),
+      prisma.eventParticipant.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, take: 30 }),
     ]);
 
     const items: Item[] = [];
+    const eventIds = [...new Set(eventParts.map((p) => p.eventId))];
+    const eventMap = new Map(
+      (await prisma.schoolEvent.findMany({
+        where: { id: { in: eventIds.length ? eventIds : ['__none__'] } },
+        select: { id: true, title: true, date: true },
+      })).map((event) => [event.id, event]),
+    );
 
     for (const n of notes) {
       items.push({ date: n.createdAt.toISOString(), type: n.type, title: noteTitle(n.type), detail: n.text, source: n.role });
+    }
+    for (const a of achievements) {
+      items.push({ date: a.date.toISOString(), type: 'achievement', title: `Достижение: ${a.title}`, detail: a.description ?? undefined, source: 'портфолио' });
+    }
+    for (const p of eventParts) {
+      const event = eventMap.get(p.eventId);
+      if (!event) continue;
+      items.push({
+        date: event.date.toISOString(),
+        type: 'event',
+        title: `${p.distinguished ? '★ ' : ''}Участие: ${event.title}`,
+        detail: p.note ?? undefined,
+        source: 'мероприятия',
+      });
     }
     for (const inv of invoices) {
       for (const pay of inv.payments) {

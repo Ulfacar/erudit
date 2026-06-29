@@ -45,7 +45,7 @@ const NON_TEACHING_AUTH: Role[] = ['super_admin', 'analyst', 'zavuch', 'secretar
 const ALL_AUTH_NO_SEC: Role[] = ALL_AUTH.filter((r) => r !== 'secretary')
 const NON_TEACHING_NO_SEC: Role[] = NON_TEACHING_AUTH.filter((r) => r !== 'secretary')
 // Узкие роли сотрудников: у каждого свой кабинет + общие коммуникации
-const NEW_STAFF: Role[] = ['accountant', 'psychologist', 'doctor', 'hr', 'librarian', 'cook', 'zavhoz', 'senior_psychologist', 'safeguarding_lead', 'call_center']
+const NEW_STAFF: Role[] = ['accountant', 'chief_accountant', 'finance_manager', 'psychologist', 'doctor', 'hr', 'librarian', 'cook', 'zavhoz', 'senior_psychologist', 'safeguarding_lead', 'call_center']
 // Психологическая служба (eSPSMS): кто ведёт кейсы
 const PSY_STAFF: Role[] = ['psychologist', 'senior_psychologist', 'specialist', 'super_admin']
 
@@ -100,6 +100,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/journal', label: 'Журнал', roles: STAFF_TIER },
     { href: '/journal/attendance', label: 'Посещаемость', roles: STAFF_TIER },
     { href: '/substitutions', label: 'Замены', roles: STAFF_TIER },
+    { href: '/time-off', label: 'Отгулы', roles: STAFF_TIER },
     { href: '/grading', label: 'Оценивание', roles: ADMIN_AND_VICE },
     { href: '/grading/categories', label: 'Категории оценок', roles: ADMIN_AND_VICE },
     { href: '/grading/moderation', label: 'Модерация оценок', roles: ADMIN_AND_VICE },
@@ -117,9 +118,9 @@ export const SIDEBAR_NAV: NavRoute[] = [
 
   // ── Финансы ──
   grp('/g/finance', 'Финансы', [
-    { href: '/finance', label: 'Финансы', roles: ['super_admin', 'analyst', 'accountant'] },
-    { href: '/finance/journal', label: 'Журнал оплат', roles: ['super_admin', 'analyst', 'zavuch', 'accountant'] },
-    { href: '/workspace/accounting', label: 'Бухгалтерия', roles: [...ADMIN_AND_VICE, 'accountant'] },
+    { href: '/finance', label: 'Финансы', roles: ['super_admin', 'analyst', 'accountant', 'chief_accountant', 'finance_manager'] },
+    { href: '/finance/journal', label: 'Журнал оплат', roles: ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] },
+    { href: '/workspace/accounting', label: 'Бухгалтерия', roles: [...ADMIN_AND_VICE, 'accountant', 'chief_accountant', 'finance_manager'] },
     { href: '/call-center', label: 'Колл-центр', roles: ['call_center', 'super_admin', 'analyst', 'zavuch', 'accountant'] },
   ]),
 
@@ -137,7 +138,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
 
   // ── Кадры ──
   grp('/g/hr', 'Кадры', [
-    { href: '/hr', label: 'Кадры (HR)', roles: ['super_admin', 'analyst', 'zavuch', 'hr'] },
+    { href: '/hr', label: 'Кадры (HR)', roles: ['super_admin', 'analyst', 'zavuch', 'hr', 'chief_accountant'] },
     { href: '/staff', label: 'Персонал', roles: [...ADMIN_SECRETARY, 'hr'] },
     { href: '/documents', label: 'Документы', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'hr'] },
   ]),
@@ -154,6 +155,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/meals', label: 'Столовая', roles: ['student', 'parent', 'super_admin', 'analyst', 'zavuch', 'cook'] },
     { href: '/workspace/kitchen', label: 'Кухня', roles: ['super_admin', 'analyst', 'zavuch', 'cook'] },
     { href: '/workspace/maintenance', label: 'АХЧ', roles: ['super_admin', 'analyst', 'zavuch', 'zavhoz'] },
+    { href: '/purchase-requests', label: 'Заявки на закупку', roles: ['super_admin', 'analyst', 'finance_manager', 'accountant', 'chief_accountant', 'zavhoz'] },
     { href: '/lost-found', label: 'Бюро находок', roles: [...NON_TEACHING_NO_SEC, 'zavhoz'] },
   ]),
 

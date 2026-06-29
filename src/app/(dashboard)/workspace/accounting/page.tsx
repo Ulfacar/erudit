@@ -201,19 +201,28 @@ export default function AccountingPage() {
   const [invKey, setInvKey] = useState(0); // remount ResourcePage после платежа/правки
   const [sendingReminders, setSendingReminders] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [classFilter, setClassFilter] = useState<string | null>(null);
+  const [classOptions, setClassOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [editInv, setEditInv] = useState<InvoiceRow | null>(null);
   const [studentMap, setStudentMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch('/api/v1/students')
-      .then((r) => r.json())
-      .then((j) => {
-        if (!j.success) return;
+    Promise.all([
+      fetch('/api/v1/students').then((r) => r.json()).catch(() => null),
+      fetch('/api/v1/classes').then((r) => r.json()).catch(() => null),
+    ]).then(([students, classes]) => {
+      if (students?.success) {
         const m: Record<string, string> = {};
-        for (const s of j.data) m[s.id] = `${s.lastName} ${s.firstName}`;
+        for (const s of students.data) m[s.id] = `${s.lastName} ${s.firstName}`;
         setStudentMap(m);
-      })
-      .catch(() => {});
+      }
+      if (classes?.success) {
+        setClassOptions(classes.data.map((c: { id: string; grade: number; letter: string }) => ({
+          value: c.id,
+          label: `${c.grade}${c.letter}`,
+        })));
+      }
+    });
   }, []);
 
   async function sendReminders() {
@@ -235,7 +244,7 @@ export default function AccountingPage() {
   }
 
   return (
-    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'accountant']}>
+    <RoleGate roles={['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager']}>
       <Tabs defaultValue="invoices">
         <Tabs.List mb="md">
           <Tabs.Tab value="invoices" leftSection={<IconReceipt size={16} />}>Счета (оплата обучения)</Tabs.Tab>
@@ -244,15 +253,27 @@ export default function AccountingPage() {
 
         <Tabs.Panel value="invoices">
           <Group justify="space-between" mb="sm" wrap="wrap">
-            <Select
-              size="xs"
-              w={170}
-              placeholder="Все статусы"
-              clearable
-              data={INV_STATUS}
-              value={statusFilter}
-              onChange={setStatusFilter}
-            />
+            <Group gap="sm">
+              <Select
+                size="xs"
+                w={170}
+                placeholder="Все статусы"
+                clearable
+                data={INV_STATUS}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+              <Select
+                size="xs"
+                w={150}
+                placeholder="Класс"
+                clearable
+                searchable
+                data={classOptions}
+                value={classFilter}
+                onChange={setClassFilter}
+              />
+            </Group>
             <Group gap="sm">
               <Button variant="light" color="orange" leftSection={<IconBellRinging size={16} />} loading={sendingReminders} onClick={sendReminders}>
                 Отправить напоминания
@@ -265,11 +286,14 @@ export default function AccountingPage() {
           <AcceptPaymentModal opened={payOpen} onClose={() => setPayOpen(false)} onSuccess={() => setInvKey((k) => k + 1)} />
           <EditInvoiceModal invoice={editInv} onClose={() => setEditInv(null)} onSuccess={() => setInvKey((k) => k + 1)} />
           <ResourcePage
-            key={`${invKey}|${statusFilter ?? 'all'}`}
+            key={`${invKey}|${statusFilter ?? 'all'}|${classFilter ?? 'all'}`}
             title="Счета на оплату"
             icon={<IconCash size={22} color="#2f9e44" />}
             endpoint="/api/v1/fee-invoices"
-            query={statusFilter ? { status: statusFilter } : undefined}
+            query={{
+              ...(statusFilter ? { status: statusFilter } : {}),
+              ...(classFilter ? { classId: classFilter } : {}),
+            }}
             createLabel="Выставить счёт"
             canDelete
             searchable

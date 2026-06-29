@@ -13,7 +13,7 @@ import { emitEvent } from '@/shared/lib/agent/engine';
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'zavuch', 'accountant'] });
+    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] });
     if (auth.response) return auth.response;
 
     const invoices = await prisma.feeInvoice.findMany({

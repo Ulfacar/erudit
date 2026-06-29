@@ -63,6 +63,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           },
         });
         achievementsCreated++;
+      } else if (r.distinguished && existing) {
+        await prisma.achievement.updateMany({
+          where: { eventId: id, studentId: r.studentId },
+          data: { description: r.note },
+        });
       } else if (!r.distinguished && existing) {
         await prisma.achievement.deleteMany({ where: { eventId: id, studentId: r.studentId } });
       }

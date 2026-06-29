@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useRole } from '@/shared/hooks/useRole';
 import {
   ActionIcon,
+  Anchor,
   Avatar,
   Badge,
   Box,
@@ -14,6 +16,7 @@ import {
   Grid,
   Group,
   Modal,
+  Paper,
   Select,
   Stack,
   Switch,
@@ -39,6 +42,7 @@ import {
   IconMessageCircle,
   IconPlus,
   IconTrash,
+  IconUpload,
   IconUsers,
 } from '@tabler/icons-react';
 import { StudentTimeline } from './StudentTimeline';
@@ -104,11 +108,20 @@ interface StudentDetail {
 interface FamilyData {
   mother: { fullName: string; phone: string; education: string; profession: string };
   father: { fullName: string; phone: string; education: string; profession: string };
-  siblings: { fullName: string; age: string; school: string }[];
+  address: string;
+  siblings: { fullName: string; age: string; school: string; siblingStudentId?: string }[];
   authorizedPickup: { fullName: string; relation: string; phone: string }[];
   interests: string;
   strengths: string;
   weaknesses: string;
+}
+
+interface StudentOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  class?: { grade: number; letter: string } | null;
 }
 
 interface MedicalData {
@@ -137,6 +150,16 @@ interface BehaviorIncident {
   moderatedAt: string | null;
   parentNotified: boolean;
   createdAt: string;
+}
+
+interface Achievement {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  level: string;
+  place: string | null;
+  date: string;
 }
 
 /* ── Status config ── */
@@ -170,6 +193,22 @@ const HEALTH_OPTIONS = [
   { value: 'норма', label: 'Норма' },
   { value: 'нарушение', label: 'Нарушение' },
 ];
+
+const ACHIEVEMENT_CATEGORY_LABELS: Record<string, string> = {
+  academic: 'Учёба',
+  sport: 'Спорт',
+  art: 'Творчество',
+  social: 'Социальное',
+  other: 'Другое',
+};
+
+const ACHIEVEMENT_LEVEL_LABELS: Record<string, string> = {
+  school: 'Школа',
+  district: 'Район',
+  city: 'Город',
+  republic: 'Республика',
+  international: 'Международный',
+};
 
 /* ── Grade color ── */
 function gradeColor(value: number): string {
@@ -231,6 +270,7 @@ function defaultFamilyData(): FamilyData {
   return {
     mother: { fullName: '', phone: '', education: '', profession: '' },
     father: { fullName: '', phone: '', education: '', profession: '' },
+    address: '',
     siblings: [],
     authorizedPickup: [],
     interests: '',
@@ -319,12 +359,17 @@ export default function StudentProfilePage() {
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [grades, setGrades] = useState<SubjectGrades[]>([]);
   const [incidents, setIncidents] = useState<BehaviorIncident[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string | null>('grades');
 
   // Family form state
   const [familyForm, setFamilyForm] = useState<FamilyData>(defaultFamilyData());
   const [familySaving, setFamilySaving] = useState(false);
+  const [studentOptions, setStudentOptions] = useState<StudentOption[]>([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoVersion, setPhotoVersion] = useState(0);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   // Medical form state
   const [medicalForm, setMedicalForm] = useState<MedicalData>(defaultMedicalData());
@@ -352,9 +397,10 @@ export default function StudentProfilePage() {
         // Оценки тянем только если роль их видит — иначе лишний запрос ловит 403
         // и раскрывает существование защищённого endpoint-а (смоук J-CC-01, call_center/психолог).
         const wantsGrades = tabVisible('grades');
-        const [studentRes, gradesRes] = await Promise.all([
+        const [studentRes, gradesRes, achievementsRes] = await Promise.all([
           fetch(`/api/v1/students/${studentId}`),
           wantsGrades ? fetch(`/api/v1/students/${studentId}/grades`) : Promise.resolve(null),
+          fetch(`/api/v1/achievements?studentId=${studentId}`),
         ]);
 
         const studentJson = await studentRes.json();
@@ -372,6 +418,8 @@ export default function StudentProfilePage() {
           const gradesJson = await gradesRes.json();
           if (gradesJson.success) setGrades(gradesJson.data);
         }
+        const achievementsJson = await achievementsRes.json();
+        if (achievementsJson.success) setAchievements(achievementsJson.data);
       } catch (err) {
         console.error('Failed to fetch student data:', err);
       } finally {
@@ -384,6 +432,33 @@ export default function StudentProfilePage() {
 
   // Если выбранная вкладка скрыта для роли — показываем первую доступную (без доп. состояния).
   const shownTab = activeTab && tabVisible(activeTab) ? activeTab : (TAB_ORDER.find(tabVisible) ?? null);
+  const canEditStudentProfile = ['super_admin', 'analyst', 'zavuch', 'secretary'].includes(role ?? '');
+  const siblingSelectData = useMemo(
+    () => studentOptions
+      .filter((option) => option.id !== studentId)
+      .map((option) => {
+        const name = [option.lastName, option.firstName, option.middleName].filter(Boolean).join(' ');
+        const className = option.class ? `, ${formatClassName(option.class)}` : '';
+        return { value: option.id, label: `${name}${className}` };
+      }),
+    [studentId, studentOptions],
+  );
+
+  useEffect(() => {
+    if (!tabVisible('questionnaire')) return;
+
+    async function fetchStudentOptions() {
+      try {
+        const res = await fetch('/api/v1/students');
+        const json = await res.json();
+        if (json.success) setStudentOptions(json.data);
+      } catch (err) {
+        console.error('Failed to fetch sibling student options:', err);
+      }
+    }
+
+    fetchStudentOptions();
+  }, [tabVisible]);
 
   /* ── Save family data ── */
   async function saveFamilyData() {
@@ -404,6 +479,34 @@ export default function StudentProfilePage() {
       notifications.show({ title: 'Ошибка', message: 'Не удалось сохранить анкету', color: 'red' });
     } finally {
       setFamilySaving(false);
+    }
+  }
+
+  async function uploadStudentPhoto(file: File | null) {
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`/api/v1/students/${studentId}/photo`, {
+        method: 'POST',
+        body: formData,
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        setStudent((current) => current ? { ...current, photo: json.data.photo } : current);
+        setPhotoVersion(Date.now());
+        notifications.show({ title: 'Сохранено', message: 'Фото ученика обновлено', color: 'green' });
+      } else {
+        notifications.show({ title: 'Ошибка', message: json.error?.message || 'Не удалось загрузить фото', color: 'red' });
+      }
+    } catch {
+      notifications.show({ title: 'Ошибка', message: 'Не удалось загрузить фото', color: 'red' });
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
     }
   }
 
@@ -524,9 +627,39 @@ export default function StudentProfilePage() {
         }}
       >
         <Group gap="lg" align="flex-start">
-          <Avatar size={80} radius="xl" color="eruditBlue" variant="filled" style={{ fontSize: 28 }}>
-            {initials}
-          </Avatar>
+          <Stack gap={6} align="center">
+            <Avatar
+              key={photoVersion}
+              src={student.photo ? `/api/v1/students/${studentId}/photo${photoVersion ? `?v=${photoVersion}` : ''}` : undefined}
+              size={80}
+              radius="xl"
+              color="eruditBlue"
+              variant="filled"
+              style={{ fontSize: 28 }}
+            >
+              {initials}
+            </Avatar>
+            {canEditStudentProfile && (
+              <>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(event) => uploadStudentPhoto(event.currentTarget.files?.[0] ?? null)}
+                />
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconUpload size={14} />}
+                  loading={photoUploading}
+                  onClick={() => photoInputRef.current?.click()}
+                >
+                  Фото
+                </Button>
+              </>
+            )}
+          </Stack>
 
           <Stack gap={4} style={{ flex: 1 }}>
             <Title order={3} c="var(--mantine-color-text)">
@@ -588,6 +721,14 @@ export default function StudentProfilePage() {
                     </Text>
                   ))}
                 </Group>
+              </Box>
+            )}
+            {familyForm.address.trim() && (
+              <Box mt={8}>
+                <Text size="xs" c={TEXT_DIM} mb={4}>Адрес проживания</Text>
+                <Text size="sm" c="var(--mantine-color-text)">
+                  {familyForm.address}
+                </Text>
               </Box>
             )}
           </Stack>
@@ -886,6 +1027,16 @@ export default function StudentProfilePage() {
                 </Grid>
               </Card>
 
+              {/* Address */}
+              <Card>
+                <TextInput
+                  label="Адрес проживания"
+                  value={familyForm.address}
+                  onChange={(e) => setFamilyForm((f) => ({ ...f, address: e.currentTarget.value }))}
+                  styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                />
+              </Card>
+
               {/* Siblings */}
               <Card>
                 <Group justify="space-between" mb="sm">
@@ -896,7 +1047,7 @@ export default function StudentProfilePage() {
                       variant="subtle"
                       leftSection={<IconPlus size={14} />}
                       onClick={() => setFamilyForm((f) => ({
-                        ...f, siblings: [...f.siblings, { fullName: '', age: '', school: '' }],
+                        ...f, siblings: [...f.siblings, { fullName: '', age: '', school: '', siblingStudentId: undefined }],
                       }))}
                     >
                       Добавить
@@ -906,6 +1057,31 @@ export default function StudentProfilePage() {
                 <Stack gap="xs">
                   {familyForm.siblings.map((sib, idx) => (
                     <Group key={idx} gap="xs" align="flex-end">
+                      <Box style={{ flex: 1, minWidth: 220 }}>
+                        <Select
+                          label="Ученик в системе"
+                          data={siblingSelectData}
+                          value={sib.siblingStudentId ?? null}
+                          onChange={(value) => {
+                            const siblings = [...familyForm.siblings];
+                            siblings[idx] = { ...siblings[idx], siblingStudentId: value ?? undefined };
+                            setFamilyForm((f) => ({ ...f, siblings }));
+                          }}
+                          searchable
+                          clearable
+                          nothingFoundMessage="Не найдено"
+                          styles={{ label: { color: TEXT_SEC }, input: { backgroundColor: '#ffffff', borderColor: SURFACE_BORDER, color: 'var(--mantine-color-text)' } }}
+                        />
+                        {sib.siblingStudentId && (
+                          <Anchor
+                            component={Link}
+                            href={`/students/${sib.siblingStudentId}`}
+                            size="xs"
+                          >
+                            Открыть карточку
+                          </Anchor>
+                        )}
+                      </Box>
                       <TextInput
                         label="ФИО"
                         value={sib.fullName}
@@ -1363,17 +1539,51 @@ export default function StudentProfilePage() {
 
           {/* Portfolio tab */}
           <Tabs.Panel value="portfolio">
-            <Box
-              p="xl"
-              style={{
-                textAlign: 'center',
-                border: `1px dashed ${SURFACE_BORDER}`,
-                borderRadius: 6,
-                margin: 16,
-              }}
-            >
-              <Text c={TEXT_DIM}>Раздел портфолио в разработке</Text>
-            </Box>
+            <Stack gap="sm" p="md">
+              <Title order={5} c="var(--mantine-color-text)">Портфолио достижений</Title>
+              {achievements.length === 0 ? (
+                <Box p="xl" style={{ textAlign: 'center', border: `1px dashed ${SURFACE_BORDER}`, borderRadius: 6 }}>
+                  <Text c={TEXT_DIM}>Достижений пока нет</Text>
+                </Box>
+              ) : (
+                <Stack gap="sm">
+                  {achievements.map((achievement) => (
+                    <Paper
+                      key={achievement.id}
+                      withBorder
+                      radius={6}
+                      p="md"
+                      style={{ background: '#fbfcfd', borderColor: SURFACE_BORDER }}
+                    >
+                      <Group justify="space-between" align="flex-start" gap="sm">
+                        <Box style={{ flex: 1 }}>
+                          <Text fw={600} size="sm" c="var(--mantine-color-text)">{achievement.title}</Text>
+                          <Group gap={6} mt={6}>
+                            <Badge size="sm" radius="sm" variant="light" color="blue">
+                              {ACHIEVEMENT_CATEGORY_LABELS[achievement.category] ?? achievement.category}
+                            </Badge>
+                            <Badge size="sm" radius="sm" variant="light" color="gray">
+                              {ACHIEVEMENT_LEVEL_LABELS[achievement.level] ?? achievement.level}
+                            </Badge>
+                            {achievement.place && (
+                              <Badge size="sm" radius="sm" variant="light" color="green">
+                                {achievement.place}
+                              </Badge>
+                            )}
+                          </Group>
+                          {achievement.description && (
+                            <Text size="sm" c="var(--mantine-color-text)" mt="xs" style={{ whiteSpace: 'pre-line' }}>
+                              {achievement.description}
+                            </Text>
+                          )}
+                        </Box>
+                        <Text size="xs" c={TEXT_DIM}>{formatDateShort(achievement.date)}</Text>
+                      </Group>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
           </Tabs.Panel>
 
           {/* Documents tab */}

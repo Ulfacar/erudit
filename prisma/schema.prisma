@@ -69,6 +69,8 @@ enum Role {
   parent
   // Узкие роли сотрудников (этап 4: «заходишь как бухгалтер — другие функции»)
   accountant // бухгалтер
+  chief_accountant // главный бухгалтер
+  finance_manager // финансист
   psychologist // психолог (kind=psych)
   doctor // врач (kind=medical)
   hr // кадровик
@@ -215,6 +217,7 @@ model Student {
   attendance  Attendance[]
   parentLinks ParentStudent[]
   incidents   BehaviorIncident[]
+  feeInvoices FeeInvoice[]
 
   medicalData   Json?
   familyData    Json?
@@ -372,6 +375,23 @@ model Substitution {
   createdAt           DateTime @default(now())
 
   substitute Teacher @relation(fields: [substituteTeacherId], references: [id])
+}
+
+model TimeOffRequest {
+  id                  String    @id @default(cuid())
+  teacherId           String
+  date                DateTime
+  hours               Int
+  reason              String?   @db.Text
+  status              String    @default("pending")
+  substituteTeacherId String?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([teacherId])
+  @@index([status])
 }
 
 // ============ GRADING ============
@@ -1184,6 +1204,8 @@ model SchoolEvent {
   location    String?
   organizerId String?  // user.id
   audience    String[] @default([])
+  report      String?  @db.Text
+  completedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1315,6 +1337,7 @@ model FeeInvoice {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  student  Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
   contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
   payments Payment[]
 
@@ -1481,6 +1504,25 @@ model MaintenanceRequest {
 }
 
 // ============ LESSON TOPIC (тема урока, EduPage) ============
+
+model PurchaseRequest {
+  id             String    @id @default(cuid())
+  title          String
+  items          String?   @db.Text
+  amount         Int?
+  status         String    @default("pending")
+  decisionNote   String?   @db.Text
+  authorId       String?
+  authorName     String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status])
+  @@index([authorId])
+  @@index([createdAt])
+}
 
 model LessonTopic {
   id        String   @id @default(cuid())
