@@ -13,6 +13,7 @@ import {
   Button,
   Checkbox,
   Collapse,
+  CopyButton,
   Grid,
   Group,
   Modal,
@@ -171,6 +172,14 @@ interface RoleFeedback {
   audience: 'child' | 'parent' | 'staff';
   text: string;
   createdAt: string;
+}
+
+interface GrantAccessResult {
+  studentLogin: string;
+  studentPassword: string | null;
+  parentLogin?: string;
+  parentPassword?: null;
+  alreadyExists: boolean;
 }
 
 /* ── Status config ── */
@@ -373,6 +382,9 @@ export default function StudentProfilePage() {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string | null>('grades');
+  const [grantAccessLoading, setGrantAccessLoading] = useState(false);
+  const [grantAccessModalOpen, setGrantAccessModalOpen] = useState(false);
+  const [grantAccessResult, setGrantAccessResult] = useState<GrantAccessResult | null>(null);
 
   // Family form state
   const [familyForm, setFamilyForm] = useState<FamilyData>(defaultFamilyData());
@@ -470,6 +482,26 @@ export default function StudentProfilePage() {
 
     fetchStudentOptions();
   }, [tabVisible]);
+
+  async function grantAccess() {
+    setGrantAccessLoading(true);
+    try {
+      const res = await fetch(`/api/v1/students/${studentId}/grant-access`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (json.success) {
+        setGrantAccessResult(json.data);
+        setGrantAccessModalOpen(true);
+      } else {
+        notifications.show({ title: 'Ошибка', message: json.error?.message || 'Не удалось выдать доступ', color: 'red' });
+      }
+    } catch {
+      notifications.show({ title: 'Ошибка', message: 'Не удалось выдать доступ', color: 'red' });
+    } finally {
+      setGrantAccessLoading(false);
+    }
+  }
 
   /* ── Save family data ── */
   async function saveFamilyData() {
@@ -673,9 +705,16 @@ export default function StudentProfilePage() {
           </Stack>
 
           <Stack gap={4} style={{ flex: 1 }}>
-            <Title order={3} c="var(--mantine-color-text)">
-              {fullName}
-            </Title>
+            <Group justify="space-between" align="flex-start" gap="sm">
+              <Title order={3} c="var(--mantine-color-text)">
+                {fullName}
+              </Title>
+              {canEditStudentProfile && (
+                <Button size="sm" loading={grantAccessLoading} onClick={grantAccess}>
+                  Выдать доступ
+                </Button>
+              )}
+            </Group>
 
             <Group gap="sm">
               <Badge variant="light" color="blue" size="md" radius="sm">
@@ -745,6 +784,55 @@ export default function StudentProfilePage() {
           </Stack>
         </Group>
       </Box>
+
+      <Modal
+        opened={grantAccessModalOpen}
+        onClose={() => setGrantAccessModalOpen(false)}
+        title={grantAccessResult?.alreadyExists ? 'Доступ уже выдан' : 'Доступ выдан'}
+        centered
+      >
+        {grantAccessResult && (
+          <Stack gap="md">
+            {grantAccessResult.alreadyExists ? (
+              <Text c="var(--mantine-color-text)">Доступ уже выдан.</Text>
+            ) : (
+              <Text size="sm" c={TEXT_DIM}>Пароль показывается один раз.</Text>
+            )}
+
+            <Card>
+              <Stack gap={6}>
+                <Text size="xs" c={TEXT_DIM}>Ученик</Text>
+                <Text fw={700} size="lg" c="var(--mantine-color-text)">Логин: {grantAccessResult.studentLogin}</Text>
+                {grantAccessResult.studentPassword && (
+                  <Text fw={700} size="lg" c="var(--mantine-color-text)">Пароль: {grantAccessResult.studentPassword}</Text>
+                )}
+              </Stack>
+            </Card>
+
+            {grantAccessResult.parentLogin && (
+              <Card>
+                <Stack gap={6}>
+                  <Text size="xs" c={TEXT_DIM}>Родитель</Text>
+                  <Text fw={600} c="var(--mantine-color-text)">Логин: {grantAccessResult.parentLogin}</Text>
+                  <Text size="sm" c={TEXT_DIM}>Пароль не показывается: учетная запись уже была создана.</Text>
+                </Stack>
+              </Card>
+            )}
+
+            {grantAccessResult.studentPassword && (
+              <Group justify="flex-end">
+                <CopyButton value={`Логин: ${grantAccessResult.studentLogin}\nПароль: ${grantAccessResult.studentPassword}`}>
+                  {({ copied, copy }) => (
+                    <Button onClick={copy} color={copied ? 'green' : undefined}>
+                      {copied ? 'Скопировано' : 'Скопировать'}
+                    </Button>
+                  )}
+                </CopyButton>
+              </Group>
+            )}
+          </Stack>
+        )}
+      </Modal>
 
       {/* Tabs */}
       <Box
