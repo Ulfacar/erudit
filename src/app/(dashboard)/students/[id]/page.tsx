@@ -1656,6 +1656,7 @@ const FEEDBACK_WRITE_ROLES = new Set([
 function RoleFeedbackPanel({ studentId }: { studentId: string }) {
   const { role } = useRole();
   const canWrite = FEEDBACK_WRITE_ROLES.has(role ?? '');
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const [items, setItems] = useState<RoleFeedback[] | null>(null);
   const [kind, setKind] = useState<RoleFeedback['kind']>('recommendation');
   const [audience, setAudience] = useState<RoleFeedback['audience']>('parent');
@@ -1674,30 +1675,41 @@ function RoleFeedbackPanel({ studentId }: { studentId: string }) {
     const bodyText = text.trim();
     if (!bodyText) return;
     setSaving(true);
-    const res = await fetch('/api/v1/role-feedback', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, kind, audience, text: bodyText }),
-    });
-    const json = await res.json().catch(() => ({}));
-    setSaving(false);
-    if (!json.success) {
-      notifications.show({ color: 'red', title: 'Ошибка', message: json.error?.message ?? 'Не удалось сохранить запись' });
-      return;
+    try {
+      const res = await fetch('/api/v1/role-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, kind, audience, text: bodyText }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!json.success) {
+        notifications.show({ color: 'red', title: 'Ошибка', message: json.error?.message ?? 'Не удалось сохранить запись' });
+        return;
+      }
+      setText('');
+      closeModal();
+      notifications.show({ color: 'green', title: 'Сохранено', message: 'Запись добавлена' });
+      await load();
+    } catch {
+      notifications.show({ color: 'red', title: 'Ошибка', message: 'Не удалось сохранить запись' });
+    } finally {
+      setSaving(false);
     }
-    setText('');
-    notifications.show({ color: 'green', title: 'Сохранено', message: 'Запись добавлена' });
-    load();
   }
 
   return (
     <Stack gap="md" p="md">
       <Group justify="space-between">
         <Title order={5} c="var(--mantine-color-text)">Рекомендации и отчеты</Title>
+        {canWrite && (
+          <Button size="sm" leftSection={<IconPlus size={16} />} onClick={openModal}>
+            Добавить
+          </Button>
+        )}
       </Group>
 
       {canWrite && (
-        <Paper withBorder radius={6} p="md" style={{ background: '#fbfcfd', borderColor: SURFACE_BORDER }}>
+        <Modal opened={modalOpened} onClose={closeModal} title="Новая запись" centered>
           <Stack gap="sm">
             <Group grow align="flex-end">
               <Select
@@ -1724,16 +1736,20 @@ function RoleFeedbackPanel({ studentId }: { studentId: string }) {
               label="Текст"
               minRows={3}
               autosize
+              required
               value={text}
               onChange={(event) => setText(event.currentTarget.value)}
             />
             <Group justify="flex-end">
+              <Button variant="subtle" onClick={closeModal} disabled={saving}>
+                Отмена
+              </Button>
               <Button onClick={submit} loading={saving} disabled={!text.trim()} leftSection={<IconPlus size={16} />}>
                 Добавить
               </Button>
             </Group>
           </Stack>
-        </Paper>
+        </Modal>
       )}
 
       {items === null ? (
