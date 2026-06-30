@@ -18,6 +18,12 @@ interface SchoolEvent {
 
 const dayKey = (iso: string) => iso.slice(0, 10);
 const localKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const PARTICIPANTS_LABEL = 'Участники и отличившиеся';
+const EVENT_RESULT_LABEL = 'Итог мероприятия';
+const MEDIA_REQUEST_LABEL = 'Заявка в медиа-центр';
+const DELETE_EVENT_LABEL = 'Удалить мероприятие';
+const MARK_DISTINGUISHED_LABEL = 'Отметить отличившегося';
+const UNMARK_DISTINGUISHED_LABEL = 'Снять отметку отличившегося';
 
 function EventsCalendar() {
   const { has } = useRole();
@@ -123,15 +129,17 @@ function EventsCalendar() {
                       {canEdit && (
                         <Group gap={4} wrap="nowrap">
                           <Tooltip label="Участники и «кто отличился»">
-                            <ActionIcon variant="subtle" color="pink" onClick={() => setPartEvent(e)}><IconUsers size={16} /></ActionIcon>
+                            <ActionIcon variant="subtle" color="pink" aria-label={PARTICIPANTS_LABEL} title={PARTICIPANTS_LABEL} onClick={() => setPartEvent(e)}><IconUsers size={16} /></ActionIcon>
                           </Tooltip>
                           <Tooltip label="Итог мероприятия">
-                            <ActionIcon variant="subtle" color={e.completedAt ? 'green' : 'gray'} onClick={() => setReportEvent(e)}><IconClipboardCheck size={16} /></ActionIcon>
+                            <ActionIcon variant="subtle" color={e.completedAt ? 'green' : 'gray'} aria-label={EVENT_RESULT_LABEL} title={EVENT_RESULT_LABEL} onClick={() => setReportEvent(e)}><IconClipboardCheck size={16} /></ActionIcon>
                           </Tooltip>
                           <Tooltip label="Заявка в медиа-центр">
-                            <ActionIcon variant="subtle" color="violet" onClick={() => requestMedia(e)}><IconVideo size={16} /></ActionIcon>
+                            <ActionIcon variant="subtle" color="violet" aria-label={MEDIA_REQUEST_LABEL} title={MEDIA_REQUEST_LABEL} onClick={() => requestMedia(e)}><IconVideo size={16} /></ActionIcon>
                           </Tooltip>
-                          <ActionIcon variant="subtle" color="red" onClick={() => remove(e.id)}><IconTrash size={16} /></ActionIcon>
+                          <Tooltip label={DELETE_EVENT_LABEL}>
+                            <ActionIcon variant="subtle" color="red" aria-label={DELETE_EVENT_LABEL} title={DELETE_EVENT_LABEL} onClick={() => remove(e.id)}><IconTrash size={16} /></ActionIcon>
+                          </Tooltip>
                         </Group>
                       )}
                     </Group>
@@ -237,9 +245,17 @@ function ParticipantsModal({ event, onClose }: { event: SchoolEvent; onClose: ()
                         label={`${s.lastName} ${s.firstName}${s.class ? ` · ${s.class.grade}${s.class.letter}` : ''}`}
                       />
                       {p && (
-                        <ActionIcon variant="subtle" color={p.distinguished ? 'yellow' : 'gray'} onClick={() => star(s.id)}>
-                          {p.distinguished ? <IconStarFilled size={16} /> : <IconStar size={16} />}
-                        </ActionIcon>
+                        <Tooltip label={p.distinguished ? UNMARK_DISTINGUISHED_LABEL : MARK_DISTINGUISHED_LABEL}>
+                          <ActionIcon
+                            variant="subtle"
+                            color={p.distinguished ? 'yellow' : 'gray'}
+                            aria-label={p.distinguished ? UNMARK_DISTINGUISHED_LABEL : MARK_DISTINGUISHED_LABEL}
+                            title={p.distinguished ? UNMARK_DISTINGUISHED_LABEL : MARK_DISTINGUISHED_LABEL}
+                            onClick={() => star(s.id)}
+                          >
+                            {p.distinguished ? <IconStarFilled size={16} /> : <IconStar size={16} />}
+                          </ActionIcon>
+                        </Tooltip>
                       )}
                     </Group>
                     {p && (

@@ -29,6 +29,10 @@ const STATUS_COLORS: Record<string, string> = {
   partial: 'blue',
 };
 
+const APPROVE_REQUEST_LABEL = 'Утвердить заявку';
+const PARTIAL_REQUEST_LABEL = 'Частично утвердить заявку';
+const REJECT_REQUEST_LABEL = 'Отклонить заявку';
+
 interface DecisionState {
   row: ResourceRow;
   status: 'approved' | 'rejected' | 'partial';
@@ -93,17 +97,35 @@ export default function PurchaseRequestsPage() {
               {canDecide && row.status === 'pending' && (
                 <Group gap={4} wrap="nowrap">
                   <Tooltip label="Одобрить">
-                    <ActionIcon variant="subtle" color="green" onClick={() => openDecision(row, 'approved', reloadRows)}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="green"
+                      aria-label={APPROVE_REQUEST_LABEL}
+                      title={APPROVE_REQUEST_LABEL}
+                      onClick={() => openDecision(row, 'approved', reloadRows)}
+                    >
                       <IconCheck size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Частично">
-                    <ActionIcon variant="subtle" color="blue" onClick={() => openDecision(row, 'partial', reloadRows)}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="blue"
+                      aria-label={PARTIAL_REQUEST_LABEL}
+                      title={PARTIAL_REQUEST_LABEL}
+                      onClick={() => openDecision(row, 'partial', reloadRows)}
+                    >
                       <IconAdjustments size={16} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Отклонить">
-                    <ActionIcon variant="subtle" color="red" onClick={() => openDecision(row, 'rejected', reloadRows)}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      aria-label={REJECT_REQUEST_LABEL}
+                      title={REJECT_REQUEST_LABEL}
+                      onClick={() => openDecision(row, 'rejected', reloadRows)}
+                    >
                       <IconX size={16} />
                     </ActionIcon>
                   </Tooltip>
