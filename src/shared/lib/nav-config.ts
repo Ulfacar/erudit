@@ -35,6 +35,7 @@ const ALL_AUTH: Role[] = [
 ]
 
 const ADMIN_TIER: Role[] = ['super_admin', 'analyst']
+const FOUNDER_TIER: Role[] = ['super_admin', 'founder']
 const ADMIN_AND_VICE: Role[] = ['super_admin', 'analyst', 'zavuch']
 const STAFF_TIER: Role[] = ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator']
 const STAFF_AND_SECRETARY: Role[] = [...STAFF_TIER, 'secretary']
@@ -66,6 +67,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/today', label: 'Сегодня', roles: ['teacher', 'curator', 'super_admin', 'zavuch'] },
   { href: '/home', label: 'Главная', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist', 'teacher', 'curator'] },
   { href: '/agent', label: 'Панель агента', roles: [...ALL_AUTH, ...NEW_STAFF] },
+  { href: '/founder', label: 'Учредитель', roles: FOUNDER_TIER },
   { href: '/dashboard', label: 'Аналитика школы', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
   { href: '/core', label: 'Граф ядра', roles: ['super_admin'] },
 

@@ -9,6 +9,7 @@ export type AppRole = Role
 
 export const ALL_ROLES: AppRole[] = [
   'super_admin',
+  'founder',
   'analyst',
   'zavuch',
   'secretary',
@@ -39,6 +40,7 @@ export const ALL_ROLES: AppRole[] = [
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: 'Суперадмин',
+  founder: 'Учредитель',
   analyst: 'Аналитик',
   zavuch: 'Завуч',
   secretary: 'Секретарь',

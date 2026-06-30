@@ -16,6 +16,121 @@ export interface Insight {
 
 const SEVERITY_ORDER: Record<Insight['severity'], number> = { urgent: 0, warn: 1, info: 2 };
 
+export interface FounderOverviewForInsights {
+  finance: {
+    totalAmount: number;
+    totalPaid: number;
+    totalRemaining: number;
+    totalPenalty: number;
+    collectRate: number;
+    debtByClass: Array<{ classLabel: string; remaining: number; students: number }>;
+  };
+  inventory: Array<{ category: string; count: number; quantity: number }>;
+  school: {
+    students: number;
+    teachers: number;
+    classes: number;
+    occupancyRate: number | null;
+    events: number;
+    purchaseRequests: number;
+    timeOffRequests: number;
+  };
+  psych: {
+    sessions: number;
+    cases: number;
+    topClasses: Array<{ classLabel: string; cases: number }>;
+  };
+}
+
+export function computeFounderInsights(overview: FounderOverviewForInsights): Insight[] {
+  // TODO: replace these deterministic rules with vetted LLM synthesis once the founder prompt and redaction contract are approved.
+  const insights: Insight[] = [];
+  const debtLeader = overview.finance.debtByClass[0];
+  const psychLeader = overview.psych.topClasses[0];
+  const inventoryLeader = overview.inventory[0];
+
+  if (overview.finance.collectRate < 70 && overview.finance.totalAmount > 0) {
+    insights.push({
+      severity: 'urgent',
+      title: `Собираемость ниже цели: ${overview.finance.collectRate}%`,
+      detail: `Остаток к оплате ${overview.finance.totalRemaining.toLocaleString('ru-RU')} сом. Нужен управленческий фокус на долгах без раскрытия семей.`,
+      href: '/finance',
+    });
+  } else if (overview.finance.collectRate < 85 && overview.finance.totalAmount > 0) {
+    insights.push({
+      severity: 'warn',
+      title: `Собираемость требует внимания: ${overview.finance.collectRate}%`,
+      detail: `Оплачено ${overview.finance.totalPaid.toLocaleString('ru-RU')} сом из ${overview.finance.totalAmount.toLocaleString('ru-RU')} сом.`,
+      href: '/finance',
+    });
+  }
+
+  if (debtLeader && debtLeader.remaining > 0) {
+    insights.push({
+      severity: debtLeader.students >= 5 ? 'warn' : 'info',
+      title: `Крупнейший долг по классу: ${debtLeader.classLabel}`,
+      detail: `${debtLeader.remaining.toLocaleString('ru-RU')} сом остатка у ${debtLeader.students} учеников. Рекомендация: проверить график напоминаний бухгалтерии.`,
+      href: '/finance',
+    });
+  }
+
+  if (overview.finance.totalPenalty > 0) {
+    insights.push({
+      severity: overview.finance.totalPenalty >= 50000 ? 'warn' : 'info',
+      title: `Начислены пени: ${overview.finance.totalPenalty.toLocaleString('ru-RU')} сом`,
+      detail: 'Пени растут автоматически по просроченным счетам. Проверьте, где уместна реструктуризация или ручной контакт.',
+      href: '/finance/journal',
+    });
+  }
+
+  if (overview.school.occupancyRate !== null && overview.school.occupancyRate >= 95) {
+    insights.push({
+      severity: 'warn',
+      title: `Наполняемость классов ${overview.school.occupancyRate}%`,
+      detail: 'Запас мест почти исчерпан. Стоит сверить приёмную кампанию, резервы и классы с максимальной загрузкой.',
+      href: '/classes',
+    });
+  }
+
+  if (overview.school.purchaseRequests > 0) {
+    insights.push({
+      severity: overview.school.purchaseRequests >= 5 ? 'warn' : 'info',
+      title: `Заявки на закупку ждут решения: ${overview.school.purchaseRequests}`,
+      detail: 'Накопление заявок может тормозить хозяйственные процессы. Проверьте очередь согласования.',
+      href: '/purchase-requests',
+    });
+  }
+
+  if (psychLeader && psychLeader.cases >= 3) {
+    insights.push({
+      severity: 'info',
+      title: `Психокейсы сконцентрированы в ${psychLeader.classLabel}`,
+      detail: `${psychLeader.cases} обезличенных кейсов по классу. Это сигнал для руководителя, без доступа к содержанию кейсов.`,
+      href: '/psychologist/overview',
+    });
+  }
+
+  if (inventoryLeader && inventoryLeader.quantity >= 20) {
+    insights.push({
+      severity: 'info',
+      title: `Крупная категория имущества: ${inventoryLeader.category}`,
+      detail: `${inventoryLeader.quantity} единиц на балансе. Полезно сверить состояние и потребность в обновлении.`,
+      href: '/workspace/maintenance',
+    });
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      severity: 'info',
+      title: 'Критичных отклонений не найдено',
+      detail: 'Финансы, школа, инвентарь и обезличенная психостатистика выглядят без явных управленческих аномалий.',
+      href: '/founder',
+    });
+  }
+
+  return insights.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]).slice(0, 5);
+}
+
 export async function computeInsights(opts?: { includeFinance?: boolean }): Promise<Insight[]> {
   const includeFinance = opts?.includeFinance ?? true;
   const insights: Insight[] = [];

@@ -34,6 +34,7 @@ export interface AssistantScope {
 
 export const ROLE_LABELS: Record<Role, string> = {
   super_admin: 'Директор / администратор',
+  founder: 'Учредитель',
   analyst: 'Аналитик',
   zavuch: 'Завуч',
   secretary: 'Секретарь (ассистент директора)',
@@ -82,6 +83,9 @@ export async function resolveScope(user: SessionUser): Promise<AssistantScope> {
     case 'super_admin':
     case 'analyst':
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: true, canSeePsych: true, allowedSpecialistKinds: 'all', canSeeSchoolStats: true };
+
+    case 'founder':
+      return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: true, canSeePsych: false, allowedSpecialistKinds: [], canSeeSchoolStats: true };
 
     case 'zavuch':
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: true, canSeePsych: true, allowedSpecialistKinds: 'all', canSeeSchoolStats: true };

@@ -59,6 +59,7 @@ model PushSubscription {
 
 enum Role {
   super_admin
+  founder
   analyst
   zavuch
   secretary
