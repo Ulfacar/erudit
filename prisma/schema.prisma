@@ -36,6 +36,7 @@ model User {
   // Привязка к Telegram-боту для доставки уведомлений агента (опц.)
   telegramChatId   String?
   telegramLinkCode String? @unique
+  telegramPendingRequest String?
 
   teacher Teacher?
   student Student?

@@ -5,6 +5,7 @@ import { ActionIcon, Badge, Button, Group, Modal, Select, Stack, TextInput, Tool
 import { notifications } from '@mantine/notifications';
 import { IconCheck, IconEdit, IconPlayerPlay, IconVideo } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { TelegramQrPrint } from '@/shared/components/telegram/TelegramQrPrint';
 import { ResourcePage, type ResourceRow } from '@/shared/components/ui/ResourcePage';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
 import { useRole } from '@/shared/hooks/useRole';
@@ -117,6 +118,7 @@ function MediaContent() {
           </Button>
         ))}
       </Group>
+      <TelegramQrPrint mode="film" label="QR для съемки" />
       <ResourcePage
         title="Медиа-центр"
         icon={<IconVideo size={22} color="#868e96" />}

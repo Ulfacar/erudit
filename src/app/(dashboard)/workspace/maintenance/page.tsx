@@ -3,6 +3,7 @@
 import { Badge, Tabs } from '@mantine/core';
 import { IconTool, IconClipboardList, IconBox } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { TelegramQrPrint } from '@/shared/components/telegram/TelegramQrPrint';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 
 const PRIORITY = [
@@ -29,6 +30,7 @@ export default function MaintenancePage() {
         </Tabs.List>
 
         <Tabs.Panel value="requests">
+          <TelegramQrPrint mode="fix" label="QR для ремонта" />
           <ResourcePage
             title="Заявки АХЧ"
             icon={<IconTool size={22} color="#868e96" />}
