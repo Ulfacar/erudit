@@ -35,7 +35,9 @@ const ROLE_TABS = [
 
 // Сотрудники: у каждого свой кабинет (демо «9 доменов — 1 ядро»)
 const STAFF_TABS = [
-  { id: 'accountant', label: 'Бухгалтер', login: 'accountant1', emoji: '💰', color: '#e8590c' },
+  { id: 'accountant', label: 'Кассир', login: 'accountant1', emoji: '💰', color: '#e8590c' },
+  { id: 'chief_accountant', label: 'Бухгалтер', login: 'chief_accountant1', emoji: '📊', color: '#2b8a3e' },
+  { id: 'finance_manager', label: 'Финменеджер', login: 'finance_manager1', emoji: '📈', color: '#1864ab' },
   { id: 'psychologist', label: 'Психолог', login: 'psychologist1', emoji: '🧠', color: '#9c36b5' },
   { id: 'doctor', label: 'Врач', login: 'doctor1', emoji: '🩺', color: '#e03131' },
   { id: 'hr', label: 'HR (кадры)', login: 'hr1', emoji: '📋', color: '#2f9e44' },
@@ -51,6 +53,8 @@ const STAFF_TABS = [
   { id: 'zavuch_senior', label: 'Завуч (ст.)', login: 'zavuch_senior1', emoji: '🎓', color: '#1c7ed6' },
   { id: 'zavuch_academic', label: 'Завуч (учеб.)', login: 'zavuch_academic1', emoji: '📚', color: '#3b5bdb' },
   { id: 'cambridge_coord', label: 'Кэмбридж', login: 'cambridge1', emoji: '🌐', color: '#7048e8' },
+  { id: 'media', label: 'Медиа-центр', login: 'media1', emoji: '🎬', color: '#c2255c' },
+  { id: 'founder', label: 'Учредитель', login: 'founder1', emoji: '🏛️', color: '#5f3dc4' },
 ];
 
 const ALL_TABS = [...ROLE_TABS, ...STAFF_TABS];
