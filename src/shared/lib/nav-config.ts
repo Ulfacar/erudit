@@ -89,6 +89,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/group-transfers', label: 'Переводы между группами', roles: ['super_admin', 'zavuch', 'teacher', 'curator'] },
     { href: '/workspace/parents', label: 'Родители', roles: ['super_admin', 'analyst', 'zavuch', 'curator'] },
     { href: '/achievements', label: 'Достижения', roles: [...ADMIN_AND_VICE, 'secretary', 'teacher', 'curator', 'event_manager', 'safeguarding_lead'] },
+    { href: '/phys-norms', label: 'Нормативы (физ-ра)', roles: ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator'] },
     { href: '/portfolio', label: 'Портфолио', roles: ADMIN_AND_VICE },
     { href: '/incidents', label: 'Происшествия', roles: STAFF_AND_SECRETARY.concat('specialist', 'psychologist', 'safeguarding_lead') },
     { href: '/urgent-issues', label: 'Срочные вопросы', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'psychologist'] },
