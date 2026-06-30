@@ -168,6 +168,7 @@ model Teacher {
   position   String?
   photo      String?
   hireDate   DateTime?
+  data       Json?
 
   subjects        TeacherSubject[]
   curatorOf       Class[]           @relation("CuratorOf")

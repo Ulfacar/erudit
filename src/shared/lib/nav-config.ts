@@ -112,6 +112,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/academic-periods', label: 'Учебные периоды', roles: ADMIN_AND_VICE },
     { href: '/curriculum-plan', label: 'КТП', roles: ADMIN_AND_VICE },
     { href: '/curriculum-plan/my', label: 'Моё КТП', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst'] },
+    { href: '/my-questionnaire', label: 'Моя анкета', roles: ['teacher', 'curator'] },
     { href: '/lesson-plans', label: 'Поурочные планы', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst'] },
     { href: '/presentations', label: 'ИИ-презентации', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst'] },
     { href: '/tests', label: 'Тесты', roles: ['teacher', 'curator', 'zavuch', 'super_admin', 'analyst', 'student'] },
