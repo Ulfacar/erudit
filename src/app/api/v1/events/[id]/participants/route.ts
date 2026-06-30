@@ -21,7 +21,7 @@ function achievementDescription(note: string | null, activity: Activity) {
 
 /** GET — участники мероприятия (с отметкой «отличился»). */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const auth = await withAuth(request);
+  const auth = await withAuth(request, { roles: [...WRITE] });
   if (auth.response) return auth.response;
   const { id } = await params;
   try {
@@ -68,6 +68,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const achievementsCreated = await prisma.$transaction(async (tx) => {
       const keepIds = rows.map((r) => r.studentId);
       await tx.eventParticipant.deleteMany({
+        where: {
+          eventId: id,
+          studentId: { notIn: keepIds.length ? keepIds : ['__none__'] },
+        },
+      });
+      await tx.achievement.deleteMany({
         where: {
           eventId: id,
           studentId: { notIn: keepIds.length ? keepIds : ['__none__'] },

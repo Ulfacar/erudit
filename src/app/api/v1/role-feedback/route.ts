@@ -57,10 +57,10 @@ export async function GET(request: NextRequest) {
     } = {};
     if (studentId) where.studentId = studentId;
     if (kind) where.kind = kind;
-    if (audience) where.audience = audience;
-
-    if ((role === 'student' || role === 'parent') && !audience) {
+    if (role === 'student' || role === 'parent') {
       where.audience = { in: role === 'student' ? ['child'] : ['parent', 'child'] };
+    } else if (audience) {
+      where.audience = audience;
     }
 
     const rows = await prisma.roleFeedback.findMany({

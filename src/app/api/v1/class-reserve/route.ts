@@ -9,10 +9,12 @@ const ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary'] as const;
 export async function GET(request: NextRequest) {
   const auth = await withAuth(request);
   if (auth.response) return auth.response;
-  const classId = new URL(request.url).searchParams.get('classId');
+  const url = new URL(request.url);
+  const classId = url.searchParams.get('classId');
+  const status = url.searchParams.get('status');
   try {
     const entries = await prisma.classReserveEntry.findMany({
-      where: { ...(classId ? { classId } : {}), status: 'waiting' },
+      where: { ...(classId ? { classId } : {}), ...(status && status !== 'all' ? { status } : !status ? { status: 'waiting' } : {}) },
       orderBy: { position: 'asc' },
     });
     return successResponse(entries);
@@ -47,12 +49,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** PATCH /api/v1/class-reserve — сменить статус (enrolled/cancelled). */
+/** PATCH /api/v1/class-reserve — сменить статус (waiting/cancelled). */
 export async function PATCH(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...ROLES] });
   if (auth.response) return auth.response;
   const { id, status } = (await request.json().catch(() => ({}))) as { id?: string; status?: string };
-  if (!id || !['waiting', 'enrolled', 'cancelled'].includes(status ?? '')) {
+  if (status === 'enrolled') {
+    return errorResponse('VALIDATION_ERROR', 'Use enroll-flow to set enrolled status');
+  }
+  if (!id || !['waiting', 'cancelled'].includes(status ?? '')) {
     return errorResponse('VALIDATION_ERROR', 'Нужны id и status');
   }
   try {

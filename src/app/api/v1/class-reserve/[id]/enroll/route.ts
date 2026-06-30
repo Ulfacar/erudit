@@ -43,16 +43,20 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
         select: { id: true },
       });
 
-      await tx.classReserveEntry.update({
-        where: { id },
+      const upd = await tx.classReserveEntry.updateMany({
+        where: { id, leadId: null, status: 'waiting' },
         data: { leadId: created.id, status: 'enrolled' },
       });
+      if (upd.count === 0) throw new Error('ALREADY_ENROLLED');
 
       return created;
     });
 
     return successResponse({ leadId: lead.id });
   } catch (error) {
+    if (error instanceof Error && error.message === 'ALREADY_ENROLLED') {
+      return errorResponse('ALREADY_ENROLLED', 'Entry is already enrolled', 409);
+    }
     console.error('POST class-reserve enroll error:', error);
     return errorResponse('INTERNAL_ERROR', 'Не удалось создать заявку из очереди', 500);
   }
