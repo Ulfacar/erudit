@@ -30,6 +30,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/api/v1/((?!auth).*)',
+    '/api/v1/((?!auth|public).*)',
   ],
 }

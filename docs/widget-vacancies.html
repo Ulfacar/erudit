@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Отклик на вакансию Bilim OS</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, Arial, sans-serif;
+      --border: #d9dee8;
+      --text: #1f2937;
+      --muted: #667085;
+      --accent: #2563eb;
+      --danger: #b42318;
+      --success: #067647;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; color: var(--text); background: #fff; }
+    .bilim-vacancy-widget { width: 100%; max-width: 560px; border: 1px solid var(--border); border-radius: 8px; padding: 18px; background: #fff; }
+    .bilim-vacancy-widget h2 { margin: 0 0 6px; font-size: 22px; line-height: 1.2; }
+    .bilim-vacancy-widget p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
+    label { font-size: 13px; font-weight: 700; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 11px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 6px;
+      padding: 11px 14px;
+      font: inherit;
+      font-weight: 700;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    button:disabled { opacity: .65; cursor: wait; }
+    .status { min-height: 22px; margin-top: 12px; font-size: 14px; }
+    .status.error { color: var(--danger); }
+    .status.success { color: var(--success); }
+  </style>
+</head>
+<body>
+  <!--
+    Инструкция для интегратора:
+    1. Скопируйте блок .bilim-vacancy-widget вместе со скриптом на страницу сайта.
+    2. Если API расположен на другом домене, замените значение API_BASE ниже.
+    3. Форма отправляет multipart/form-data и не требует авторизации.
+  -->
+  <section class="bilim-vacancy-widget">
+    <h2>Отклик на вакансию</h2>
+    <p>Заполните форму, и HR-команда получит вашу заявку.</p>
+
+    <form id="bilim-application-form">
+      <div class="field">
+        <label for="fullName">Имя и фамилия *</label>
+        <input id="fullName" name="fullName" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="phone">Телефон *</label>
+        <input id="phone" name="phone" autocomplete="tel" required>
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="vacancyId">Вакансия</label>
+        <select id="vacancyId" name="vacancyId">
+          <option value="">Любая подходящая вакансия</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="position">Желаемая должность</label>
+        <input id="position" name="position">
+      </div>
+      <div class="field">
+        <label for="message">Комментарий</label>
+        <textarea id="message" name="message"></textarea>
+      </div>
+      <div class="field">
+        <label for="resume">Резюме</label>
+        <input id="resume" name="resume" type="file" accept=".pdf,.doc,.docx,image/*">
+      </div>
+      <button id="submitBtn" type="submit">Отправить отклик</button>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <script>
+    const API_BASE = 'https://bilimos.kg';
+    const form = document.getElementById('bilim-application-form');
+    const vacancySelect = document.getElementById('vacancyId');
+    const statusEl = document.getElementById('status');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    async function loadVacancies() {
+      try {
+        const res = await fetch(API_BASE + '/api/v1/public/vacancies');
+        const json = await res.json();
+        const vacancies = json.data || [];
+        vacancies.forEach((vacancy) => {
+          const option = document.createElement('option');
+          option.value = vacancy.id;
+          option.textContent = vacancy.department ? vacancy.title + ' — ' + vacancy.department : vacancy.title;
+          vacancySelect.appendChild(option);
+        });
+      } catch (error) {
+        setStatus('Не удалось загрузить список вакансий. Форму можно отправить без выбора.', 'error');
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setStatus('', '');
+
+      const data = new FormData(form);
+      if (!String(data.get('fullName') || '').trim() || !String(data.get('phone') || '').trim()) {
+        setStatus('Укажите имя и телефон.', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Отправляем...';
+
+      try {
+        const res = await fetch(API_BASE + '/api/v1/public/applications', {
+          method: 'POST',
+          body: data,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.success === false) {
+          throw new Error(json.error && json.error.message ? json.error.message : 'Не удалось отправить отклик');
+        }
+        form.reset();
+        setStatus('Спасибо! Отклик отправлен.', 'success');
+      } catch (error) {
+        setStatus(error.message || 'Не удалось отправить отклик.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Отправить отклик';
+      }
+    });
+
+    loadVacancies();
+  </script>
+</body>
+</html>

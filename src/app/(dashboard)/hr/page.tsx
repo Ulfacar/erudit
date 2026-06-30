@@ -107,7 +107,16 @@ const CAND_STATUS: Record<string, { label: string; color: string }> = {
 };
 const NEXT: Record<string, string> = { reserve: 'interview', interview: 'offer', offer: 'hired' };
 
-interface Candidate { id: string; fullName: string; phone: string | null; position: string; status: string; note: string | null }
+interface Candidate {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  position: string;
+  status: string;
+  note: string | null;
+  resumeKey: string | null;
+}
 
 function Candidates() {
   const [list, setList] = useState<Candidate[]>([]);
@@ -145,13 +154,24 @@ function Candidates() {
           : list.length === 0 ? <Text c="dimmed" ta="center" py="xl">Резерв пуст.</Text>
           : (
             <Table highlightOnHover>
-              <Table.Thead><Table.Tr><Table.Th>Кандидат</Table.Th><Table.Th>Должность</Table.Th><Table.Th>Телефон</Table.Th><Table.Th>Статус</Table.Th><Table.Th></Table.Th></Table.Tr></Table.Thead>
+              <Table.Thead><Table.Tr><Table.Th>Кандидат</Table.Th><Table.Th>Должность</Table.Th><Table.Th>Контакты</Table.Th><Table.Th>Резюме</Table.Th><Table.Th>Статус</Table.Th><Table.Th></Table.Th></Table.Tr></Table.Thead>
               <Table.Tbody>
                 {list.map((c) => (
                   <Table.Tr key={c.id}>
-                    <Table.Td>{c.fullName}</Table.Td>
+                    <Table.Td>
+                      <Stack gap={2}>
+                        <Text fw={600} size="sm">{c.fullName}</Text>
+                        {c.note && <Text c="dimmed" size="xs">{c.note}</Text>}
+                      </Stack>
+                    </Table.Td>
                     <Table.Td>{c.position}</Table.Td>
-                    <Table.Td>{c.phone ?? '—'}</Table.Td>
+                    <Table.Td>
+                      <Stack gap={2}>
+                        <Text size="sm">{c.phone ?? '—'}</Text>
+                        {c.email && <Text c="dimmed" size="xs">{c.email}</Text>}
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td>{c.resumeKey ? <Badge variant="light" color="teal">MinIO</Badge> : '—'}</Table.Td>
                     <Table.Td><Badge color={CAND_STATUS[c.status]?.color}>{CAND_STATUS[c.status]?.label ?? c.status}</Badge></Table.Td>
                     <Table.Td>
                       <Group gap={4} justify="flex-end">
