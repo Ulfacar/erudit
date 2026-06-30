@@ -1583,6 +1583,8 @@ model PurchaseRequest {
   authorName     String?
   reviewedById   String?
   reviewedAt     DateTime?
+  forwardedById  String?
+  forwardedAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

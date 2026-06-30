@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ActionIcon, Badge, Button, Group, Modal, Select, Stack, Textarea, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconShoppingCart, IconX, IconAdjustments } from '@tabler/icons-react';
+import { IconCheck, IconShoppingCart, IconX, IconAdjustments, IconSend } from '@tabler/icons-react';
 import type { Role } from '@prisma/client';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage, type ResourceRow } from '@/shared/components/ui/ResourcePage';
@@ -13,10 +13,12 @@ import { roleMatches } from '@/shared/lib/role-access';
 
 const PAGE_ROLES: Role[] = ['super_admin', 'analyst', 'finance_manager', 'accountant', 'chief_accountant', 'zavhoz', 'zavuch'];
 const CREATE_ROLES: Role[] = ['super_admin', 'analyst', 'zavuch', 'zavhoz'];
+const FORWARD_ROLES: Role[] = ['super_admin', 'accountant', 'chief_accountant'];
 const DECISION_ROLES: Role[] = ['super_admin', 'finance_manager'];
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Ожидает',
+  forwarded: 'У финменеджера',
   approved: 'Одобрено',
   rejected: 'Отклонено',
   partial: 'Частично',
@@ -24,6 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'yellow',
+  forwarded: 'orange',
   approved: 'green',
   rejected: 'red',
   partial: 'blue',
@@ -32,6 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
 const APPROVE_REQUEST_LABEL = 'Утвердить заявку';
 const PARTIAL_REQUEST_LABEL = 'Частично утвердить заявку';
 const REJECT_REQUEST_LABEL = 'Отклонить заявку';
+const FORWARD_REQUEST_LABEL = 'Передать финменеджеру';
 
 interface DecisionState {
   row: ResourceRow;
@@ -43,14 +47,39 @@ export default function PurchaseRequestsPage() {
   const [decision, setDecision] = useState<DecisionState | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [forwardingId, setForwardingId] = useState<string | null>(null);
   const [reload, setReload] = useState<(() => void) | null>(null);
   const canCreate = roleMatches(CREATE_ROLES, role);
+  const canForward = roleMatches(FORWARD_ROLES, role);
   const canDecide = roleMatches(DECISION_ROLES, role);
 
   function openDecision(row: ResourceRow, status: DecisionState['status'], reloadRows: () => void) {
     setDecision({ row, status });
     setDecisionNote(String(row.decisionNote ?? ''));
     setReload(() => reloadRows);
+  }
+
+  async function forwardRequest(row: ResourceRow, reloadRows: () => void) {
+    setForwardingId(String(row.id));
+    try {
+      const res = await fetch(`/api/v1/purchase-requests/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'forward' }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Ошибка');
+      notifications.show({ color: 'green', title: 'Передано финменеджеру', message: String(row.title ?? '') });
+      reloadRows();
+    } catch (error) {
+      notifications.show({
+        color: 'red',
+        title: 'Ошибка',
+        message: error instanceof Error ? error.message : 'Не удалось передать заявку финменеджеру',
+      });
+    } finally {
+      setForwardingId(null);
+    }
   }
 
   async function submitDecision() {
@@ -93,45 +122,63 @@ export default function PurchaseRequestsPage() {
           canCreate={canCreate}
           searchable
           rowActions={(row, reloadRows) => (
-            <RoleGate roles={DECISION_ROLES} silent>
-              {canDecide && row.status === 'pending' && (
-                <Group gap={4} wrap="nowrap">
-                  <Tooltip label="Одобрить">
+            <Group gap={4} wrap="nowrap">
+              <RoleGate roles={FORWARD_ROLES} silent>
+                {canForward && row.status === 'pending' && (
+                  <Tooltip label={FORWARD_REQUEST_LABEL}>
                     <ActionIcon
                       variant="subtle"
-                      color="green"
-                      aria-label={APPROVE_REQUEST_LABEL}
-                      title={APPROVE_REQUEST_LABEL}
-                      onClick={() => openDecision(row, 'approved', reloadRows)}
+                      color="orange"
+                      aria-label={FORWARD_REQUEST_LABEL}
+                      title={FORWARD_REQUEST_LABEL}
+                      disabled={forwardingId === row.id}
+                      onClick={() => forwardRequest(row, reloadRows)}
                     >
-                      <IconCheck size={16} />
+                      <IconSend size={16} />
                     </ActionIcon>
                   </Tooltip>
-                  <Tooltip label="Частично">
-                    <ActionIcon
-                      variant="subtle"
-                      color="blue"
-                      aria-label={PARTIAL_REQUEST_LABEL}
-                      title={PARTIAL_REQUEST_LABEL}
-                      onClick={() => openDecision(row, 'partial', reloadRows)}
-                    >
-                      <IconAdjustments size={16} />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Отклонить">
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      aria-label={REJECT_REQUEST_LABEL}
-                      title={REJECT_REQUEST_LABEL}
-                      onClick={() => openDecision(row, 'rejected', reloadRows)}
-                    >
-                      <IconX size={16} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
-              )}
-            </RoleGate>
+                )}
+              </RoleGate>
+              <RoleGate roles={DECISION_ROLES} silent>
+                {canDecide && row.status === 'forwarded' && (
+                  <>
+                    <Tooltip label="Одобрить">
+                      <ActionIcon
+                        variant="subtle"
+                        color="green"
+                        aria-label={APPROVE_REQUEST_LABEL}
+                        title={APPROVE_REQUEST_LABEL}
+                        onClick={() => openDecision(row, 'approved', reloadRows)}
+                      >
+                        <IconCheck size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Частично">
+                      <ActionIcon
+                        variant="subtle"
+                        color="blue"
+                        aria-label={PARTIAL_REQUEST_LABEL}
+                        title={PARTIAL_REQUEST_LABEL}
+                        onClick={() => openDecision(row, 'partial', reloadRows)}
+                      >
+                        <IconAdjustments size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Отклонить">
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        aria-label={REJECT_REQUEST_LABEL}
+                        title={REJECT_REQUEST_LABEL}
+                        onClick={() => openDecision(row, 'rejected', reloadRows)}
+                      >
+                        <IconX size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </>
+                )}
+              </RoleGate>
+            </Group>
           )}
           columns={[
             { key: 'title', label: 'Заявка' },
