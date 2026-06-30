@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Badge, Button, Group, Loader, Modal, Paper, Select, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
-import { IconBriefcase, IconUsers, IconCash, IconBeach, IconPlus, IconFileText } from '@tabler/icons-react';
+import { Anchor, Badge, Button, Group, Loader, Modal, Paper, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconBriefcase, IconUsers, IconCash, IconBeach, IconPlus, IconFileText, IconUserPlus, IconCopy, IconFiles } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 import { fmtDate, fmtMoney } from '@/shared/components/ui/resource-helpers';
@@ -21,6 +22,7 @@ function HR() {
           <Tabs.Tab value="salary" leftSection={<IconCash size={16} />}>Зарплаты</Tabs.Tab>
           <Tabs.Tab value="leave" leftSection={<IconBeach size={16} />}>Отпуска</Tabs.Tab>
           <Tabs.Tab value="contracts" leftSection={<IconFileText size={16} />}>Договоры</Tabs.Tab>
+          <Tabs.Tab value="onboarding" leftSection={<IconUserPlus size={16} />}>Онбординг</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="candidates" pt="md"><Candidates /></Tabs.Panel>
@@ -96,6 +98,7 @@ function HR() {
               { name: 'status', label: 'Статус', type: 'select', options: [{ value: 'active', label: 'Действует' }, { value: 'completed', label: 'Завершён' }], defaultValue: 'active' },
             ]} />
         </Tabs.Panel>
+        <Tabs.Panel value="onboarding" pt="md"><Onboarding /></Tabs.Panel>
       </Tabs>
     </Stack>
   );
@@ -193,6 +196,159 @@ function Candidates() {
           <TextInput label="Заметка" value={f.note} onChange={(e) => setF({ ...f, note: e.currentTarget.value })} />
           <Group justify="flex-end"><Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button><Button onClick={add} loading={saving}>В резерв</Button></Group>
         </Stack>
+      </Modal>
+    </Stack>
+  );
+}
+
+const ONBOARDING_STATUS: Record<string, { label: string; color: string }> = {
+  invited: { label: 'Приглашён', color: 'blue' },
+  filling: { label: 'Заполняет', color: 'orange' },
+  submitted: { label: 'Отправлено', color: 'green' },
+};
+
+interface OnboardingRow {
+  id: string;
+  fullName: string;
+  position: string | null;
+  phone: string | null;
+  email: string | null;
+  inviteToken: string;
+  status: string;
+}
+
+interface OnboardingDoc {
+  id: string;
+  fileName: string | null;
+  title: string;
+}
+
+function Onboarding() {
+  const [list, setList] = useState<OnboardingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docs, setDocs] = useState<OnboardingDoc[]>([]);
+  const [f, setF] = useState({ fullName: '', position: '', phone: '', email: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const j = await fetch('/api/v1/hr/onboarding').then((r) => r.json()).catch(() => ({ data: [] }));
+    setList(j.data ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function copyLink(inviteToken: string) {
+    await navigator.clipboard.writeText(`${window.location.origin}/onboarding/${inviteToken}`);
+    notifications.show({ color: 'green', title: 'Ссылка скопирована', message: 'Можно отправить сотруднику' });
+  }
+
+  async function add() {
+    if (!f.fullName.trim()) return;
+    setSaving(true);
+    const j = await fetch('/api/v1/hr/onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(f),
+    }).then((r) => r.json()).catch(() => null);
+    setSaving(false);
+
+    if (!j?.success) {
+      notifications.show({ color: 'red', title: 'Ошибка', message: j?.error?.message ?? 'Не удалось создать приглашение' });
+      return;
+    }
+
+    await navigator.clipboard.writeText(`${window.location.origin}${j.data.link}`);
+    notifications.show({ color: 'green', title: 'Ссылка скопирована', message: 'Приглашение создано' });
+    setOpen(false);
+    setF({ fullName: '', position: '', phone: '', email: '' });
+    load();
+  }
+
+  async function openDocs(row: OnboardingRow) {
+    setDocsOpen(true);
+    setDocs([]);
+    setDocsLoading(true);
+    const j = await fetch(`/api/v1/documents?ownerType=staff&ownerId=${row.id}`)
+      .then((r) => r.json())
+      .catch(() => ({ data: [] }));
+    setDocs(j.data ?? []);
+    setDocsLoading(false);
+  }
+
+  return (
+    <Stack gap="md">
+      <Group justify="space-between">
+        <Text c="dimmed" size="sm">Публичные анкеты сотрудников и сканы документов.</Text>
+        <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>Пригласить</Button>
+      </Group>
+
+      <Paper withBorder p="md" radius="md">
+        {loading ? <Group justify="center" p="xl"><Loader /></Group>
+          : list.length === 0 ? <Text c="dimmed" ta="center" py="xl">Приглашений пока нет.</Text>
+          : (
+            <Table highlightOnHover>
+              <Table.Thead>
+                <Table.Tr><Table.Th>ФИО</Table.Th><Table.Th>Должность</Table.Th><Table.Th>Статус</Table.Th><Table.Th></Table.Th></Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {list.map((row) => {
+                  const status = ONBOARDING_STATUS[row.status] ?? { label: row.status, color: 'gray' };
+                  return (
+                    <Table.Tr key={row.id}>
+                      <Table.Td>
+                        <Stack gap={2}>
+                          <Text fw={600} size="sm">{row.fullName}</Text>
+                          {(row.phone || row.email) && <Text c="dimmed" size="xs">{[row.phone, row.email].filter(Boolean).join(' · ')}</Text>}
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td>{row.position ?? '—'}</Table.Td>
+                      <Table.Td><Badge color={status.color}>{status.label}</Badge></Table.Td>
+                      <Table.Td>
+                        <Group gap={6} justify="flex-end">
+                          <Button size="compact-xs" variant="light" leftSection={<IconCopy size={14} />} onClick={() => copyLink(row.inviteToken)}>Скопировать ссылку</Button>
+                          {row.status === 'submitted' && (
+                            <Button size="compact-xs" variant="subtle" leftSection={<IconFiles size={14} />} onClick={() => openDocs(row)}>Документы</Button>
+                          )}
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          )}
+      </Paper>
+
+      <Modal opened={open} onClose={() => setOpen(false)} title="Пригласить сотрудника" centered>
+        <Stack gap="sm">
+          <TextInput label="ФИО" required value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.currentTarget.value })} />
+          <TextInput label="Должность" value={f.position} onChange={(e) => setF({ ...f, position: e.currentTarget.value })} />
+          <TextInput label="Телефон" value={f.phone} onChange={(e) => setF({ ...f, phone: e.currentTarget.value })} />
+          <TextInput label="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.currentTarget.value })} />
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
+            <Button onClick={add} loading={saving}>Пригласить</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={docsOpen} onClose={() => setDocsOpen(false)} title="Документы" centered>
+        {docsLoading ? <Group justify="center" p="xl"><Loader /></Group>
+          : docs.length === 0 ? <Text c="dimmed">Документы не найдены.</Text>
+          : (
+            <Stack gap="xs">
+              {docs.map((doc) => (
+                <Anchor key={doc.id} href={`/api/v1/documents/file/${doc.id}`} target="_blank">
+                  {doc.fileName ?? doc.title}
+                </Anchor>
+              ))}
+            </Stack>
+          )}
       </Modal>
     </Stack>
   );
