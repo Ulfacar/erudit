@@ -1517,6 +1517,21 @@ model Asset {
   updatedAt DateTime @updatedAt
 }
 
+model AssetDistribution {
+  id          String   @id @default(cuid())
+  assetId     String?
+  assetName   String
+  category    String?
+  quantity    Int
+  amount      Int?      // сумма в сомах
+  destination String    // куда (кабинет/отдел/филиал)
+  note        String?
+  authorId    String
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model MaintenanceRequest {
   id          String   @id @default(cuid())
   title       String

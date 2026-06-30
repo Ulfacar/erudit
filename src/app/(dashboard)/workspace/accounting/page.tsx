@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ActionIcon, Badge, Button, Group, Modal, NumberInput, Select, Stack, Tabs, Text, TextInput, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCash, IconReceipt, IconArrowDownRight, IconBellRinging, IconCreditCardPay, IconPencil, IconPrinter } from '@tabler/icons-react';
+import { IconCash, IconReceipt, IconArrowDownRight, IconBellRinging, IconCreditCardPay, IconPencil, IconPrinter, IconTruckDelivery } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 import { fmtDate, fmtMoney, studentField, studentLookup } from '@/shared/components/ui/resource-helpers';
@@ -249,6 +249,7 @@ export default function AccountingPage() {
         <Tabs.List mb="md">
           <Tabs.Tab value="invoices" leftSection={<IconReceipt size={16} />}>Счета (оплата обучения)</Tabs.Tab>
           <Tabs.Tab value="expenses" leftSection={<IconArrowDownRight size={16} />}>Расходы</Tabs.Tab>
+          <Tabs.Tab value="distribution" leftSection={<IconTruckDelivery size={16} />}>Распределение инвентаря</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="invoices">
@@ -371,6 +372,24 @@ export default function AccountingPage() {
               { name: 'amount', label: 'Сумма (сом)', type: 'number', required: true },
               { name: 'date', label: 'Дата', type: 'date', required: true },
             ]}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value="distribution">
+          <ResourcePage
+            title="Распределение инвентаря"
+            icon={<IconTruckDelivery size={22} color="#868e96" />}
+            endpoint="/api/v1/asset-distributions"
+            canCreate={false}
+            columns={[
+              { key: 'createdAt', label: 'Дата', render: (r) => (r.createdAt ? new Date(String(r.createdAt)).toLocaleDateString('ru-RU') : '—') },
+              { key: 'assetName', label: 'Наименование' },
+              { key: 'category', label: 'Категория' },
+              { key: 'quantity', label: 'Количество' },
+              { key: 'amount', label: 'Сумма', render: (r) => (r.amount !== undefined && r.amount !== null && r.amount !== '' ? `${Number(r.amount).toLocaleString('ru-RU')} сом` : '—') },
+              { key: 'destination', label: 'Куда' },
+              { key: 'note', label: 'Примечание' },
+            ]}
+            fields={[]}
           />
         </Tabs.Panel>
       </Tabs>
