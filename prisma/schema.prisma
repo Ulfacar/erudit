@@ -397,6 +397,17 @@ model TimeOffRequest {
   @@index([status])
 }
 
+model TeacherHours {
+  id        String   @id @default(cuid())
+  teacherId String
+  date      DateTime
+  hours     Int
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([teacherId])
+}
+
 // ============ GRADING ============
 
 model GradeCategory {

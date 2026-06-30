@@ -104,6 +104,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/journal/attendance', label: 'Посещаемость', roles: STAFF_TIER },
     { href: '/substitutions', label: 'Замены', roles: STAFF_TIER },
     { href: '/time-off', label: 'Отгулы', roles: STAFF_TIER },
+    { href: '/teacher-hours', label: 'Часы присутствия', roles: STAFF_TIER },
     { href: '/grading', label: 'Оценивание', roles: ADMIN_AND_VICE },
     { href: '/grading/categories', label: 'Категории оценок', roles: ADMIN_AND_VICE },
     { href: '/grading/moderation', label: 'Модерация оценок', roles: ADMIN_AND_VICE },
