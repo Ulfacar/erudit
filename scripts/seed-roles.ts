@@ -13,6 +13,10 @@ async function main() {
     { login: 'zavuch_senior1', role: 'zavuch_senior', email: 'zavuch.senior@erudit.kg', star: 4 },
     { login: 'zavuch_academic1', role: 'zavuch_academic', email: 'zavuch.academic@erudit.kg', star: 4 },
     { login: 'cambridge1', role: 'cambridge_coord', email: 'cambridge@erudit.kg', star: 4 },
+    { login: 'founder1', role: 'founder', email: 'founder@erudit.kg', star: 4 },
+    { login: 'media1', role: 'media', email: 'media@erudit.kg', star: 4 },
+    { login: 'chief_accountant1', role: 'chief_accountant', email: 'chief.accountant@erudit.kg', star: 4 },
+    { login: 'finance_manager1', role: 'finance_manager', email: 'finance.manager@erudit.kg', star: 4 },
   ]
   for (const u of defs) {
     await prisma.user.upsert({
