@@ -207,7 +207,7 @@ function AcademicPeriodsContent() {
   if (loading) {
     return (
       <Box style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
-        <Loader color="eruditBlue" />
+        <Loader color="bilimosBlue" />
       </Box>
     );
   }

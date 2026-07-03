@@ -36,9 +36,6 @@ export const bilimosTheme = createTheme({
   colors: {
     bilimosBlue,
     bilimosPink,
-    // Алиас на время поэтапного рибренда ERUDIT→Bilim OS: часть закоммиченных
-    // страниц ещё использует color="eruditBlue" — держим тот же тон, чтобы не рыжели.
-    eruditBlue: bilimosBlue,
   },
 
   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",

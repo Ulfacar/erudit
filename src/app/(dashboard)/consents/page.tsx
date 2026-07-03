@@ -72,7 +72,7 @@ function Consents() {
     <Stack gap="md">
       <Group justify="space-between">
         <Group gap={8}><IconWritingSign size={22} color="#0ca678" /><Title order={3} c="var(--mantine-color-text)">Согласия родителей</Title></Group>
-        {canCreate && <Button leftSection={<IconPlus size={16} />} color="eruditBlue" onClick={() => setOpen(true)}>Создать согласие</Button>}
+        {canCreate && <Button leftSection={<IconPlus size={16} />} color="bilimosBlue" onClick={() => setOpen(true)}>Создать согласие</Button>}
       </Group>
 
       {loading ? (
@@ -124,7 +124,7 @@ function Consents() {
           <TextInput label="Дата мероприятия" type="date" value={eventDate} onChange={(e) => setEventDate(e.currentTarget.value)} />
           <Group justify="flex-end" mt="sm">
             <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
-            <Button onClick={create} loading={saving} color="eruditBlue">Создать</Button>
+            <Button onClick={create} loading={saving} color="bilimosBlue">Создать</Button>
           </Group>
         </Stack>
       </Modal>

@@ -41,7 +41,7 @@ export function ComingSoon({ title }: ComingSoonProps) {
             component={Link}
             href="/dashboard"
             variant="light"
-            color="eruditBlue"
+            color="bilimosBlue"
             radius="sm"
             mt="md"
           >

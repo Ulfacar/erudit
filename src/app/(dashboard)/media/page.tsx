@@ -111,7 +111,7 @@ function MediaContent() {
             key={item.value}
             size="xs"
             variant={tab === item.value ? 'filled' : 'light'}
-            color={tab === item.value ? 'eruditBlue' : 'gray'}
+            color={tab === item.value ? 'bilimosBlue' : 'gray'}
             onClick={() => setTab(item.value)}
           >
             {item.label}

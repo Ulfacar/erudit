@@ -45,7 +45,7 @@ export default function HomePage() {
               className="home-card"
             >
               <Stack gap="sm" align="flex-start">
-                <ThemeIcon variant="light" color="eruditBlue" size={42} radius="md">
+                <ThemeIcon variant="light" color="bilimosBlue" size={42} radius="md">
                   <Icon size={24} />
                 </ThemeIcon>
                 <Text fw={600} size="sm">{item.label}</Text>

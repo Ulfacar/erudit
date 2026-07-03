@@ -180,7 +180,7 @@ export default function WorkloadPage() {
   if (isLoading) {
     return (
       <Box style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-        <Loader color="eruditBlue" />
+        <Loader color="bilimosBlue" />
       </Box>
     );
   }

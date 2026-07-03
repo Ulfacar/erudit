@@ -67,7 +67,7 @@ function Surveys() {
     <Stack gap="md">
       <Group justify="space-between">
         <Group gap={8}><IconChartBar size={22} color="#7048e8" /><Title order={3} c="var(--mantine-color-text)">Опросы</Title></Group>
-        {canCreate && <Button leftSection={<IconPlus size={16} />} color="eruditBlue" onClick={() => setOpen(true)}>Создать опрос</Button>}
+        {canCreate && <Button leftSection={<IconPlus size={16} />} color="bilimosBlue" onClick={() => setOpen(true)}>Создать опрос</Button>}
       </Group>
 
       {loading ? (
@@ -94,7 +94,7 @@ function Surveys() {
                       return (
                         <div key={i}>
                           <Group justify="space-between" gap={4}>
-                            <Text size="sm" c={s.myVote === i ? 'eruditBlue' : 'var(--mantine-color-text)'} fw={s.myVote === i ? 600 : 400}>
+                            <Text size="sm" c={s.myVote === i ? 'bilimosBlue' : 'var(--mantine-color-text)'} fw={s.myVote === i ? 600 : 400}>
                               {opt}{s.myVote === i ? ' ✓' : ''}
                             </Text>
                             <Text size="xs" c={SEC}>{pct}% · {s.counts[i]}</Text>
@@ -135,7 +135,7 @@ function Surveys() {
           {error && <Text c="red" size="sm">{error}</Text>}
           <Group justify="flex-end" mt="sm">
             <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
-            <Button onClick={create} loading={saving} color="eruditBlue">Создать</Button>
+            <Button onClick={create} loading={saving} color="bilimosBlue">Создать</Button>
           </Group>
         </Stack>
       </Modal>

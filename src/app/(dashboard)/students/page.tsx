@@ -332,7 +332,7 @@ function StudentsContent() {
             >
               Экспорт в Excel
             </Button>
-            <Button leftSection={<IconPlus size={16} />} size="sm" color="eruditBlue" onClick={openAddModal}>
+            <Button leftSection={<IconPlus size={16} />} size="sm" color="bilimosBlue" onClick={openAddModal}>
               Добавить ученика
             </Button>
           </Group>
@@ -343,7 +343,7 @@ function StudentsContent() {
           <Tabs
             value={levelTab}
             onChange={(v) => setLevelTab(v || 'all')}
-            color="eruditBlue"
+            color="bilimosBlue"
             mb="md"
           >
             <Tabs.List>
@@ -388,7 +388,7 @@ function StudentsContent() {
         <Paper withBorder style={{ overflow: 'hidden' }}>
           {isLoading ? (
             <Box p="xl" ta="center">
-              <Loader color="eruditBlue" />
+              <Loader color="bilimosBlue" />
             </Box>
           ) : error ? (
             <Box p="xl" ta="center">
@@ -432,7 +432,7 @@ function StudentsContent() {
                         <Table.Td c="dimmed" fw={500}>{index + 1}</Table.Td>
                         <Table.Td>
                           <Group gap={10} wrap="nowrap">
-                            <Avatar size={28} radius="xl" color="eruditBlue" variant="filled">
+                            <Avatar size={28} radius="xl" color="bilimosBlue" variant="filled">
                               {getInitials(student)}
                             </Avatar>
                             <Text size="sm" fw={500}>{fullName}</Text>

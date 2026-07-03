@@ -117,7 +117,7 @@ export default function LandingPage() {
             </Group>
             <Group gap={8}>
               <Button component={Link} href="/login" variant="default" size="sm" visibleFrom="xs" styles={{ label: { color: ACCENT } }}>Войти</Button>
-              <Button component={Link} href="/login" size="sm" color="eruditBlue" rightSection={<IconArrowRight size={16} />}>Смотреть демо</Button>
+              <Button component={Link} href="/login" size="sm" color="bilimosBlue" rightSection={<IconArrowRight size={16} />}>Смотреть демо</Button>
             </Group>
           </Group>
         </Container>
@@ -140,7 +140,7 @@ export default function LandingPage() {
               с доступом строго по ролям. Рабочее ядро работает уже сегодня.
             </Text>
             <Group gap="sm" mt="xs">
-              <Button component={Link} href="/login" size="md" color="eruditBlue" rightSection={<IconArrowRight size={18} />}>
+              <Button component={Link} href="/login" size="md" color="bilimosBlue" rightSection={<IconArrowRight size={18} />}>
                 Смотреть демо
               </Button>
               <Button component="a" href="#pricing" size="md" variant="white" styles={{ label: { color: ACCENT, fontWeight: 600 } }}>
@@ -211,7 +211,7 @@ export default function LandingPage() {
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" pb={{ base: 40, md: 64 }}>
           {MORE.map((m) => (
             <Card key={m.title} className="landing-card" padding="lg" radius="md" withBorder style={{ borderColor: LINE, background: '#fff' }}>
-              <ThemeIcon size={42} radius="md" variant="light" color="eruditBlue" mb="sm">
+              <ThemeIcon size={42} radius="md" variant="light" color="bilimosBlue" mb="sm">
                 <m.icon size={22} stroke={1.7} />
               </ThemeIcon>
               <Text fw={700} mb={4} style={{ color: INK }}>{m.title}</Text>
@@ -322,7 +322,7 @@ export default function LandingPage() {
                 <Text size="sm" style={{ lineHeight: 1.5, color: INK }}>{b}</Text>
               </Group>
             ))}
-            <Button component={Link} href="/login" size="md" color="eruditBlue" mt="sm" fullWidth rightSection={<IconArrowRight size={18} />}>
+            <Button component={Link} href="/login" size="md" color="bilimosBlue" mt="sm" fullWidth rightSection={<IconArrowRight size={18} />}>
               Смотреть демо
             </Button>
           </Stack>
@@ -341,7 +341,7 @@ export default function LandingPage() {
               Живое демо, без установки. Откройте и попробуйте прямо в браузере.
             </Text>
             <Group gap="sm">
-              <Button component={Link} href="/login" size="md" color="eruditBlue" rightSection={<IconArrowRight size={18} />}>Открыть демо</Button>
+              <Button component={Link} href="/login" size="md" color="bilimosBlue" rightSection={<IconArrowRight size={18} />}>Открыть демо</Button>
               <Button component="a" href="#features" size="md" variant="white" styles={{ label: { color: ACCENT, fontWeight: 600 } }}>Узнать больше</Button>
             </Group>
           </Stack>

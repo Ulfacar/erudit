@@ -155,7 +155,7 @@ function InfoCardChanges({ teachers }: { teachers: TeacherData[] }) {
         </Text>
         {teacher ? (
           <Group gap={10}>
-            <Avatar size={32} radius="xl" color="eruditBlue" variant="filled" src={teacher.photo}>
+            <Avatar size={32} radius="xl" color="bilimosBlue" variant="filled" src={teacher.photo}>
               {getInitials(teacher)}
             </Avatar>
             <Box>
@@ -369,7 +369,7 @@ function TeachersContent() {
             <Button
               leftSection={editMode ? <IconEditOff size={16} /> : <IconEdit size={16} />}
               variant={editMode ? 'filled' : 'outline'}
-              color="eruditBlue"
+              color="bilimosBlue"
               size="xs"
               onClick={() => setEditMode((prev) => !prev)}
             >
@@ -386,7 +386,7 @@ function TeachersContent() {
         </SimpleGrid>
 
         {/* Tabs: Общая нагрузка / Индивидуальная нагрузка */}
-        <Tabs value={activeTab} onChange={setActiveTab} color="eruditBlue">
+        <Tabs value={activeTab} onChange={setActiveTab} color="bilimosBlue">
           <Tabs.List>
             <Tabs.Tab value="general">Общая нагрузка</Tabs.Tab>
             <Tabs.Tab value="individual">Индивидуальная нагрузка</Tabs.Tab>
@@ -402,7 +402,7 @@ function TeachersContent() {
                 size="xs"
                 radius="xl"
                 variant={levelFilter === btn.value ? 'filled' : 'light'}
-                color="eruditBlue"
+                color="bilimosBlue"
                 onClick={() => setLevelFilter(levelFilter === btn.value ? '' : btn.value)}
               >
                 {btn.label}
@@ -423,7 +423,7 @@ function TeachersContent() {
               <Tooltip label="Таблица" position="bottom" withArrow>
                 <ActionIcon
                   variant={viewMode === 'table' ? 'filled' : 'subtle'}
-                  color={viewMode === 'table' ? 'eruditBlue' : 'gray'}
+                  color={viewMode === 'table' ? 'bilimosBlue' : 'gray'}
                   size="md"
                   onClick={() => setViewMode('table')}
                 >
@@ -433,7 +433,7 @@ function TeachersContent() {
               <Tooltip label="Карточки" position="bottom" withArrow>
                 <ActionIcon
                   variant={viewMode === 'card' ? 'filled' : 'subtle'}
-                  color={viewMode === 'card' ? 'eruditBlue' : 'gray'}
+                  color={viewMode === 'card' ? 'bilimosBlue' : 'gray'}
                   size="md"
                   onClick={() => setViewMode('card')}
                 >
@@ -447,7 +447,7 @@ function TeachersContent() {
         {/* Content */}
         {isLoading ? (
           <Box p="xl" ta="center">
-            <Loader color="eruditBlue" />
+            <Loader color="bilimosBlue" />
           </Box>
         ) : error ? (
           <Paper withBorder p="xl" ta="center">
@@ -581,7 +581,7 @@ function TeachersContent() {
                                   <Tooltip label="Редактировать" withArrow position="top">
                                     <ActionIcon
                                       variant="subtle"
-                                      color="eruditBlue"
+                                      color="bilimosBlue"
                                       size="sm"
                                       component={Link}
                                       href={`/teachers/${teacher.id}`}

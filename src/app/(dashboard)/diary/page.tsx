@@ -523,7 +523,7 @@ function DiaryContent() {
                   <Text size="sm">{h.description}</Text>
                   <Group justify="space-between" mt={6}>
                     <Text size="xs" c="dimmed">{h.teacher.lastName} {h.teacher.firstName}</Text>
-                    <Button size="xs" radius="md" variant={h.done ? 'light' : 'filled'} color={h.done ? 'green' : 'eruditBlue'}
+                    <Button size="xs" radius="md" variant={h.done ? 'light' : 'filled'} color={h.done ? 'green' : 'bilimosBlue'}
                       leftSection={<IconCheck size={14} />} onClick={() => toggleHw(h)}>
                       {h.done ? 'Выполнено' : 'Отметить выполнено'}
                     </Button>

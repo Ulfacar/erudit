@@ -269,7 +269,7 @@ export default function TeacherProfilePage({
   if (isLoading) {
     return (
       <Box style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-        <Loader color="eruditBlue" />
+        <Loader color="bilimosBlue" />
       </Box>
     );
   }
@@ -349,7 +349,7 @@ export default function TeacherProfilePage({
                   <Button
                     size="xs"
                     variant="filled"
-                    color="eruditBlue"
+                    color="bilimosBlue"
                     radius="sm"
                     onClick={() => handleNavCard(card.key)}
                   >
@@ -376,11 +376,11 @@ export default function TeacherProfilePage({
         <Text size="xs" c="dimmed">/</Text>
         <Text size="xs" c="dimmed">Личные данные</Text>
         <Text size="xs" c="dimmed">/</Text>
-        <Text size="xs" c="eruditPink">{getFullName(teacher)}</Text>
+        <Text size="xs" c="bilimosPink">{getFullName(teacher)}</Text>
       </Group>
 
       {/* ── Main Tabs ── */}
-      <Tabs value={mainTab} onChange={setMainTab} color="eruditBlue">
+      <Tabs value={mainTab} onChange={setMainTab} color="bilimosBlue">
         <Tabs.List>
           <Tabs.Tab value="subject-teachers">Педагоги предметники</Tabs.Tab>
           <Tabs.Tab value="personal">Личные данные</Tabs.Tab>
@@ -397,7 +397,7 @@ export default function TeacherProfilePage({
                 component={Link}
                 href="/teachers"
                 variant="light"
-                color="eruditBlue"
+                color="bilimosBlue"
                 leftSection={<IconSchool size={16} />}
               >
                 Вернуться к списку педагогов
@@ -409,7 +409,7 @@ export default function TeacherProfilePage({
         {/* === Личные данные tab === */}
         <Tabs.Panel value="personal" pt="md">
           {/* Sub-tabs */}
-          <Tabs value={subTab} onChange={setSubTab} color="eruditBlue" variant="pills" mb="md">
+          <Tabs value={subTab} onChange={setSubTab} color="bilimosBlue" variant="pills" mb="md">
             <Tabs.List>
               <Tabs.Tab value="data">Данные педагога</Tabs.Tab>
               <Tabs.Tab value="curatorship">Кураторство</Tabs.Tab>
@@ -563,7 +563,7 @@ function PersonalDataTab({
             <Group justify="space-between">
               <Text size="xs" c="dimmed" fw={600} tt="uppercase">Педагог</Text>
               {!isEditing ? (
-                <Button size="xs" variant="light" color="eruditBlue" onClick={handleEdit}>
+                <Button size="xs" variant="light" color="bilimosBlue" onClick={handleEdit}>
                   Редактировать
                 </Button>
               ) : (
@@ -583,7 +583,7 @@ function PersonalDataTab({
               <Avatar
                 size={120}
                 radius="xl"
-                color="eruditBlue"
+                color="bilimosBlue"
                 variant="filled"
                 src={teacher.photo}
                 mx="auto"
@@ -721,7 +721,7 @@ function PersonalDataTab({
           <Paper withBorder radius="md" p="lg">
             <Stack gap="md">
               <Group gap="sm">
-                <ThemeIcon size={28} radius="xl" variant="light" color="eruditBlue">
+                <ThemeIcon size={28} radius="xl" variant="light" color="bilimosBlue">
                   <IconCertificate size={16} />
                 </ThemeIcon>
                 <Text fw={700} size="md">Образование и опыт работы</Text>
@@ -982,11 +982,11 @@ function CuratorshipTab({ teacher }: { teacher: Record<string, unknown> & {
       {/* Top: class badge + curator info */}
       <Group gap="md" align="flex-end">
         <Group gap="xs" align="baseline">
-          <Title order={1} fw={900} style={{ fontSize: 72, lineHeight: 1 }} c="eruditBlue">
+          <Title order={1} fw={900} style={{ fontSize: 72, lineHeight: 1 }} c="bilimosBlue">
             {cls.grade}
           </Title>
           <Stack gap={0}>
-            <Title order={2} fw={800} c="eruditBlue" style={{ fontSize: 36, lineHeight: 1 }}>
+            <Title order={2} fw={800} c="bilimosBlue" style={{ fontSize: 36, lineHeight: 1 }}>
               {cls.letter}
             </Title>
             <Text size="xl" fw={700} c="dimmed">класс</Text>
@@ -1001,7 +1001,7 @@ function CuratorshipTab({ teacher }: { teacher: Record<string, unknown> & {
 
       {/* Sub-tabs row */}
       <ScrollArea type="auto" offsetScrollbars>
-        <Tabs value={curSubTab} onChange={(v) => v && setCurSubTab(v)} color="eruditBlue" variant="pills">
+        <Tabs value={curSubTab} onChange={(v) => v && setCurSubTab(v)} color="bilimosBlue" variant="pills">
           <Tabs.List>
             {CURATOR_SUB_TABS.map((t) => (
               <Tabs.Tab key={t.value} value={t.value}>{t.label}</Tabs.Tab>
@@ -1156,7 +1156,7 @@ function CuratorGradesView({
           <Stack gap="md">
             {/* Class badge + counts */}
             <Group gap="xs">
-              <Badge size="lg" variant="filled" color="eruditBlue">
+              <Badge size="lg" variant="filled" color="bilimosBlue">
                 {cls.grade} {cls.letter} класс
               </Badge>
               <Badge size="sm" variant="light" color="blue">
@@ -1267,7 +1267,7 @@ function CuratorGradesView({
                       padding: '6px 8px',
                       borderRadius: 6,
                       background: idx === selectedStudentIdx
-                        ? 'var(--mantine-color-eruditBlue-light)'
+                        ? 'var(--mantine-color-bilimosBlue-light)'
                         : 'transparent',
                     }}
                   >
@@ -1333,7 +1333,7 @@ function CuratorGradesView({
                   key={f.v}
                   size="xs"
                   variant={gradeFilter === f.v ? 'filled' : 'outline'}
-                  color="eruditBlue"
+                  color="bilimosBlue"
                   onClick={() => setGradeFilter(f.v)}
                   radius="sm"
                 >
@@ -1467,7 +1467,7 @@ function CuratorStudentDataView({
   return (
     <Paper withBorder radius="md" p="md">
       <Group mb="md" gap="sm">
-        <Badge size="lg" variant="filled" color="eruditBlue">
+        <Badge size="lg" variant="filled" color="bilimosBlue">
           {cls.grade} {cls.letter} класс
         </Badge>
         <Text size="sm" c="dimmed">{students.length} учеников</Text>
@@ -1565,7 +1565,7 @@ function ScheduleTab({ scheduleByDay }: { scheduleByDay: Record<number, Schedule
           return (
             <Paper key={dayNum} withBorder radius="md" p="md">
               <Group gap="sm" mb="sm">
-                <ThemeIcon size={24} radius="xl" variant="light" color="eruditBlue">
+                <ThemeIcon size={24} radius="xl" variant="light" color="bilimosBlue">
                   <IconCalendar size={14} />
                 </ThemeIcon>
                 <Text fw={700} size="sm">{DAY_NAMES[dayNum - 1]}</Text>
@@ -1681,7 +1681,7 @@ function RatingTab({ teacher }: { teacher: Record<string, unknown> & {
       <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="md">
         {RATING_METRICS.map((metric) => (
           <Paper key={metric.label} withBorder radius="md" p="sm" ta="center">
-            <Text size="xl" fw={900} c="eruditBlue">{metric.score}</Text>
+            <Text size="xl" fw={900} c="bilimosBlue">{metric.score}</Text>
             <Text size="xs" c="dimmed">{metric.label}</Text>
             <Group gap={4} justify="center" mt={4}>
               <Badge size="xs" color={metric.badgeColor}>{metric.badge}</Badge>
@@ -1789,7 +1789,7 @@ function StudyPlanTab({ teacher }: { teacher: Record<string, unknown> & {
     <Stack gap="lg">
       <Group justify="space-between">
         <Title order={3}>Учебный план педагога</Title>
-        <Badge size="lg" variant="light" color="eruditBlue">
+        <Badge size="lg" variant="light" color="bilimosBlue">
           Итого: {totalHours} ч/нед
         </Badge>
       </Group>
@@ -1860,7 +1860,7 @@ function SubstitutionHistoryModal({ teacherId }: { teacherId: string }) {
   if (isLoading) {
     return (
       <Box ta="center" py="xl">
-        <Loader color="eruditBlue" size="sm" />
+        <Loader color="bilimosBlue" size="sm" />
       </Box>
     );
   }
@@ -1948,7 +1948,7 @@ function CharacteristicsTab({ teacher, experience, uniqueSubjects }: {
       <Paper withBorder radius="md" p="xl">
         <Stack gap="md">
           <Group gap="sm">
-            <ThemeIcon size={32} radius="xl" variant="light" color="eruditBlue">
+            <ThemeIcon size={32} radius="xl" variant="light" color="bilimosBlue">
               <IconClipboardList size={18} />
             </ThemeIcon>
             <Text fw={700} size="lg">Характеристика педагога</Text>
@@ -1982,19 +1982,19 @@ function CharacteristicsTab({ teacher, experience, uniqueSubjects }: {
 
           <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
             <Paper withBorder radius="md" p="md" ta="center">
-              <Text size="xl" fw={900} c="eruditBlue">{subjectCount}</Text>
+              <Text size="xl" fw={900} c="bilimosBlue">{subjectCount}</Text>
               <Text size="xs" c="dimmed">Предметов</Text>
             </Paper>
             <Paper withBorder radius="md" p="md" ta="center">
-              <Text size="xl" fw={900} c="eruditBlue">{totalHours}</Text>
+              <Text size="xl" fw={900} c="bilimosBlue">{totalHours}</Text>
               <Text size="xs" c="dimmed">Часов/нед</Text>
             </Paper>
             <Paper withBorder radius="md" p="md" ta="center">
-              <Text size="xl" fw={900} c="eruditBlue">{scheduleCount}</Text>
+              <Text size="xl" fw={900} c="bilimosBlue">{scheduleCount}</Text>
               <Text size="xs" c="dimmed">Уроков</Text>
             </Paper>
             <Paper withBorder radius="md" p="md" ta="center">
-              <Text size="xl" fw={900} c="eruditBlue">{classCount}</Text>
+              <Text size="xl" fw={900} c="bilimosBlue">{classCount}</Text>
               <Text size="xs" c="dimmed">Кураторство</Text>
             </Paper>
           </SimpleGrid>

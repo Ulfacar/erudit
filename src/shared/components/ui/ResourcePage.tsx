@@ -341,7 +341,7 @@ export function ResourcePage({
             />
           )}
           {canCreate && fields.length > 0 && (
-            <Button leftSection={<IconPlus size={16} />} onClick={openModal} color="eruditBlue">
+            <Button leftSection={<IconPlus size={16} />} onClick={openModal} color="bilimosBlue">
               {createLabel}
             </Button>
           )}
@@ -400,7 +400,7 @@ export function ResourcePage({
           {error && <Text c="red" size="sm">{error}</Text>}
           <Group justify="flex-end" mt="sm">
             <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
-            <Button onClick={submit} loading={submitting} color="eruditBlue">Сохранить</Button>
+            <Button onClick={submit} loading={submitting} color="bilimosBlue">Сохранить</Button>
           </Group>
         </Stack>
       </Modal>

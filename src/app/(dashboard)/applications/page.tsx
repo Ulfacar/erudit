@@ -109,7 +109,7 @@ function Applications() {
             <Textarea label="Причина" value={reason} onChange={(e) => setReason(e.currentTarget.value)} autosize minRows={2} />
             {error && <Text c="red" size="sm">{error}</Text>}
             <Group justify="flex-end">
-              <Button onClick={submit} loading={submitting} color="eruditBlue">Отправить</Button>
+              <Button onClick={submit} loading={submitting} color="bilimosBlue">Отправить</Button>
             </Group>
           </Stack>
         </Paper>

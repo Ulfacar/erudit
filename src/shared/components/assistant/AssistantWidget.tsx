@@ -280,7 +280,7 @@ export function AssistantWidget() {
                   size={36}
                   radius="md"
                   variant="filled"
-                  color="eruditBlue"
+                  color="bilimosBlue"
                   onClick={() => send(input)}
                   disabled={loading || !input.trim()}
                   aria-label="Отправить"

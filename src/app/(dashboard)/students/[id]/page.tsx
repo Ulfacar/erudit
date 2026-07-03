@@ -676,7 +676,7 @@ export default function StudentProfilePage() {
               src={student.photo ? `/api/v1/students/${studentId}/photo${photoVersion ? `?v=${photoVersion}` : ''}` : undefined}
               size={80}
               radius="xl"
-              color="eruditBlue"
+              color="bilimosBlue"
               variant="filled"
               style={{ fontSize: 28 }}
             >

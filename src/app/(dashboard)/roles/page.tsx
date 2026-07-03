@@ -59,7 +59,7 @@ function RolesContent() {
           <IconShieldLock size={22} color="#7048e8" />
           <Title order={3} c="var(--mantine-color-text)">Роли и доступы</Title>
         </Group>
-        <Button leftSection={<IconPlus size={16} />} color="eruditBlue" onClick={() => setOpen(true)}>Добавить пользователя</Button>
+        <Button leftSection={<IconPlus size={16} />} color="bilimosBlue" onClick={() => setOpen(true)}>Добавить пользователя</Button>
       </Group>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
@@ -83,7 +83,7 @@ function RolesContent() {
           {error && <Text c="red" size="sm">{error}</Text>}
           <Group justify="flex-end" mt="sm">
             <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
-            <Button onClick={createUser} loading={submitting} color="eruditBlue">Создать</Button>
+            <Button onClick={createUser} loading={submitting} color="bilimosBlue">Создать</Button>
           </Group>
         </Stack>
       </Modal>

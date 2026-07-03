@@ -115,7 +115,7 @@ function Tests() {
     <Stack gap="md">
       <Group justify="space-between">
         <Group gap={8}><IconChecklist size={22} color="#5c7cfa" /><Title order={3} c="var(--mantine-color-text)">Тесты</Title></Group>
-        {isStaff && <Button leftSection={<IconPlus size={16} />} color="eruditBlue" onClick={() => setBOpen(true)}>Создать тест</Button>}
+        {isStaff && <Button leftSection={<IconPlus size={16} />} color="bilimosBlue" onClick={() => setBOpen(true)}>Создать тест</Button>}
       </Group>
 
       {loading ? (
@@ -136,7 +136,7 @@ function Tests() {
                 ) : t.myAttempt ? (
                   <Badge variant="light" color="green" size="lg">{t.myAttempt.score} / {t.myAttempt.maxScore}</Badge>
                 ) : (
-                  <Button size="xs" color="eruditBlue" onClick={() => openTake(t.id)}>Пройти</Button>
+                  <Button size="xs" color="bilimosBlue" onClick={() => openTake(t.id)}>Пройти</Button>
                 )}
               </Group>
             </Paper>
@@ -190,7 +190,7 @@ function Tests() {
           {bErr && <Text c="red" size="sm">{bErr}</Text>}
           <Group justify="flex-end">
             <Button variant="subtle" color="gray" onClick={() => setBOpen(false)}>Отмена</Button>
-            <Button onClick={saveTest} loading={bSaving} color="eruditBlue">Создать тест</Button>
+            <Button onClick={saveTest} loading={bSaving} color="bilimosBlue">Создать тест</Button>
           </Group>
         </Stack>
       </Modal>
@@ -246,7 +246,7 @@ function Tests() {
               </Paper>
             ))}
             <Group justify="flex-end">
-              <Button onClick={submitTake} loading={takeBusy} color="eruditBlue">Сдать тест</Button>
+              <Button onClick={submitTake} loading={takeBusy} color="bilimosBlue">Сдать тест</Button>
             </Group>
           </Stack>
         )}
