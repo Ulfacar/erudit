@@ -31,7 +31,11 @@ function escapeRe(s: string): string {
 }
 
 /** Базовое маскирование по списку известных сущностей + эвристика рус. ФИО. */
-export function maskText(text: string, entities: Array<{ marker: string; variants: string[] }>): DeidResult {
+export function maskText(
+  text: string,
+  entities: Array<{ marker: string; variants: string[] }>,
+  opts?: { startAt?: number },
+): DeidResult {
   let masked = text;
   const map: Record<string, string> = {};
 
@@ -50,7 +54,7 @@ export function maskText(text: string, entities: Array<{ marker: string; variant
   }
 
   // 2) эвристика: 2–3 подряд идущих слова с заглавной кириллицей = вероятное ФИО
-  let n = 1;
+  let n = opts?.startAt ?? 1;
   const personRe = /(?:[А-ЯЁ][а-яё]+\s+){1,2}[А-ЯЁ][а-яё]+/g;
   masked = masked.replace(personRe, (m) => {
     // пропускаем уже вставленные маркеры

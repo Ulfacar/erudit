@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       reply: result.reply,
       model: result.model,
       usedTools: result.usedTools,
+      privacy: result.privacy ?? { guarded: false, maskedEntities: 0 },
     });
   } catch (error) {
     console.error('POST /api/v1/assistant/chat error:', error);
