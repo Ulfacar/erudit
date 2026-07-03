@@ -1,11 +1,11 @@
 import { createTheme, MantineColorsTuple } from '@mantine/core';
 
 /**
- * ERUDIT design tokens — aligned with new design (Claude Design, May 2026)
+ * Bilim OS design tokens — aligned with new design (Claude Design, May 2026)
  * Brand: #228be6 (blue-600), cool grays, Inter font
  */
 
-const eruditBlue: MantineColorsTuple = [
+const bilimosBlue: MantineColorsTuple = [
   '#e7f5ff', // 50
   '#d0ebff', // 100
   '#a5d8ff', // 200
@@ -18,7 +18,7 @@ const eruditBlue: MantineColorsTuple = [
   '#1864ab', // 900
 ];
 
-const eruditPink: MantineColorsTuple = [
+const bilimosPink: MantineColorsTuple = [
   '#ffe5f3',
   '#fccde2',
   '#f39ac2',
@@ -31,11 +31,14 @@ const eruditPink: MantineColorsTuple = [
   '#9c0042',
 ];
 
-export const eruditTheme = createTheme({
-  primaryColor: 'eruditBlue',
+export const bilimosTheme = createTheme({
+  primaryColor: 'bilimosBlue',
   colors: {
-    eruditBlue,
-    eruditPink,
+    bilimosBlue,
+    bilimosPink,
+    // Алиас на время поэтапного рибренда ERUDIT→Bilim OS: часть закоммиченных
+    // страниц ещё использует color="eruditBlue" — держим тот же тон, чтобы не рыжели.
+    eruditBlue: bilimosBlue,
   },
 
   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",

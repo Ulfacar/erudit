@@ -1,4 +1,4 @@
-export function EruditeLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+export function BilimosLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const fontSize = size === 'sm' ? 18 : size === 'md' ? 24 : 32;
   const starSize = size === 'sm' ? 14 : size === 'md' ? 18 : 24;
   const subSize = size === 'sm' ? 6 : size === 'md' ? 8 : 10;

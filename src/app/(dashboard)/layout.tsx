@@ -22,7 +22,7 @@ import {
   ScrollArea,
   Text,
 } from '@mantine/core';
-import { EruditeLogo } from '@/shared/components/ui/EruditeLogo';
+import { BilimosLogo } from '@/shared/components/ui/BilimosLogo';
 import { UniversalSearch } from '@/shared/components/ui/UniversalSearch';
 import { BranchSelector } from '@/shared/components/ui/BranchSelector';
 import { useRole } from '@/shared/hooks/useRole';
@@ -160,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu shadow="md" width={220} position="bottom-end" withArrow>
                 <Menu.Target>
                   <Group gap={8} style={{ cursor: 'pointer' }}>
-                    <Avatar size={32} radius="xl" color="eruditBlue" variant="filled">
+                    <Avatar size={32} radius="xl" color="bilimosBlue" variant="filled">
                       {getInitials(login)}
                     </Avatar>
                     <Box visibleFrom="sm">

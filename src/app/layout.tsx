@@ -5,7 +5,7 @@ import { Notifications } from '@mantine/notifications';
 import { DatesProvider } from '@mantine/dates';
 import { QueryProvider } from '@/shared/providers/query-provider';
 import { SessionProvider } from '@/shared/providers/session-provider';
-import { eruditTheme } from '@/theme/erudit-theme';
+import { bilimosTheme } from '@/theme/bilimos-theme';
 import 'dayjs/locale/ru';
 
 import '@mantine/core/styles.css';
@@ -45,7 +45,7 @@ export default function RootLayout({
       <body>
         <SessionProvider>
           <QueryProvider>
-            <MantineProvider theme={eruditTheme} forceColorScheme="light">
+            <MantineProvider theme={bilimosTheme} forceColorScheme="light">
               <DatesProvider settings={{ locale: 'ru', firstDayOfWeek: 1 }}>
                 <Notifications position="top-right" />
                 {children}
