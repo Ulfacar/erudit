@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
+import { checkPublicRateLimit } from '@/shared/lib/rate-limit';
 import { isStorageConfigured, putObject } from '@/shared/lib/storage/minio';
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
@@ -80,6 +81,13 @@ export async function GET(_request: NextRequest, ctx: Context) {
 
 export async function POST(request: NextRequest, ctx: Context) {
   try {
+    const rl = checkPublicRateLimit(request, 'onboarding-submit', 10, 60 * 60 * 1000);
+    if (rl.limited) {
+      const res = errorResponse('RATE_LIMITED', 'Слишком много отправок. Попробуйте позже.', 429);
+      res.headers.set('Retry-After', String(rl.retryAfterSec));
+      return withCors(res);
+    }
+
     const { token } = await ctx.params;
     const record = await prisma.employeeOnboarding.findUnique({ where: { inviteToken: token } });
 

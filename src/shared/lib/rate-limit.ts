@@ -2,6 +2,7 @@
  * Simple in-memory rate limiter (no Redis needed for MVP).
  * Tracks requests per IP, returns 429 if exceeded.
  */
+// TODO(multi-instance): при >1 контейнере заменить Map на Redis
 
 interface RateLimitEntry {
   count: number
@@ -57,6 +58,31 @@ export function checkRateLimit(ip: string, limit = 100, windowMs = 60000): boole
   }
 
   return true
+}
+
+export function checkPublicRateLimit(
+  request: Request,
+  route: string,
+  limit: number,
+  windowMs: number
+): { limited: boolean; retryAfterSec: number } {
+  try {
+    const key = `${route}:${getClientIp(request)}`
+    const allowed = checkRateLimit(key, limit, windowMs)
+
+    if (allowed) {
+      return { limited: false, retryAfterSec: 0 }
+    }
+
+    const resetAt = rateLimit.get(key)?.resetAt
+    const now = Date.now()
+    const retryAfterSec =
+      typeof resetAt === 'number' ? Math.max(1, Math.ceil((resetAt - now) / 1000)) : 0
+
+    return { limited: true, retryAfterSec }
+  } catch {
+    return { limited: false, retryAfterSec: 0 }
+  }
 }
 
 /**

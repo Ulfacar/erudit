@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
+import { checkPublicRateLimit } from '@/shared/lib/rate-limit';
 import { isStorageConfigured, putObject } from '@/shared/lib/storage/minio';
 
 const MAX_RESUME_SIZE = 8 * 1024 * 1024;
@@ -105,6 +106,13 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    const rl = checkPublicRateLimit(request, 'public-applications', 5, 60 * 60 * 1000);
+    if (rl.limited) {
+      const res = errorResponse('RATE_LIMITED', 'Слишком много заявок. Попробуйте позже.', 429);
+      res.headers.set('Retry-After', String(rl.retryAfterSec));
+      return withCors(res);
+    }
+
     const { payload, resume } = await readPayload(request);
     const fullName = cleanString(payload.fullName);
     const phone = cleanString(payload.phone);

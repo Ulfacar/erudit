@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { prisma } from '@/shared/lib/prisma';
+import { checkPublicRateLimit } from '@/shared/lib/rate-limit';
 import {
   ADDON_MODULES,
   MONTHLY_MULTIPLIER,
@@ -67,6 +68,13 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    const rl = checkPublicRateLimit(request, 'tariff-leads', 10, 60 * 60 * 1000);
+    if (rl.limited) {
+      const res = errorResponse('RATE_LIMITED', 'Слишком много заявок. Попробуйте позже.', 429);
+      res.headers.set('Retry-After', String(rl.retryAfterSec));
+      return withCors(res);
+    }
+
     const payload = await readPayload(request);
     const website = cleanString(payload.website);
 
