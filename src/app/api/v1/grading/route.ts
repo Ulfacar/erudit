@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { checkRateLimit, getClientIp } from '@/shared/lib/rate-limit';
 import { emitEvent } from '@/shared/lib/agent/engine';
+import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +44,12 @@ export async function GET(request: NextRequest) {
       });
       where.studentId = { in: parent?.children.map((c) => c.studentId) ?? [] };
       delete where.student;
+    } else {
+      const scope = await getBranchScope(auth.session.user.id, role, auth.session.user.branchId);
+      const studentBranchWhere = branchWhereVia(scope, 'student').student as Record<string, unknown> | undefined;
+      if (studentBranchWhere) {
+        where.student = { ...((where.student as object | undefined) ?? {}), ...studentBranchWhere };
+      }
     }
 
     const grades = await prisma.grade.findMany({

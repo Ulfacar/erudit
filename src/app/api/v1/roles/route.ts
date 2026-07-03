@@ -2,6 +2,8 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope } from '@/shared/lib/branch-scope';
+import type { Role } from '@prisma/client';
 
 /* Role metadata in Russian */
 const ROLE_META: Record<string, { label: string; description: string }> = {
@@ -15,6 +17,7 @@ const ROLE_META: Record<string, { label: string; description: string }> = {
   student: { label: 'Ученик', description: 'Просмотр расписания, оценок и домашних заданий' },
   parent: { label: 'Родитель', description: 'Просмотр информации о ребёнке' },
 };
+const BRANCHLESS_ROLES: Role[] = ['student', 'parent', 'super_admin', 'analyst', 'founder'];
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,17 +71,32 @@ export async function POST(request: NextRequest) {
     // In production, hash the password. For now, store as-is for demo.
     const bcrypt = await import('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
+    let branchId: string | null = null;
+    const typedRole = role as Role;
+
+    if (!BRANCHLESS_ROLES.includes(typedRole)) {
+      const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+      const mainBranch = scope.branchId
+        ? null
+        : await prisma.branch.findFirst({
+            where: { name: '\u0413\u043b\u0430\u0432\u043d\u044b\u0439' },
+            select: { id: true },
+          });
+      branchId = scope.branchId ?? mainBranch?.id ?? null;
+    }
 
     const user = await prisma.user.create({
       data: {
         login,
         password: hashedPassword,
-        role: role as never,
+        role: typedRole,
+        branchId,
       },
       select: {
         id: true,
         login: true,
         role: true,
+        branchId: true,
         isActive: true,
         createdAt: true,
       },

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
 
 /**
  * GET /api/v1/homework
@@ -44,6 +45,12 @@ export async function GET(request: NextRequest) {
         }
       } else {
         return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      }
+    } else {
+      const scope = await getBranchScope(userId, role, auth.session.user.branchId);
+      const classBranchWhere = branchWhereVia(scope, 'class').class as Record<string, unknown> | undefined;
+      if (classBranchWhere) {
+        where.class = { ...((where.class as object | undefined) ?? {}), ...classBranchWhere };
       }
     }
 

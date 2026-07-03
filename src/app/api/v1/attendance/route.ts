@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { emitEvent } from '@/shared/lib/agent/engine';
+import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,6 +54,12 @@ export async function GET(request: NextRequest) {
         delete where.student;
       } else {
         return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      }
+    } else {
+      const scope = await getBranchScope(userId, role, auth.session.user.branchId);
+      const studentBranchWhere = branchWhereVia(scope, 'student').student as Record<string, unknown> | undefined;
+      if (studentBranchWhere) {
+        where.student = { ...((where.student as object | undefined) ?? {}), ...studentBranchWhere };
       }
     }
 
