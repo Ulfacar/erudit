@@ -46,7 +46,18 @@ for (let i = 0; i < delays.length; i++) {
 }
 
 // Сиды — идемпотентные, НЕ фатальные.
-for (const seed of ['scripts/backfill-branches.ts', 'scripts/seed-psy-templates.ts', 'scripts/seed-demo-intake.ts', 'scripts/backfill-debtor-contracts.ts', 'scripts/backfill-psy-codes.ts', 'scripts/seed-roles.ts', 'scripts/seed-demo-media.ts']) {
+const baseSeeds = [
+  'scripts/backfill-branches.ts',
+  'scripts/seed-psy-templates.ts',
+  'scripts/backfill-debtor-contracts.ts',
+  'scripts/backfill-psy-codes.ts',
+  'scripts/seed-roles.ts',
+];
+const demoSeeds = ['scripts/seed-demo-intake.ts', 'scripts/seed-demo-media.ts'];
+// Сиды с демо-данными не льем в реальную школу при SEED_DEMO=0.
+const seeds = process.env.SEED_DEMO !== '0' ? [...baseSeeds, ...demoSeeds] : baseSeeds;
+
+for (const seed of seeds) {
   try { run(`npx tsx ${seed}`); }
   catch (e) { console.warn(`[predeploy] сид ${seed} пропущен (не критично): ${e.message}`); }
 }

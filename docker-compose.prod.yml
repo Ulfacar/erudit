@@ -1,0 +1,97 @@
+name: bilimos
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env.onprem
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - bilimos_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - bilimos_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+      MINIO_DOMAIN: ${MINIO_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - bilimos_caddy_data:/data
+      - bilimos_caddy_config:/config
+    depends_on:
+      app:
+        condition: service_started
+
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   volumes:
+  #     - bilimos_redis_data:/data
+  #   # код пока не использует; для FR-12 (rate-limiter->Redis) раскомментировать.
+
+  # cron:
+  #   image: alpine:3.20
+  #   restart: unless-stopped
+  #   env_file: .env.onprem
+  #   command: >
+  #     sh -c "apk add --no-cache curl &&
+  #     printf '0 * * * * curl -fsS -H \"Authorization: Bearer $${CRON_SECRET}\" http://app:3000/api/cron/reminders >/dev/null\n0 * * * * curl -fsS -H \"Authorization: Bearer $${CRON_SECRET}\" http://app:3000/api/cron/psy-escalation >/dev/null\n' > /etc/crontabs/root &&
+  #     crond -f -l 8"
+  #   depends_on:
+  #     app:
+  #       condition: service_healthy
+  #   # включить, если нужны напоминания психолога на пилоте.
+
+volumes:
+  bilimos_pg_data:
+  bilimos_minio_data:
+  bilimos_caddy_data:
+  bilimos_caddy_config:

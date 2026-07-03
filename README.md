@@ -1,4 +1,4 @@
-# ERUDIT — School ERP
+# Bilim OS — School ERP
 
 Веб-приложение для управления школой (Бишкек, Кыргызстан). Включает 9 ролей пользователей, систему оценивания с 26 категориями и модерацией, расписание уроков с заменами, классные журналы, отчёты, поведение, новости и чаты.
 
@@ -230,7 +230,7 @@ npm run lint     # eslint
 
 ```ini
 [Unit]
-Description=ERUDIT Next.js app
+Description=Bilim OS Next.js app
 After=network.target
 
 [Service]
@@ -341,6 +341,60 @@ erudit/
 - Доступ к данным — двухосный: роль + starLevel (см. `src/shared/lib/star-filter.ts`).
 - Безопасные заголовки на всех маршрутах (см. `next.config.ts`).
 - В продакшне обязательно: HTTPS, сильный пароль Postgres, пересоздать всех демо-пользователей.
+
+---
+
+## On-prem развёртывание (сервер школы)
+
+### Требования
+
+- Linux-сервер с Docker и Docker Compose plugin.
+- Минимум 4 ГБ RAM.
+- A-записи `DOMAIN` и `MINIO_DOMAIN` на IP сервера.
+- Открытые порты 80 и 443.
+
+### Первый запуск
+
+```bash
+git clone git@github.com:Sijjia/school-erudit.git /opt/erudit
+cd /opt/erudit
+cp .env.onprem.example .env.onprem
+```
+
+Заполните `.env.onprem`. Секреты генерируйте на сервере:
+
+```bash
+openssl rand -hex 24       # POSTGRES_PASSWORD / MINIO_SECRET_KEY
+openssl rand -base64 32    # NEXTAUTH_SECRET
+npx web-push generate-vapid-keys
+```
+
+Для реальной школы оставьте `SEED_DEMO=0`, чтобы не заливать демо-данные.
+
+```bash
+docker compose --env-file .env.onprem -f docker-compose.prod.yml up -d --build
+curl -fsS https://<DOMAIN>/api/health
+```
+
+### Обновление
+
+```bash
+git pull
+docker compose --env-file .env.onprem -f docker-compose.prod.yml up -d --build
+```
+
+### Бэкап Postgres
+
+```bash
+docker compose --env-file .env.onprem -f docker-compose.prod.yml exec -T postgres \
+  pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > bilimos_$(date +%F_%H%M).sql
+```
+
+### LAN-режим без домена
+
+Для локальной сети без публичного домена можно выставить `DOMAIN=:80`, а MinIO использовать по HTTP: `MINIO_USE_SSL=false`, `MINIO_ENDPOINT=<host>`, `MINIO_PORT=9000`. В таком режиме MinIO-порт 9000 надо открыть отдельно или добавить локальный reverse-proxy.
+
+Базу Postgres держите на SSD. Файлы MinIO можно вынести на HDD через volume/mount сервера.
 
 ---
 
