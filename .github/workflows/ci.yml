@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: types + lint + build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXTAUTH_SECRET: ci-dummy-secret
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+      - name: ESLint (non-blocking while src lint debt is tracked separately)
+        run: npm run lint
+        continue-on-error: true
+      - run: npm run build
+
+  # TODO(CI phase 2): add e2e-rbac job (postgres:16 service -> db push -> seeds
+  # prisma/seed.ts + scripts/seed-roles.ts + scripts/seed-demo.ts -> next start ->
+  # playwright test e2e/rbac-leaks.spec.ts). Enable after local verification of
+  # seeds on a clean DB to avoid order/flap risk. For now the gate is check only.
