@@ -6,6 +6,7 @@ import {
   Group,
   Loader,
   Paper,
+  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -19,8 +20,10 @@ import {
   IconUsers,
   IconUserStar,
   IconAlertTriangle,
+  IconClipboardX,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -41,6 +44,7 @@ interface AvgByClass {
 }
 
 interface AvgByTrimester {
+  periodId: string;
   periodName: string;
   average: number;
   gradeCount: number;
@@ -65,6 +69,21 @@ interface DashAnalytics {
   topLowStudents: { name: string; class: string; avg: number }[];
 }
 
+interface JournalFillRow {
+  teacherId: string;
+  teacherName: string;
+  classId: string;
+  className: string;
+  subjectId: string;
+  subjectName: string;
+  expected: number;
+  topicsFilled: number;
+  gradedDays: number;
+  gradesCount: number;
+  fillPct: number;
+  gaps: number;
+}
+
 /* ── Helpers ── */
 function avgColor(avg: number): string {
   if (avg >= 4) return '#40c057';
@@ -75,6 +94,12 @@ function avgColor(avg: number): string {
 function avgBadgeColor(avg: number): string {
   if (avg >= 4) return 'green';
   if (avg >= 3) return 'yellow';
+  return 'red';
+}
+
+function fillBadgeColor(fillPct: number): string {
+  if (fillPct === 100) return 'green';
+  if (fillPct >= 80) return 'yellow';
   return 'red';
 }
 
@@ -95,6 +120,8 @@ const fetchJson = async (url: string) => {
 };
 
 export default function AnalyticsPage() {
+  const [journalPeriod, setJournalPeriod] = useState('current');
+
   /* ── Queries ── */
   const { data: analytics, isLoading: analyticsLoading } = useQuery<{
     averageByClass: AvgByClass[];
@@ -111,7 +138,27 @@ export default function AnalyticsPage() {
     queryFn: () => fetchJson('/api/v1/dashboard/analytics'),
   });
 
+  const { data: journalFill, isLoading: journalFillLoading } = useQuery<{
+    from: string;
+    to: string;
+    periodName?: string;
+    rows: JournalFillRow[];
+  }>({
+    queryKey: ['journal-fill', journalPeriod],
+    queryFn: () =>
+      fetchJson(
+        `/api/v1/reports/journal-fill${journalPeriod !== 'current' ? `?periodId=${journalPeriod}` : ''}`,
+      ),
+  });
+
   const isLoading = analyticsLoading || dashLoading;
+  const journalPeriodOptions = [
+    { value: 'current', label: 'Текущий период' },
+    ...(analytics?.averageByTrimester ?? []).map((period) => ({
+      value: period.periodId,
+      label: period.periodName,
+    })),
+  ];
 
   return (
     <RoleGate roles={['super_admin', 'analyst', 'zavuch']}>
@@ -351,6 +398,73 @@ export default function AnalyticsPage() {
                   )}
                 </Paper>
               </SimpleGrid>
+
+              <Paper p="lg" radius="lg" withBorder style={{ border: '1px solid #e6e9ee' }}>
+                <Group justify="space-between" align="center" mb="md">
+                  <Group gap={8}>
+                    <IconClipboardX size={20} color="var(--mantine-color-red-6)" />
+                    <Text fw={600}>Пробелы в журнале</Text>
+                  </Group>
+                  <Select
+                    data={journalPeriodOptions}
+                    value={journalPeriod}
+                    onChange={(value) => setJournalPeriod(value ?? 'current')}
+                    w={{ base: 190, sm: 240 }}
+                    allowDeselect={false}
+                  />
+                </Group>
+
+                {journalFillLoading ? (
+                  <Group justify="center" py="xl">
+                    <Loader size="md" />
+                  </Group>
+                ) : journalFill && journalFill.rows.length > 0 ? (
+                  <Box mah={420} style={{ overflowY: 'auto' }}>
+                    <Table striped highlightOnHover>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Учитель</Table.Th>
+                          <Table.Th ta="center">Класс</Table.Th>
+                          <Table.Th>Предмет</Table.Th>
+                          <Table.Th ta="center">Уроков</Table.Th>
+                          <Table.Th ta="center">Тем</Table.Th>
+                          <Table.Th ta="center">Дней с оценками</Table.Th>
+                          <Table.Th ta="center">Оценок</Table.Th>
+                          <Table.Th ta="center">Заполнено %</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {journalFill.rows.map((row) => (
+                          <Table.Tr key={`${row.teacherId}-${row.classId}-${row.subjectId}`}>
+                            <Table.Td fw={500}>{row.teacherName}</Table.Td>
+                            <Table.Td ta="center">{row.className}</Table.Td>
+                            <Table.Td>{row.subjectName}</Table.Td>
+                            <Table.Td ta="center">{row.expected}</Table.Td>
+                            <Table.Td ta="center">
+                              {row.gaps > 0 ? (
+                                <Text c="red" fw={600}>
+                                  {row.topicsFilled} / {row.expected}
+                                </Text>
+                              ) : (
+                                `${row.topicsFilled} / ${row.expected}`
+                              )}
+                            </Table.Td>
+                            <Table.Td ta="center">{row.gradedDays}</Table.Td>
+                            <Table.Td ta="center">{row.gradesCount}</Table.Td>
+                            <Table.Td ta="center">
+                              <Badge color={fillBadgeColor(row.fillPct)} variant="filled">
+                                {row.fillPct}%
+                              </Badge>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Box>
+                ) : (
+                  <Text ta="center" c="dimmed" py="xl">Нет данных</Text>
+                )}
+              </Paper>
             </>
           )}
         </Stack>
