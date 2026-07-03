@@ -1,9 +1,11 @@
 import { type NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { computePenalty } from '@/shared/lib/finance/penalty';
 import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 /**
  * Финансовая сводка для собственника/бухгалтера: KPI, должники, динамика.
@@ -14,15 +16,27 @@ export async function GET(request: NextRequest) {
     const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'accountant', 'chief_accountant', 'finance_manager'] });
     if (auth.response) return auth.response;
 
+    const classId = request.nextUrl.searchParams.get('classId');
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const studentScope: Prisma.StudentWhereInput = {
+      ...(classId ? { classId } : {}),
+      ...branchWhere(scope),
+    };
+    const hasStudentScope = Object.keys(studentScope).length > 0;
+
     const [invoices, students, expenses] = await Promise.all([
       prisma.feeInvoice.findMany({
-        where: { status: { not: 'cancelled' } },
+        where: {
+          status: { not: 'cancelled' },
+          ...(hasStudentScope ? { student: studentScope } : {}),
+        },
         include: { payments: { select: { amount: true, paidAt: true, verified: true } } },
       }),
       prisma.student.findMany({
+        where: hasStudentScope ? studentScope : undefined,
         select: { id: true, firstName: true, lastName: true, class: { select: { grade: true, letter: true } } },
       }),
-      prisma.expense.aggregate({ _sum: { amount: true } }),
+      prisma.expense.aggregate({ where: branchWhere(scope), _sum: { amount: true } }),
     ]);
     const studentById = new Map(students.map((s) => [s.id, s]));
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   Badge,
   Center,
@@ -8,6 +9,7 @@ import {
   Loader,
   Paper,
   RingProgress,
+  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -57,6 +59,8 @@ interface FinanceSummary {
   monthly: { month: string; paid: number }[];
 }
 
+interface ClassOption { id: string; grade: number; letter: string }
+
 const fmtSom = (n: number) => `${n.toLocaleString('ru-RU')} сом`;
 
 function Kpi({ label, value, color, icon }: { label: string; value: string; color: string; icon: React.ReactNode }) {
@@ -74,25 +78,55 @@ function Kpi({ label, value, color, icon }: { label: string; value: string; colo
 }
 
 function FinanceContent() {
+  const [classId, setClassId] = useState<string | null>(null);
+  const [classOptions, setClassOptions] = useState<Array<{ value: string; label: string }>>([]);
+
+  useEffect(() => {
+    fetch('/api/v1/classes')
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success) {
+          setClassOptions(j.data.map((c: ClassOption) => ({
+            value: c.id,
+            label: `${c.grade}${c.letter}`,
+          })));
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
   const { data, isLoading } = useQuery<FinanceSummary>({
-    queryKey: ['finance-summary'],
+    queryKey: ['finance-summary', classId],
     queryFn: async () => {
-      const res = await fetch('/api/v1/finance/summary');
+      const qs = classId ? `?classId=${encodeURIComponent(classId)}` : '';
+      const res = await fetch(`/api/v1/finance/summary${qs}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message ?? 'Ошибка');
       return json.data;
     },
   });
 
-  if (isLoading || !data) return <Center h={300}><Loader /></Center>;
-
   return (
     <Stack gap="lg">
-      <div>
-        <Title order={2} style={{ letterSpacing: '-0.02em' }}>Финансы школы</Title>
-        <Text c="dimmed" size="sm">Сводка для собственника: сборы, задолженность, динамика</Text>
-      </div>
+      <Group justify="space-between" align="flex-start" wrap="wrap">
+        <div>
+          <Title order={2} style={{ letterSpacing: '-0.02em' }}>Финансы школы</Title>
+          <Text c="dimmed" size="sm">Сводка для собственника: сборы, задолженность, динамика</Text>
+        </div>
+        <Select
+          size="xs"
+          w={150}
+          placeholder="Класс"
+          clearable
+          searchable
+          data={classOptions}
+          value={classId}
+          onChange={setClassId}
+        />
+      </Group>
 
+      {isLoading || !data ? <Center h={300}><Loader /></Center> : (
+        <>
       {/* KPI */}
       <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="md">
         <Kpi label="Начислено" value={fmtSom(data.totalAmount)} color="blue" icon={<IconReceipt size={22} />} />
@@ -191,6 +225,8 @@ function FinanceContent() {
           </Table>
         )}
       </Paper>
+        </>
+      )}
     </Stack>
   );
 }

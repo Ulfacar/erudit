@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Badge, Button, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
+import { Badge, Button, Group, Loader, Paper, Select, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
 import { IconReportMoney, IconCheck } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
@@ -9,6 +9,7 @@ import { useRole } from '@/shared/hooks/useRole';
 
 interface Row { id: string; amount: number; method: string | null; paidAt: string; verified: boolean; studentName: string; branch: string; title: string }
 interface Journal { byMethod: { method: string; count: number; total: number }[]; payments: Row[]; unverifiedCount: number }
+interface ClassOption { id: string; grade: number; letter: string }
 
 const fmt = (n: number) => `${n.toLocaleString('ru-RU')} сом`;
 const METHOD_LABEL: Record<string, string> = { нал: 'Наличные', карта: 'Карта', мбанк: 'МБанк', банк: 'Банк' };
@@ -17,12 +18,29 @@ function Journal() {
   const { has } = useRole();
   const [d, setD] = useState<Journal | null>(null);
   const [loading, setLoading] = useState(true);
+  const [classId, setClassId] = useState<string | null>(null);
+  const [classOptions, setClassOptions] = useState<Array<{ value: string; label: string }>>([]);
+
+  useEffect(() => {
+    fetch('/api/v1/classes')
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success) {
+          setClassOptions(j.data.map((c: ClassOption) => ({
+            value: c.id,
+            label: `${c.grade}${c.letter}`,
+          })));
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const j = await fetch('/api/v1/finance/journal').then((r) => r.json()).catch(() => ({ data: null }));
+    const qs = classId ? `?classId=${encodeURIComponent(classId)}` : '';
+    const j = await fetch(`/api/v1/finance/journal${qs}`).then((r) => r.json()).catch(() => ({ data: null }));
     setD(j.data ?? null); setLoading(false);
-  }, []);
+  }, [classId]);
   useEffect(() => { load(); }, [load]);
 
   async function verify(id: string) {
@@ -32,12 +50,26 @@ function Journal() {
 
   const canVerify = has('super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager');
 
-  if (loading) return <Group justify="center" p="xl"><Loader /></Group>;
+  if (loading && !d) return <Group justify="center" p="xl"><Loader /></Group>;
   if (!d) return <Stack p="md"><Text c="red">Нет данных.</Text></Stack>;
 
   return (
     <Stack gap="lg" p="md">
-      <Group gap="xs"><IconReportMoney size={26} color="#2f9e44" /><Title order={2}>Журнал оплат</Title></Group>
+      <Group justify="space-between" align="center" wrap="wrap">
+        <Group gap="xs"><IconReportMoney size={26} color="#2f9e44" /><Title order={2}>Журнал оплат</Title></Group>
+        <Select
+          size="xs"
+          w={150}
+          placeholder="Класс"
+          clearable
+          searchable
+          data={classOptions}
+          value={classId}
+          onChange={setClassId}
+        />
+      </Group>
+
+      {loading && <Group justify="center" py="xs"><Loader size="sm" /></Group>}
 
       <div>
         <Text size="sm" fw={500} mb="xs">Разбивка по способам оплаты</Text>

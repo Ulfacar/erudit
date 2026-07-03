@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 /**
  * GET /api/v1/finance/journal — журнал оплат: разбивка по способам (нал/карта/мбанк/
@@ -15,7 +17,18 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
+    const classId = request.nextUrl.searchParams.get('classId');
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const studentWhere: Prisma.StudentWhereInput = {
+      ...(classId ? { classId } : {}),
+      ...branchWhere(scope),
+    };
+    const where: Prisma.PaymentWhereInput | undefined = Object.keys(studentWhere).length
+      ? { invoice: { student: studentWhere } }
+      : undefined;
+
     const payments = await prisma.payment.findMany({
+      where,
       orderBy: { paidAt: 'desc' }, take: 200,
       include: { invoice: { select: { title: true, studentId: true } } },
     });
