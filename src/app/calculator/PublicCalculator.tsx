@@ -7,12 +7,14 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   Container,
   Divider,
   Grid,
   Group,
   Modal,
   Paper,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
@@ -28,30 +30,38 @@ import {
   IconApps,
   IconCalculator,
   IconCheck,
-  IconCircleDot,
-  IconFlame,
   IconLayoutGrid,
   IconLock,
   IconPlus,
   IconSend,
-  IconStack2,
-  IconStars,
+  IconSparkles,
 } from '@tabler/icons-react';
 import { BilimosLogo } from '@/shared/components/ui/BilimosLogo';
 import {
-  CORE,
-  HEAVY_LICENSE,
-  HEAVY_MODULES,
-  HEAVY_SETUP,
-  STANDARD_LICENSE,
-  STANDARD_MODULES,
-  STANDARD_SETUP,
+  ADDON_MODULES,
+  CORE_MODULE,
+  DEFAULT_PRESET_ID,
+  DEFAULT_SCHOOL_SIZE,
+  PRESETS,
+  SCHOOL_SIZES,
   USD_RATE,
-  computeTotals,
+  computeTariff,
+  getModuleById,
+  resolveModuleIds,
+  type PresetId,
+  type PricingMode,
+  type SchoolSizeId,
+  type TariffModule,
 } from '@/shared/lib/tariff-config';
 
 type AccentColor = 'teal' | 'bilimosBlue' | 'orange';
 type GroupIcon = ComponentType<{ size?: number }>;
+type PaymentView = 'annual' | 'monthly';
+
+const DEFAULT_ADDONS = PRESETS.find((preset) => preset.id === DEFAULT_PRESET_ID)?.addonIds ?? [];
+const PUBLIC_PRESETS = PRESETS.filter((preset) => !preset.hidden);
+const REQUIRED_MODULES = [CORE_MODULE, ...ADDON_MODULES.filter((module) => module.required)];
+const OPTIONAL_MODULES = ADDON_MODULES.filter((module) => !module.required);
 
 function formatSom(value: number) {
   return `${new Intl.NumberFormat('ru-RU').format(value)} сом`;
@@ -63,15 +73,19 @@ function formatUsd(value: number) {
 }
 
 function ModuleCard({
-  name,
+  module,
   selected,
   accent,
+  badge,
+  locked,
   onClick,
 }: {
-  name: string;
+  module: TariffModule;
   selected: boolean;
   accent: AccentColor;
-  onClick: () => void;
+  badge?: string;
+  locked?: boolean;
+  onClick?: () => void;
 }) {
   const theme = useMantineTheme();
 
@@ -80,6 +94,7 @@ function ModuleCard({
       className="module-card"
       aria-pressed={selected}
       onClick={onClick}
+      disabled={locked}
       style={{
         borderRadius: 12,
         padding: '10px 12px',
@@ -91,14 +106,25 @@ function ModuleCard({
         alignItems: 'center',
         width: '100%',
         transition: 'all .15s ease',
+        cursor: locked ? 'default' : 'pointer',
       }}
     >
       <ThemeIcon size={26} radius="xl" variant={selected ? 'filled' : 'light'} color={selected ? accent : 'gray'}>
-        {selected ? <IconCheck size={16} /> : <IconPlus size={16} />}
+        {locked ? <IconLock size={14} /> : selected ? <IconCheck size={16} /> : <IconPlus size={16} />}
       </ThemeIcon>
-      <Text size="sm" fw={selected ? 600 : 500} lineClamp={2}>
-        {name}
-      </Text>
+      <Box style={{ flex: 1, minWidth: 0 }}>
+        <Text size="sm" fw={selected ? 600 : 500} lineClamp={2}>
+          {module.label}
+        </Text>
+        <Text size="xs" c="dimmed" lineClamp={2}>
+          {module.description}
+        </Text>
+      </Box>
+      {badge && (
+        <Badge variant="light" color={accent} radius="sm">
+          {badge}
+        </Badge>
+      )}
     </UnstyledButton>
   );
 }
@@ -106,7 +132,6 @@ function ModuleCard({
 function ModuleGroup({
   title,
   countText,
-  priceText,
   selectedCount,
   accent,
   icon: Icon,
@@ -114,7 +139,6 @@ function ModuleGroup({
 }: {
   title: string;
   countText: string;
-  priceText?: string;
   selectedCount?: number;
   accent: AccentColor;
   icon: GroupIcon;
@@ -135,18 +159,11 @@ function ModuleGroup({
               </Text>
             </Box>
           </Group>
-          <Group gap="xs" justify="flex-end">
-            {priceText && (
-              <Badge variant="light" color={accent} size="lg" radius="sm">
-                {priceText}
-              </Badge>
-            )}
-            {Boolean(selectedCount) && (
-              <Badge variant="filled" color={accent} radius="xl">
-                {selectedCount} выбрано
-              </Badge>
-            )}
-          </Group>
+          {Boolean(selectedCount) && (
+            <Badge variant="filled" color={accent} radius="xl">
+              {selectedCount} выбрано
+            </Badge>
+          )}
         </Group>
         {children}
       </Stack>
@@ -155,8 +172,13 @@ function ModuleGroup({
 }
 
 function CalculatorContent() {
-  const [standardSelected, setStandardSelected] = useState<Set<string>>(new Set());
-  const [heavySelected, setHeavySelected] = useState<Set<string>>(new Set());
+  const theme = useMantineTheme();
+  const [schoolSize, setSchoolSize] = useState<SchoolSizeId>(DEFAULT_SCHOOL_SIZE);
+  const [mode, setMode] = useState<PricingMode>('preset');
+  const [presetId, setPresetId] = useState<PresetId>(DEFAULT_PRESET_ID);
+  const [addonIds, setAddonIds] = useState<Set<string>>(() => new Set(DEFAULT_ADDONS));
+  const [paymentView, setPaymentView] = useState<PaymentView>('annual');
+  const [aiInterest, setAiInterest] = useState(false);
   const [leadOpen, setLeadOpen] = useState(false);
   const [leadSaving, setLeadSaving] = useState(false);
   const [contactName, setContactName] = useState('');
@@ -165,32 +187,26 @@ function CalculatorContent() {
   const [comment, setComment] = useState('');
   const [website, setWebsite] = useState('');
 
-  const standardModules = [...standardSelected];
-  const heavyModules = [...heavySelected];
-  const standardCount = standardModules.length;
-  const heavyCount = heavyModules.length;
-  const { setupTotal, licenseTotal } = computeTotals(standardModules, heavyModules);
+  const selectedAddonIds = [...addonIds];
+  const quote = computeTariff({ schoolSize, mode, presetId, addonIds: selectedAddonIds });
+  const selectedSize = SCHOOL_SIZES.find((item) => item.id === schoolSize) ?? SCHOOL_SIZES[1];
+  const selectedPreset = PRESETS.find((preset) => preset.id === presetId);
+  const summaryTariff =
+    mode === 'preset' ? selectedPreset?.label ?? '—' : `Свой набор · ${1 + addonIds.size} модулей`;
 
-  function toggle(setter: (next: Set<string>) => void, current: Set<string>, name: string) {
-    const next = new Set(current);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    setter(next);
+  function toggleAddon(id: string) {
+    const next = new Set(addonIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setAddonIds(next);
   }
 
-  function selectCoreOnly() {
-    setStandardSelected(new Set());
-    setHeavySelected(new Set());
-  }
-
-  function selectAllStandard() {
-    setStandardSelected(new Set(STANDARD_MODULES));
-    setHeavySelected(new Set());
-  }
-
-  function selectAll() {
-    setStandardSelected(new Set(STANDARD_MODULES));
-    setHeavySelected(new Set(HEAVY_MODULES));
+  function switchMode(value: string) {
+    const nextMode = value as PricingMode;
+    setMode(nextMode);
+    if (nextMode === 'custom') {
+      setAddonIds(new Set(DEFAULT_ADDONS));
+    }
   }
 
   function resetLeadForm() {
@@ -217,8 +233,11 @@ function CalculatorContent() {
           contactPhone: contactPhone.trim(),
           contactSchool: contactSchool.trim() || undefined,
           comment: comment.trim() || undefined,
-          standardModules,
-          heavyModules,
+          schoolSize,
+          pricingMode: mode,
+          presetId: mode === 'preset' ? presetId : undefined,
+          addonIds: mode === 'custom' ? selectedAddonIds : undefined,
+          aiInterest,
           website,
         }),
       });
@@ -244,132 +263,210 @@ function CalculatorContent() {
 
   return (
     <Stack gap="lg">
-      <Paper
-        radius="lg"
-        p="xl"
-        style={{ background: 'linear-gradient(135deg, var(--mantine-color-bilimosBlue-0), #fff5f0)' }}
-      >
-        <Group justify="space-between" align="flex-start" gap="md">
-          <Group gap="md" align="flex-start">
-            <ThemeIcon size={48} radius="md" variant="light" color="bilimosBlue">
-              <IconCalculator size={28} />
-            </ThemeIcon>
-            <Box>
-              <Title order={2}>Калькулятор тарифов</Title>
-              <Text size="sm" c="dimmed">
-                Соберите комплектацию Bilim OS — цена пересчитывается сразу
-              </Text>
-            </Box>
-          </Group>
-          <Badge variant="light" color="gray" size="lg" radius="sm">
-            1$ = {USD_RATE} сом
-          </Badge>
-        </Group>
-      </Paper>
-
-      <Button.Group>
-        <Button
-          variant="default"
-          size="sm"
-          radius="md"
-          leftSection={<IconCircleDot size={16} />}
-          onClick={selectCoreOnly}
-        >
-          Только ядро
-        </Button>
-        <Button
-          variant="default"
-          size="sm"
-          radius="md"
-          leftSection={<IconStack2 size={16} />}
-          onClick={selectAllStandard}
-        >
-          Все обычные
-        </Button>
-        <Button variant="default" size="sm" radius="md" leftSection={<IconStars size={16} />} onClick={selectAll}>
-          Выбрать всё
-        </Button>
-      </Button.Group>
-
       <Grid gutter="lg" align="flex-start">
         <Grid.Col span={{ base: 12, lg: 8 }}>
           <Stack gap="lg" pb={{ base: 80, lg: 0 }}>
-            <ModuleGroup title="Ядро" countText="1 модуль" accent="teal" icon={IconLayoutGrid}>
-              <UnstyledButton
-                className="module-card"
-                aria-pressed
-                style={{
-                  borderRadius: 12,
-                  padding: '10px 12px',
-                  border: '1px solid',
-                  borderColor: 'var(--mantine-color-teal-4)',
-                  background: 'var(--mantine-color-teal-0)',
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  width: '100%',
-                  transition: 'all .15s ease',
-                  cursor: 'default',
-                }}
-              >
-                <ThemeIcon size={26} radius="xl" variant="filled" color="teal">
-                  <IconLock size={14} />
-                </ThemeIcon>
-                <Box style={{ flex: 1 }}>
-                  <Text size="sm" fw={600} lineClamp={2}>
-                    {CORE.name}
-                  </Text>
+            <Paper
+              radius="lg"
+              p="xl"
+              style={{ background: 'linear-gradient(135deg, var(--mantine-color-bilimosBlue-0), #ffffff)' }}
+            >
+              <Group justify="space-between" align="flex-start" gap="md">
+                <Group gap="md" align="flex-start">
+                  <ThemeIcon size={48} radius="md" variant="light" color="bilimosBlue">
+                    <IconCalculator size={28} />
+                  </ThemeIcon>
+                  <Box>
+                    <Title order={2}>Калькулятор стоимости Bilim OS</Title>
+                    <Text size="sm" c="dimmed">
+                      Выберите размер школы и тариф — расчёт обновится сразу
+                    </Text>
+                  </Box>
+                </Group>
+                <Badge variant="light" color="gray" size="lg" radius="sm">
+                  1$ = {USD_RATE} сом
+                </Badge>
+              </Group>
+            </Paper>
+
+            <Paper withBorder radius="lg" p="lg">
+              <Stack gap="md">
+                <Box>
+                  <Title order={4}>Размер школы</Title>
                   <Text size="xs" c="dimmed">
-                    {formatSom(CORE.setup)} setup · {formatSom(CORE.license)}/год
+                    Выберите диапазон по числу учеников
                   </Text>
                 </Box>
-                <Badge variant="light" color="teal" radius="sm">
-                  Всегда включено
-                </Badge>
-              </UnstyledButton>
-            </ModuleGroup>
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+                  {SCHOOL_SIZES.map((size) => {
+                    const selected = size.id === schoolSize;
+                    return (
+                      <UnstyledButton
+                        key={size.id}
+                        aria-pressed={selected}
+                        onClick={() => setSchoolSize(size.id)}
+                        style={{
+                          borderRadius: 12,
+                          border: '1px solid',
+                          borderColor: selected ? 'var(--mantine-color-bilimosBlue-4)' : theme.other.surfaceBorder,
+                          background: selected ? 'var(--mantine-color-bilimosBlue-0)' : '#fff',
+                          padding: 16,
+                          minHeight: 84,
+                        }}
+                      >
+                        <Group gap="sm" align="center" wrap="nowrap">
+                          <ThemeIcon color={selected ? 'bilimosBlue' : 'gray'} variant={selected ? 'filled' : 'light'}>
+                            <IconCheck size={16} />
+                          </ThemeIcon>
+                          <Text fw={700}>{size.label}</Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </SimpleGrid>
+              </Stack>
+            </Paper>
 
-            <ModuleGroup
-              title="Обычные"
-              countText={`${STANDARD_MODULES.length} модулей`}
-              priceText={`+${formatSom(STANDARD_SETUP)} setup · +${formatSom(STANDARD_LICENSE)}/год за модуль`}
-              selectedCount={standardCount}
-              accent="bilimosBlue"
-              icon={IconApps}
-            >
-              <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }} spacing="xs">
-                {STANDARD_MODULES.map((name) => (
-                  <ModuleCard
-                    key={name}
-                    name={name}
-                    selected={standardSelected.has(name)}
-                    accent="bilimosBlue"
-                    onClick={() => toggle(setStandardSelected, standardSelected, name)}
-                  />
-                ))}
-              </SimpleGrid>
-            </ModuleGroup>
+            <Paper withBorder radius="lg" p="lg">
+              <Stack gap="sm">
+                <SegmentedControl
+                  fullWidth
+                  value={mode}
+                  onChange={switchMode}
+                  data={[
+                    { value: 'preset', label: 'Тариф' },
+                    { value: 'custom', label: 'Свой набор' },
+                  ]}
+                />
+                {mode === 'custom' && (
+                  <Text size="sm" c="dimmed">
+                    Считается по той же формуле — без наценки
+                  </Text>
+                )}
+              </Stack>
+            </Paper>
 
-            <ModuleGroup
-              title="Тяжёлые"
-              countText={`${HEAVY_MODULES.length} модулей`}
-              priceText={`+${formatSom(HEAVY_SETUP)} setup · +${formatSom(HEAVY_LICENSE)}/год за модуль`}
-              selectedCount={heavyCount}
-              accent="orange"
-              icon={IconFlame}
-            >
-              <SimpleGrid cols={{ base: 1, sm: 2, xl: 3 }} spacing="xs">
-                {HEAVY_MODULES.map((name) => (
-                  <ModuleCard
-                    key={name}
-                    name={name}
-                    selected={heavySelected.has(name)}
-                    accent="orange"
-                    onClick={() => toggle(setHeavySelected, heavySelected, name)}
-                  />
-                ))}
+            {mode === 'preset' ? (
+              <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
+                {PUBLIC_PRESETS.map((preset) => {
+                  const selected = preset.id === presetId;
+                  const modules = resolveModuleIds('preset', preset.id);
+                  const presetQuote = computeTariff({ schoolSize, mode: 'preset', presetId: preset.id });
+
+                  return (
+                    <UnstyledButton
+                      key={preset.id}
+                      aria-pressed={selected}
+                      onClick={() => setPresetId(preset.id)}
+                      style={{
+                        height: '100%',
+                        borderRadius: 12,
+                        border: '1px solid',
+                        borderColor: selected ? 'var(--mantine-color-bilimosBlue-4)' : theme.other.surfaceBorder,
+                        background: selected ? 'var(--mantine-color-bilimosBlue-0)' : '#fff',
+                        padding: 18,
+                      }}
+                    >
+                      <Stack gap="sm" h="100%">
+                        <Group justify="space-between" align="flex-start" gap="xs">
+                          <Title order={4}>{preset.label}</Title>
+                          {preset.recommended && (
+                            <Badge color="orange" variant="light" radius="sm">
+                              Рекомендуем
+                            </Badge>
+                          )}
+                        </Group>
+                        <Text size="sm" c="dimmed">
+                          {preset.description}
+                        </Text>
+                        <Stack gap={6} style={{ flex: 1 }}>
+                          {modules.map((id) => {
+                            const module = getModuleById(id);
+                            if (!module) return null;
+                            return (
+                              <Group key={id} gap={6} wrap="nowrap">
+                                <IconCheck size={14} color="var(--mantine-color-teal-6)" />
+                                <Text size="xs" lineClamp={1}>
+                                  {module.label}
+                                </Text>
+                              </Group>
+                            );
+                          })}
+                        </Stack>
+                        <Text fw={800} fz={24} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {formatSom(presetQuote.annualLicence)}
+                        </Text>
+                      </Stack>
+                    </UnstyledButton>
+                  );
+                })}
               </SimpleGrid>
-            </ModuleGroup>
+            ) : (
+              <ModuleGroup
+                title="Свой набор"
+                countText="Минимальный административный контур всегда включён"
+                selectedCount={addonIds.size}
+                accent="bilimosBlue"
+                icon={IconApps}
+              >
+                <Stack gap="sm">
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                    {REQUIRED_MODULES.map((module) => (
+                      <ModuleCard
+                        key={module.id}
+                        module={module}
+                        selected
+                        locked
+                        accent="teal"
+                        badge="Всегда включено"
+                      />
+                    ))}
+                  </SimpleGrid>
+                  <Divider />
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                    {OPTIONAL_MODULES.map((module) => (
+                      <ModuleCard
+                        key={module.id}
+                        module={module}
+                        selected={addonIds.has(module.id)}
+                        accent="bilimosBlue"
+                        badge={`+${formatSom(module.weight * quote.unitPrice)}/год`}
+                        onClick={() => toggleAddon(module.id)}
+                      />
+                    ))}
+                  </SimpleGrid>
+                </Stack>
+              </ModuleGroup>
+            )}
+
+            <Paper
+              radius="lg"
+              p="lg"
+              style={{ background: 'linear-gradient(135deg, var(--mantine-color-violet-0), var(--mantine-color-bilimosBlue-0))' }}
+            >
+              <Group justify="space-between" align="center" gap="md">
+                <Group gap="md" align="flex-start">
+                  <ThemeIcon color="violet" variant="light" size={40} radius="md">
+                    <IconSparkles size={22} />
+                  </ThemeIcon>
+                  <Box>
+                    <Text fw={700}>AI-ассистенты и тьюторы</Text>
+                    <Text size="sm" c="dimmed">
+                      Отдельный контур, обсуждается индивидуально
+                    </Text>
+                  </Box>
+                </Group>
+                <Checkbox
+                  label="Интересует AI"
+                  checked={aiInterest}
+                  onChange={(event) => setAiInterest(event.currentTarget.checked)}
+                />
+              </Group>
+            </Paper>
+
+            <Text size="xs" c="dimmed">
+              Предварительный расчёт, не является публичной офертой
+            </Text>
           </Stack>
         </Grid.Col>
 
@@ -379,60 +476,73 @@ function CalculatorContent() {
               <Stack gap="md">
                 <Box>
                   <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-                    Ваш тариф
+                    Ваш расчёт
                   </Text>
                   <Title order={3}>Bilim OS</Title>
                 </Box>
 
                 <Stack gap="xs">
                   <Group justify="space-between">
-                    <Text size="sm">Ядро — 1</Text>
-                    <Badge variant="light" color="teal">
-                      1
-                    </Badge>
+                    <Text size="sm">Размер</Text>
+                    <Text size="sm" fw={600}>
+                      {selectedSize.label}
+                    </Text>
                   </Group>
                   <Group justify="space-between">
-                    <Text size="sm">Обычные — {standardCount}</Text>
-                    <Badge variant="light" color="bilimosBlue">
-                      {standardCount}
-                    </Badge>
-                  </Group>
-                  <Group justify="space-between">
-                    <Text size="sm">Тяжёлые — {heavyCount}</Text>
-                    <Badge variant="light" color="orange">
-                      {heavyCount}
-                    </Badge>
+                    <Text size="sm">Тариф</Text>
+                    <Text size="sm" fw={600} ta="right">
+                      {summaryTariff}
+                    </Text>
                   </Group>
                 </Stack>
+
+                <SegmentedControl
+                  fullWidth
+                  value={paymentView}
+                  onChange={(value) => setPaymentView(value as PaymentView)}
+                  data={[
+                    { value: 'annual', label: 'Оплата за год' },
+                    { value: 'monthly', label: 'Помесячно' },
+                  ]}
+                />
 
                 <Divider />
 
-                <Stack gap={4}>
-                  <Text size="sm" c="dimmed">
-                    Setup (разово)
-                  </Text>
-                  <Text fw={800} fz={28} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {formatSom(setupTotal)}
-                  </Text>
-                  <Text size="sm" c="dimmed">
-                    {formatUsd(setupTotal)}
-                  </Text>
-                </Stack>
-
-                <Stack gap={4}>
-                  <Text size="sm" c="dimmed">
-                    Лицензия
-                  </Text>
-                  <Text fw={800} fz={28} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {formatSom(licenseTotal)}{' '}
-                    <Text component="span" size="sm" c="dimmed">
-                      /год
+                {paymentView === 'annual' ? (
+                  <Stack gap={4}>
+                    <Text fw={800} fz={30} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {formatSom(quote.annualLicence)}{' '}
+                      <Text component="span" size="sm" c="dimmed">
+                        /год
+                      </Text>
                     </Text>
-                  </Text>
-                  <Text size="sm" c="dimmed">
-                    {formatUsd(licenseTotal)}
-                  </Text>
-                </Stack>
+                    <Text size="sm" c="dimmed">
+                      лицензия, со 2-го года
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      {formatUsd(quote.annualLicence)}
+                    </Text>
+                    <Text size="sm">
+                      Первый год: {formatSom(quote.yearOne)} — включая внедрение, настройку и обучение
+                    </Text>
+                  </Stack>
+                ) : (
+                  <Stack gap={4}>
+                    <Text fw={800} fz={30} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {formatSom(quote.monthly)}{' '}
+                      <Text component="span" size="sm" c="dimmed">
+                        /мес
+                      </Text>
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      при помесячной оплате
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      {formatUsd(quote.monthly)}
+                    </Text>
+                    <Text size="sm">При оплате за год — {formatSom(quote.annualLicence)}</Text>
+                  </Stack>
+                )}
 
                 <Button
                   size="lg"
@@ -444,9 +554,6 @@ function CalculatorContent() {
                 >
                   Отправить заявку
                 </Button>
-                <Text size="xs" c="dimmed" ta="center">
-                  Расчёт предварительный, без учёта скидок
-                </Text>
               </Stack>
             </Card>
           </Box>
@@ -458,10 +565,10 @@ function CalculatorContent() {
           <Group justify="space-between" gap="sm">
             <Box>
               <Text size="xs" c="dimmed">
-                Setup / Лицензия
+                Ваш расчёт
               </Text>
               <Text fw={700} size="sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {formatSom(setupTotal)} · {formatSom(licenseTotal)}/год
+                {paymentView === 'annual' ? formatSom(quote.annualLicence) : formatSom(quote.monthly)}
               </Text>
             </Box>
             <Button size="sm" color="bilimosBlue" onClick={() => setLeadOpen(true)}>
@@ -533,23 +640,37 @@ function CalculatorContent() {
                 Итог
               </Text>
               <Group justify="space-between">
-                <Text size="sm">Модулей</Text>
-                <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {standardCount + heavyCount}
+                <Text size="sm">Размер</Text>
+                <Text size="sm" fw={600}>
+                  {selectedSize.label}
                 </Text>
               </Group>
               <Group justify="space-between">
-                <Text size="sm">Setup</Text>
-                <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatSom(setupTotal)}
+                <Text size="sm">Тариф/набор</Text>
+                <Text size="sm" fw={600} ta="right">
+                  {summaryTariff}
                 </Text>
               </Group>
               <Group justify="space-between">
                 <Text size="sm">Лицензия/год</Text>
                 <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {formatSom(licenseTotal)}
+                  {formatSom(quote.annualLicence)}
                 </Text>
               </Group>
+              <Group justify="space-between">
+                <Text size="sm">Год 1</Text>
+                <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {formatSom(quote.yearOne)}
+                </Text>
+              </Group>
+              {aiInterest && (
+                <Group justify="space-between">
+                  <Text size="sm">AI</Text>
+                  <Badge color="violet" variant="light">
+                    интересует
+                  </Badge>
+                </Group>
+              )}
             </Stack>
           </Paper>
 

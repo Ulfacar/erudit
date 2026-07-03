@@ -10,6 +10,7 @@ import { ResourcePage, type ResourceRow } from '@/shared/components/ui/ResourceP
 import { fmtDate, fmtMoney } from '@/shared/components/ui/resource-helpers';
 import { useRole } from '@/shared/hooks/useRole';
 import { roleMatches } from '@/shared/lib/role-access';
+import { PRESETS, SCHOOL_SIZES, getModuleById } from '@/shared/lib/tariff-config';
 
 const PAGE_ROLES: Role[] = ['super_admin', 'founder', 'analyst'];
 
@@ -27,6 +28,9 @@ const STATUS_COLORS: Record<string, string> = {
   lost: 'red',
 };
 
+const SIZE_LABELS = Object.fromEntries(SCHOOL_SIZES.map((size) => [size.id, size.label]));
+const PRESET_LABELS = Object.fromEntries(PRESETS.map((preset) => [preset.id, preset.label]));
+
 type LeadStatus = 'new' | 'in_progress' | 'won' | 'lost';
 
 interface DecisionState {
@@ -38,19 +42,37 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
-function moduleSummary(row: ResourceRow) {
-  const standard = asStringArray(row.standardModules);
-  const heavy = asStringArray(row.heavyModules);
-  const modules = [...standard, ...heavy];
-  const title = modules.length ? modules.join('\n') : 'Модули не выбраны';
+function selectedModuleLabels(row: ResourceRow) {
+  return asStringArray(row.selectedModules)
+    .map((id) => getModuleById(id)?.label ?? id)
+    .filter(Boolean);
+}
 
-  return (
-    <Tooltip label={<Text style={{ whiteSpace: 'pre-line' }}>{title}</Text>} multiline>
-      <Badge variant="light" color="gray" radius="sm" title={title}>
-        {modules.length}
-      </Badge>
-    </Tooltip>
-  );
+function tariffSummary(row: ResourceRow) {
+  if (row.pricingMode === 'custom') {
+    const modules = selectedModuleLabels(row);
+    const title = modules.length ? modules.join('\n') : 'Модули не выбраны';
+
+    return (
+      <Tooltip label={<Text style={{ whiteSpace: 'pre-line' }}>{title}</Text>} multiline>
+        <Badge variant="light" color="bilimosBlue" radius="sm" title={title}>
+          Свой набор
+        </Badge>
+      </Tooltip>
+    );
+  }
+
+  if (row.presetId) {
+    return String(PRESET_LABELS[String(row.presetId)] ?? row.presetId);
+  }
+
+  return '—';
+}
+
+function annualLicenceSummary(row: ResourceRow) {
+  if (row.annualLicence !== null && row.annualLicence !== undefined) return fmtMoney(row.annualLicence);
+  if (row.licenseTotal !== null && row.licenseTotal !== undefined) return `${fmtMoney(row.licenseTotal)} (стар.)`;
+  return '—';
 }
 
 export default function TariffLeadsPage() {
@@ -124,24 +146,45 @@ export default function TariffLeadsPage() {
             { key: 'contactName', label: 'Контакт' },
             { key: 'contactPhone', label: 'Телефон' },
             { key: 'contactSchool', label: 'Школа', render: (r) => String(r.contactSchool ?? '—') },
-            { key: 'modules', label: 'Модулей', render: moduleSummary },
             {
-              key: 'setupTotal',
-              label: 'Setup',
+              key: 'schoolSize',
+              label: 'Размер',
+              render: (r) => String(SIZE_LABELS[String(r.schoolSize)] ?? '—'),
+            },
+            {
+              key: 'presetId',
+              label: 'Тариф',
+              render: tariffSummary,
+            },
+            {
+              key: 'annualLicence',
+              label: 'Лицензия/год',
               render: (r) => (
                 <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {fmtMoney(r.setupTotal)}
+                  {annualLicenceSummary(r)}
                 </Text>
               ),
             },
             {
-              key: 'licenseTotal',
-              label: 'Лицензия',
+              key: 'yearOne',
+              label: 'Год 1',
               render: (r) => (
                 <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {fmtMoney(r.licenseTotal)}
+                  {fmtMoney(r.yearOne)}
                 </Text>
               ),
+            },
+            {
+              key: 'aiInterest',
+              label: 'AI',
+              render: (r) =>
+                r.aiInterest ? (
+                  <Badge variant="light" color="violet" radius="sm">
+                    Да
+                  </Badge>
+                ) : (
+                  '—'
+                ),
             },
             {
               key: 'status',

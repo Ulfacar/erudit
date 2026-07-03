@@ -1,7 +1,7 @@
 import { PublicCalculator } from './PublicCalculator';
 
 export const metadata = {
-  title: 'Калькулятор тарифов — Bilim OS',
+  title: 'Калькулятор стоимости — Bilim OS',
   robots: { index: false, follow: false },
 };
 

@@ -1630,10 +1630,21 @@ model TariffLead {
   contactPhone    String
   contactSchool   String?
   comment         String?   @db.Text
-  standardModules Json      // string[] — имена выбранных обычных модулей
-  heavyModules    Json      // string[] — имена выбранных тяжёлых модулей
-  setupTotal      Int
-  licenseTotal    Int
+  standardModules Json?     // legacy string[] — имена выбранных обычных модулей
+  heavyModules    Json?     // legacy string[] — имена выбранных тяжёлых модулей
+  setupTotal      Int?
+  licenseTotal    Int?
+  schoolSize      String?
+  pricingMode     String?
+  presetId        String?
+  selectedModules Json?
+  weightTotal     Float?
+  unitPrice       Int?
+  annualLicence   Int?
+  yearOne         Int?
+  monthly         Int?
+  aiInterest      Boolean   @default(false)
+  pricingSnapshot Json?
   status          String    @default("new") // new | in_progress | won | lost
   decisionNote    String?   @db.Text
   authorId        String?
