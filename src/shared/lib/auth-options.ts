@@ -34,6 +34,7 @@ export const authOptions: AuthOptions = {
           login: user.login,
           role: user.role,
           starLevel: user.starLevel,
+          branchId: user.branchId,
         }
       },
     }),
@@ -49,6 +50,7 @@ export const authOptions: AuthOptions = {
         token.role = user.role
         token.starLevel = user.starLevel
         token.login = user.login
+        token.branchId = user.branchId
       }
       return token
     },
@@ -58,6 +60,8 @@ export const authOptions: AuthOptions = {
         session.user.role = token.role as string
         session.user.starLevel = token.starLevel as number
         session.user.login = token.login as string
+        // JWT maxAge is 8h: staff branch changes are applied after re-login.
+        session.user.branchId = token.branchId as string | null | undefined
       }
       return session
     },

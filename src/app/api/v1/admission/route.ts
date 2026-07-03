@@ -13,4 +13,5 @@ export const { GET, POST, DELETE } = createCrud({
   injectUserId: 'createdById',
   orderBy: { updatedAt: 'desc' },
   filterableParams: ['stage'],
+  branchScope: 'own',
 });

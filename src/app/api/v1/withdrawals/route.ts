@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 const ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary'] as const;
 
@@ -10,7 +11,8 @@ export async function GET(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...ROLES] });
   if (auth.response) return auth.response;
   try {
-    const items = await prisma.withdrawal.findMany({ orderBy: { date: 'desc' }, take: 200 });
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const items = await prisma.withdrawal.findMany({ where: branchWhere(scope), orderBy: { date: 'desc' }, take: 200 });
     const ids = items.map((w) => w.studentId);
     const students = await prisma.student.findMany({ where: { id: { in: ids } }, select: { id: true, firstName: true, lastName: true } });
     const rows = items.map((w) => {

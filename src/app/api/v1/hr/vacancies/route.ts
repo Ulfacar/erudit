@@ -8,4 +8,5 @@ export const { GET, POST, DELETE } = createCrud({
   intFields: ['count'],
   orderBy: { createdAt: 'desc' },
   filterableParams: ['status'],
+  branchScope: 'own',
 });

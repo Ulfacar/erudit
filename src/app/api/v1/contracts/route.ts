@@ -5,6 +5,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { createContractWithInvoices } from '@/shared/lib/finance/renew-contract';
 import { canAccessStudent } from '@/shared/lib/student-access';
 import { roleMatches } from '@/shared/lib/role-access';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 import type { Role } from '@prisma/client';
 
 const ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary'] as const;
@@ -26,8 +27,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const scope = await getBranchScope(auth.session.user.id, role, auth.session.user.branchId);
     const contracts = await prisma.contract.findMany({
-      where: studentId ? { studentId } : {},
+      where: { ...(studentId ? { studentId } : {}), ...branchWhere(scope) },
       orderBy: { createdAt: 'desc' },
     });
     return successResponse(contracts);

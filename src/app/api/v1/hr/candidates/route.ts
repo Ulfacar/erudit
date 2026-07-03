@@ -7,4 +7,5 @@ export const { GET, POST, DELETE } = createCrud({
   createFields: ['fullName', 'phone', 'email', 'position', 'status', 'note', 'vacancyId'],
   orderBy: { createdAt: 'desc' },
   filterableParams: ['status', 'position'],
+  branchScope: 'own',
 });

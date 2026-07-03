@@ -9,4 +9,5 @@ export const { GET, POST, DELETE } = createCrud({
   dateFields: ['startDate', 'endDate'],
   orderBy: { createdAt: 'desc' },
   filterableParams: ['status', 'staffId'],
+  branchScope: 'own',
 });

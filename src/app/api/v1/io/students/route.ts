@@ -11,7 +11,7 @@ const HEADERS = ['Фамилия', 'Имя', 'Отчество', 'Класс', '
 export async function GET(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...ROLES] });
   if (auth.response) return auth.response;
-  const scope = await getBranchScope(auth.session.user.id, auth.session.user.role);
+  const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
 
   const students = await prisma.student.findMany({
     where: { status: { notIn: ['graduated', 'withdrawn'] }, ...(scope.branchId ? { branchId: scope.branchId } : {}) },
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const { csv } = (await request.json().catch(() => ({}))) as { csv?: string };
   if (!csv?.trim()) return errorResponse('VALIDATION_ERROR', 'Пустой CSV');
 
-  const scope = await getBranchScope(auth.session.user.id, auth.session.user.role);
+  const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
   const branchId = scope.branchId;
   const levels = await prisma.schoolLevel.findMany({ select: { id: true, fromGrade: true, toGrade: true } });
 

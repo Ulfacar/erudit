@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Супер-администратор',
@@ -25,6 +26,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     const where: Record<string, unknown> = {};
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    Object.assign(where, branchWhere(scope));
 
     if (roleFilter) {
       where.role = roleFilter;

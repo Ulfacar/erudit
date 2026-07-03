@@ -3,14 +3,50 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { recalculateFeeInvoiceStatus } from '@/shared/lib/finance/invoice-status';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
+
+const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'call_center'] as const;
 
 /**
  * Регистрация платежа по счёту. Транзакционно: платёж + пересчёт статуса счёта
  * (pending → partial → paid по сумме платежей).
  */
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await withAuth(request, { roles: [...ROLES] });
+    if (auth.response) return auth.response;
+
+    const invoiceId = request.nextUrl.searchParams.get('invoiceId');
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const payments = await prisma.payment.findMany({
+      where: {
+        ...(invoiceId ? { invoiceId } : {}),
+        invoice: { student: branchWhere(scope) },
+      },
+      include: {
+        invoice: {
+          select: {
+            id: true,
+            title: true,
+            studentId: true,
+            student: { select: { id: true, firstName: true, lastName: true, branchId: true } },
+          },
+        },
+      },
+      orderBy: { paidAt: 'desc' },
+      take: 200,
+    });
+
+    return successResponse(payments);
+  } catch (error) {
+    console.error('GET /api/v1/payments error:', error);
+    return errorResponse('INTERNAL_ERROR', 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РїР»Р°С‚РµР¶Рё', 500);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const auth = await withAuth(request, { roles: ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'call_center'] });
+    const auth = await withAuth(request, { roles: [...ROLES] });
     if (auth.response) return auth.response;
 
     const body = await request.json();

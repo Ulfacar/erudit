@@ -8,6 +8,7 @@ export interface SessionUser {
   login: string
   role: Role
   starLevel: number
+  branchId?: string | null
   name?: string | null
   email?: string | null
   image?: string | null

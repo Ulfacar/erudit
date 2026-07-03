@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, Role } from '@prisma/client';
 import { createCrud } from '@/shared/lib/crud';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 const LIST_ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'secretary', 'call_center'] as const;
 const WRITE_ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] as const;
@@ -18,6 +19,7 @@ const handlers = createCrud({
   include: { payments: { select: { amount: true, verified: true } } },
   orderBy: { dueDate: 'asc' },
   filterableParams: ['status', 'studentId', 'contractId'],
+  branchScope: 'student',
 });
 
 export async function GET(request: NextRequest) {
@@ -36,6 +38,13 @@ export async function GET(request: NextRequest) {
     if (studentId) where.studentId = studentId;
     if (contractId) where.contractId = contractId;
     if (classId) where.student = { classId };
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
+    Object.assign(where, {
+      student: {
+        ...((where.student as Record<string, unknown> | undefined) ?? {}),
+        ...branchWhere(scope),
+      },
+    });
 
     const rows = await prisma.feeInvoice.findMany({
       where,

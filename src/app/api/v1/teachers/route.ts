@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const search = searchParams.get('search') || '';
     const levelFilter = searchParams.get('level') || '';
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
 
     const teachers = await prisma.teacher.findMany({
       include: {
@@ -35,6 +37,7 @@ export async function GET(request: NextRequest) {
         },
       },
       where: {
+        ...branchWhereVia(scope, 'user'),
         ...(search
           ? {
               OR: [

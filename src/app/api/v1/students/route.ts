@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Multi-branch: персонал видит только свой филиал; админ — выбранный (cookie) или все.
-    const bscope = await getBranchScope(auth.session.user.id, auth.session.user.role);
+    const bscope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
     Object.assign(where, branchWhere(bscope));
 
     const students = await prisma.student.findMany({
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Филиал нового ученика = филиал класса (или выбранный филиал создателя).
-    const bscope = await getBranchScope(auth.session.user.id, auth.session.user.role);
+    const bscope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
     const branchId = classExists.branchId ?? bscope.branchId ?? null;
 
     const student = await prisma.student.create({

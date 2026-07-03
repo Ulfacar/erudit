@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere, branchWhereVia } from '@/shared/lib/branch-scope';
 import type { Role } from '@prisma/client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -27,6 +28,7 @@ export interface CrudConfig {
   orderBy?: Record<string, unknown>;
   /** query-параметры, по которым можно фильтровать список (точное совпадение) */
   filterableParams?: string[];
+  branchScope?: 'own' | string;
 }
 
 function buildData(body: Record<string, any>, cfg: CrudConfig, userId: string) {
@@ -56,6 +58,10 @@ export function createCrud(cfg: CrudConfig) {
         const val = searchParams.get(p);
         if (val) where[p] = val;
       }
+      if (cfg.branchScope) {
+        const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
+        Object.assign(where, cfg.branchScope === 'own' ? branchWhere(scope) : branchWhereVia(scope, cfg.branchScope));
+      }
 
       const rows = await model().findMany({
         where,
@@ -76,6 +82,10 @@ export function createCrud(cfg: CrudConfig) {
 
       const body = await request.json();
       const data = buildData(body, cfg, auth.session.user.id);
+      if (cfg.branchScope === 'own' && data.branchId === undefined) {
+        const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
+        if (scope.branchId) data.branchId = scope.branchId;
+      }
       const created = await model().create({ data });
       return successResponse(created, 201);
     } catch (error) {

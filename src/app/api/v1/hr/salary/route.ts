@@ -8,4 +8,5 @@ export const { GET, POST, DELETE } = createCrud({
   intFields: ['amount', 'bonus'],
   orderBy: { createdAt: 'desc' },
   filterableParams: ['staffId', 'period'],
+  branchScope: 'own',
 });

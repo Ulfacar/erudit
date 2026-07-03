@@ -2,13 +2,16 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await withAuth(request);
     if (auth.response) return auth.response;
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
 
     const classes = await prisma.class.findMany({
+      where: branchWhere(scope),
       include: {
         level: true,
         curator: {
