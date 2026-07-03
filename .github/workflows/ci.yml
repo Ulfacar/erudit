@@ -31,7 +31,57 @@ jobs:
         continue-on-error: true
       - run: npm run build
 
-  # TODO(CI phase 2): add e2e-rbac job (postgres:16 service -> db push -> seeds
-  # prisma/seed.ts + scripts/seed-roles.ts + scripts/seed-demo.ts -> next start ->
-  # playwright test e2e/rbac-leaks.spec.ts). Enable after local verification of
-  # seeds on a clean DB to avoid order/flap risk. For now the gate is check only.
+  e2e-rbac:
+    name: e2e RBAC leaks
+    runs-on: ubuntu-latest
+    needs: check
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: erudit
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/erudit
+      NEXTAUTH_SECRET: ci-e2e-secret
+      NEXTAUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx prisma generate
+      - run: npx prisma db push --skip-generate
+      - name: Seeds (order matters — demo requires main seed first)
+        run: |
+          npx tsx prisma/seed.ts
+          npx tsx scripts/seed-roles.ts
+          npx tsx scripts/seed-demo.ts
+      - run: npm run build
+      - name: Start app
+        run: npx next start -p 3000 &
+      - name: Wait for app
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/login >/dev/null 2>&1 && echo "app up" && exit 0
+            sleep 2
+          done
+          echo "app did not start in time" && exit 1
+      - run: npx playwright test e2e/rbac-leaks.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            e2e/.report
+          retention-days: 7
