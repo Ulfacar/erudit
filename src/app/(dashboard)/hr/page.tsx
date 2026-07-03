@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Anchor, Badge, Button, Group, Loader, Modal, Paper, Stack, Table, Tabs, Text, TextInput, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconBriefcase, IconUsers, IconCash, IconBeach, IconPlus, IconFileText, IconUserPlus, IconCopy, IconFiles } from '@tabler/icons-react';
+import { IconBriefcase, IconUsers, IconCash, IconBeach, IconPlus, IconFileText, IconUserPlus, IconCopy, IconFiles, IconPrinter } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 import { fmtDate, fmtMoney } from '@/shared/components/ui/resource-helpers';
+import { printStaffContract } from '@/shared/lib/contract/print-staff-contract';
 
 const HR_ROLES = ['super_admin', 'analyst', 'zavuch', 'hr', 'chief_accountant'] as const;
 
@@ -96,7 +97,13 @@ function HR() {
               { name: 'startDate', label: 'Дата начала', type: 'date' },
               { name: 'endDate', label: 'Дата окончания', type: 'date' },
               { name: 'status', label: 'Статус', type: 'select', options: [{ value: 'active', label: 'Действует' }, { value: 'completed', label: 'Завершён' }], defaultValue: 'active' },
-            ]} />
+            ]}
+            rowActions={(r) => (
+              <Button size="compact-xs" variant="default" leftSection={<IconPrinter size={14} />}
+                onClick={() => printStaffContract({ staffId: String(r.staffId), number: String(r.number), position: String(r.position), salary: Number(r.salary), startDate: r.startDate as string | null, endDate: r.endDate as string | null })}>
+                Печать
+              </Button>
+            )} />
         </Tabs.Panel>
         <Tabs.Panel value="onboarding" pt="md"><Onboarding /></Tabs.Panel>
       </Tabs>
