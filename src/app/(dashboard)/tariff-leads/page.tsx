@@ -21,8 +21,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  new: 'blue',
-  in_progress: 'yellow',
+  new: 'bilimosBlue',
+  in_progress: 'orange',
   won: 'green',
   lost: 'red',
 };
@@ -46,9 +46,9 @@ function moduleSummary(row: ResourceRow) {
 
   return (
     <Tooltip label={<Text style={{ whiteSpace: 'pre-line' }}>{title}</Text>} multiline>
-      <Text component="span" size="sm" title={title}>
+      <Badge variant="light" color="gray" radius="sm" title={title}>
         {modules.length}
-      </Text>
+      </Badge>
     </Tooltip>
   );
 }
@@ -125,20 +125,44 @@ export default function TariffLeadsPage() {
             { key: 'contactPhone', label: 'Телефон' },
             { key: 'contactSchool', label: 'Школа', render: (r) => String(r.contactSchool ?? '—') },
             { key: 'modules', label: 'Модулей', render: moduleSummary },
-            { key: 'setupTotal', label: 'Setup', render: (r) => fmtMoney(r.setupTotal) },
-            { key: 'licenseTotal', label: 'Лицензия', render: (r) => fmtMoney(r.licenseTotal) },
+            {
+              key: 'setupTotal',
+              label: 'Setup',
+              render: (r) => (
+                <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {fmtMoney(r.setupTotal)}
+                </Text>
+              ),
+            },
+            {
+              key: 'licenseTotal',
+              label: 'Лицензия',
+              render: (r) => (
+                <Text size="sm" fw={600} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {fmtMoney(r.licenseTotal)}
+                </Text>
+              ),
+            },
             {
               key: 'status',
               label: 'Статус',
               render: (r) => (
-                <Badge variant="light" color={STATUS_COLORS[String(r.status)] ?? 'gray'} radius="sm">
+                <Badge variant="light" color={STATUS_COLORS[String(r.status)] ?? 'gray'} radius="xl">
                   {STATUS_LABELS[String(r.status)] ?? String(r.status)}
                 </Badge>
               ),
             },
             { key: 'authorName', label: 'Автор', render: (r) => String(r.authorName ?? '—') },
             { key: 'createdAt', label: 'Дата', render: (r) => (r.createdAt ? fmtDate(r.createdAt) : '—') },
-            { key: 'decisionNote', label: 'Комментарий', render: (r) => String(r.decisionNote ?? '—') },
+            {
+              key: 'decisionNote',
+              label: 'Комментарий',
+              render: (r) => (
+                <Text size="sm" c="dimmed" lineClamp={1}>
+                  {String(r.decisionNote ?? '—')}
+                </Text>
+              ),
+            },
           ]}
         />
 

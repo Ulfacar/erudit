@@ -1,4 +1,4 @@
-/* ERUDIT — global styles & design tokens */
+/* Bilim OS — global styles & design tokens */
 
 html,
 body {
@@ -143,6 +143,12 @@ html { scroll-behavior: smooth; }
   transform: translateY(-2px);
   box-shadow: 0 16px 34px rgba(33, 28, 23, .10);
   border-color: #e0d3c0;
+}
+
+.module-card:hover {
+  border-color: var(--mantine-color-gray-4);
+  transform: translateY(-1px);
+  box-shadow: var(--mantine-shadow-xs);
 }
 
 .landing-dark { background: #211c17; }
