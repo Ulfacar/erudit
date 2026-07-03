@@ -68,6 +68,8 @@ export const SIDEBAR_NAV: NavRoute[] = [
   { href: '/home', label: 'Главная', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist', 'teacher', 'curator'] },
   { href: '/agent', label: 'Панель агента', roles: [...ALL_AUTH, ...NEW_STAFF] },
   { href: '/founder', label: 'Учредитель', roles: FOUNDER_TIER },
+  { href: '/calculator', label: 'Калькулятор', roles: ['super_admin', 'founder', 'analyst'] },
+  { href: '/tariff-leads', label: 'Заявки на тариф', roles: ['super_admin', 'founder', 'analyst'] },
   { href: '/dashboard', label: 'Аналитика школы', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary'] },
   { href: '/core', label: 'Граф ядра', roles: ['super_admin'] },
 

@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -1619,6 +1620,28 @@ model PurchaseRequest {
 
   @@index([status])
   @@index([authorId])
+  @@index([createdAt])
+}
+
+// Заявка из калькулятора тарифов (лид на подключение Bilim OS).
+model TariffLead {
+  id              String    @id @default(cuid())
+  contactName     String
+  contactPhone    String
+  contactSchool   String?
+  comment         String?   @db.Text
+  standardModules Json      // string[] — имена выбранных обычных модулей
+  heavyModules    Json      // string[] — имена выбранных тяжёлых модулей
+  setupTotal      Int
+  licenseTotal    Int
+  status          String    @default("new") // new | in_progress | won | lost
+  decisionNote    String?   @db.Text
+  authorId        String?
+  authorName      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
   @@index([createdAt])
 }
 
