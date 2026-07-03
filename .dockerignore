@@ -1,13 +1,25 @@
-*
-!src
-!public
-!prisma
-!scripts
-!package.json
-!package-lock.json
-!next.config.ts
-!tsconfig.json
-!next-env.d.ts
-!postcss.config.mjs
-!eslint.config.mjs
-!prisma.config.ts
+# DENYLIST — исключаем только заведомо ненужное для сборки.
+# ВАЖНО: НЕ делать это allowlist'ом (`*` + `!...`). Coolify собирает через nixpacks:
+# он генерит `.nixpacks/` в контексте и делает `COPY .` — allowlist вырезал бы `.nixpacks/`
+# и весь исходник → билд Coolify падает (COPY .nixpacks/... not found). Проверено 03.07.2026.
+# Наш on-prem Dockerfile (docker-compose.prod.yml) копирует файлы явными COPY, ему denylist тоже ок.
+
+node_modules
+.next
+.git
+.env
+.env.*
+*.log
+npm-debug.log*
+
+# тяжёлые не-кодовые каталоги (не нужны сборке)
+docs/
+_bmad-output/
+school/
+.claude/
+e2e/.results/
+e2e/screenshots/
+
+# бинарные материалы и заметки
+*.docx
+*.pdf
