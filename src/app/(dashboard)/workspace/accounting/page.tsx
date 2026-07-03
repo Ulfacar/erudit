@@ -53,7 +53,7 @@ function AcceptPaymentModal({ opened, onClose, onSuccess }: { opened: boolean; o
   const [saving, setSaving] = useState(false);
 
   // Загрузка открытых счетов при открытии модала
-  useEffect(() => { if (opened) load(); }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (opened) load(); }, [opened]);
   function load() {
     setInvoices(null);
     Promise.all([
@@ -72,6 +72,7 @@ function AcceptPaymentModal({ opened, onClose, onSuccess }: { opened: boolean; o
   const selectedRemaining = selected
     ? selected.amount - (selected.payments ?? []).reduce((s, p) => s + (p.verified ? p.amount : 0), 0)
     : 0;
+  const overpay = selected ? Math.max(0, Number(amount) - selectedRemaining) : 0;
 
   async function submit() {
     if (!invoiceId || !amount) return;
@@ -84,7 +85,14 @@ function AcceptPaymentModal({ opened, onClose, onSuccess }: { opened: boolean; o
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message ?? 'Ошибка');
-      notifications.show({ color: 'green', title: 'Платёж принят', message: `${fmtMoney(Number(amount))} — статус счёта: ${invoiceStatusLabel(json.data.status)}` });
+      const allocations = Array.isArray(json.data.allocations) ? json.data.allocations : [];
+      notifications.show({
+        color: 'green',
+        title: 'Платёж принят',
+        message: allocations.length > 1
+          ? `${fmtMoney(Number(amount))} — распределено по ${allocations.length} счетам`
+          : `${fmtMoney(Number(amount))} — статус счёта: ${invoiceStatusLabel(json.data.status)}`,
+      });
       setInvoiceId(null); setAmount(''); setNote('');
       onSuccess();
       onClose();
@@ -116,6 +124,7 @@ function AcceptPaymentModal({ opened, onClose, onSuccess }: { opened: boolean; o
           </Text>
         )}
         <NumberInput label="Сумма (сом)" required min={1} value={amount} onChange={setAmount} thousandSeparator=" " />
+        {overpay > 0 && <Text size="xs" c="blue">Излишек {fmtMoney(overpay)} уйдёт в счёт следующих месяцев</Text>}
         <Select label="Способ оплаты" data={PAY_METHODS} value={method} onChange={setMethod} />
         <TextInput label="Примечание" placeholder="№ квитанции и т.п." value={note} onChange={(e) => setNote(e.currentTarget.value)} />
         <Group justify="flex-end" mt="xs">

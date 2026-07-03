@@ -12,6 +12,7 @@ import { notifications } from '@mantine/notifications';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
 import { useRole } from '@/shared/hooks/useRole';
 import { printContract } from '@/shared/lib/contract/print-contract';
+import { computePenalty } from '@/shared/lib/finance/penalty';
 
 interface Contract {
   id: string; number: string; year: string; baseAmount: number; discountPct: number; discountNote: string | null;
@@ -50,12 +51,14 @@ export function StudentContracts({ studentId, studentName, className }: { studen
   const [loadingInv, setLoadingInv] = useState(false);
   const [open, setOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
+  const [payoffOpen, setPayoffOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<Invoice | null>(null);
   const [carryTarget, setCarryTarget] = useState<{ invoice: Invoice; mode: 'next' | 'spread' } | null>(null);
 
   const canCreate = has('super_admin', 'analyst', 'zavuch', 'secretary');
   const canPay = has('super_admin', 'analyst', 'zavuch', 'accountant', 'call_center', 'secretary');
   const canCarry = has('super_admin', 'analyst', 'zavuch', 'accountant', 'secretary');
+  const canPayoff = has('super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager');
 
   const loadContracts = useCallback(async () => {
     const j = await fetch(`/api/v1/contracts?studentId=${studentId}`).then((r) => r.json()).catch(() => ({ data: [] }));
@@ -64,14 +67,14 @@ export function StudentContracts({ studentId, studentName, className }: { studen
     setActiveId((prev) => prev && list.some((c) => c.id === prev) ? prev : (list.find((c) => c.status === 'active')?.id ?? list[0]?.id ?? null));
     setLoading(false);
   }, [studentId]);
-  useEffect(() => { loadContracts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadContracts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
 
   const loadInvoices = useCallback(async (contractId: string) => {
     const j = await fetch(`/api/v1/fee-invoices?contractId=${contractId}`).then((r) => r.json()).catch(() => ({ data: [] }));
     setInvoices(j.data ?? []);
     setLoadingInv(false);
   }, []);
-  useEffect(() => { if (activeId) loadInvoices(activeId); }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (activeId) loadInvoices(activeId); }, [activeId]); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
 
   const active = contracts.find((c) => c.id === activeId) ?? null;
 
@@ -173,6 +176,11 @@ export function StudentContracts({ studentId, studentName, className }: { studen
                     </Paper>
                     <Group justify="space-between" mt="sm" mb={4}><Text size="xs" c="dimmed" tt="uppercase">Прогресс</Text><Text size="xs" fw={600}>{progress}%</Text></Group>
                     <Progress value={progress} color="blue" radius="xl" />
+                    {canPayoff && remaining > 0 && (
+                      <Button mt="sm" fullWidth variant="light" color="green" leftSection={<IconCash size={16} />} onClick={() => setPayoffOpen(true)}>
+                        Погасить остаток
+                      </Button>
+                    )}
                   </Paper>
                 </Grid.Col>
 
@@ -247,6 +255,14 @@ export function StudentContracts({ studentId, studentName, className }: { studen
           onDone={() => { setPayTarget(null); if (activeId) loadInvoices(activeId); }}
         />
       )}
+      {payoffOpen && active && (
+        <PayoffModal
+          contract={active}
+          invoices={invoices}
+          onClose={() => setPayoffOpen(false)}
+          onDone={() => { setPayoffOpen(false); if (activeId) loadInvoices(activeId); }}
+        />
+      )}
       {carryTarget && (
         <CarryModal
           invoice={carryTarget.invoice}
@@ -297,6 +313,7 @@ function PaymentModal({ invoice, onClose, onDone }: { invoice: Invoice; onClose:
   const [method, setMethod] = useState<string>('нал');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const overpay = Math.max(0, amount - rem);
 
   async function submit() {
     if (!amount || amount <= 0) return;
@@ -315,13 +332,88 @@ function PaymentModal({ invoice, onClose, onDone }: { invoice: Invoice; onClose:
     <Modal opened onClose={onClose} title={`Оплата — ${invoice.title}`} centered>
       <Stack gap="sm">
         <Text size="sm" c="dimmed">Остаток по счёту: {som(rem)}</Text>
-        <NumberInput label="Сумма" value={amount} onChange={(v) => setAmount(Number(v) || 0)} thousandSeparator=" " min={0} max={rem} />
+        <NumberInput label="Сумма" value={amount} onChange={(v) => setAmount(Number(v) || 0)} thousandSeparator=" " min={0} />
+        {overpay > 0 && <Text size="xs" c="blue">Излишек {som(overpay)} уйдёт в счёт следующих месяцев</Text>}
         <Select label="Способ" value={method} onChange={(v) => setMethod(v ?? 'нал')}
           data={[{ value: 'нал', label: 'Наличные' }, { value: 'карта', label: 'Карта' }, { value: 'мбанк', label: 'МБанк' }, { value: 'банк', label: 'Банк' }]} />
         <TextInput label="Комментарий (необязательно)" placeholder="Напр.: оплатил часть, остаток обещал позже" value={note} onChange={(e) => setNote(e.currentTarget.value)} />
         <Group justify="flex-end">
           <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
           <Button onClick={submit} loading={saving}>Принять</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function PayoffModal({ contract, invoices, onClose, onDone }: { contract: Contract; invoices: Invoice[]; onClose: () => void; onDone: () => void }) {
+  const openInvoices = invoices
+    .map((inv) => {
+      const remaining = Math.max(0, inv.amount - paidOf(inv));
+      const penalty = computePenalty(inv).penalty;
+      return { ...inv, remaining, penalty };
+    })
+    .filter((inv) => inv.remaining > 0 && inv.status !== 'cancelled');
+  const total = openInvoices.reduce((sum, inv) => sum + inv.remaining, 0);
+  const advisoryPenalty = openInvoices.reduce((sum, inv) => sum + inv.penalty, 0);
+  const [method, setMethod] = useState<string>('нал');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (total <= 0) return;
+    setSaving(true);
+    const res = await fetch('/api/v1/contracts/payoff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contractId: contract.id, method, note: note || null, invoiceIds: openInvoices.map((inv) => inv.id) }),
+    });
+    const j = await res.json();
+    setSaving(false);
+    if (!j.success) {
+      notifications.show({ color: 'red', title: 'Ошибка', message: j.error?.message ?? 'Не удалось выполнить досрочное погашение' });
+      return;
+    }
+    notifications.show({ color: 'green', title: 'Досрочное погашение выполнено', message: `${som(j.data.total)} · счетов: ${j.data.invoicesPaid}` });
+    onDone();
+  }
+
+  return (
+    <Modal opened onClose={onClose} title={`Досрочное погашение договора №${contract.number}`} centered size="lg">
+      <Stack gap="sm">
+        <Table.ScrollContainer minWidth={520}>
+          <Table verticalSpacing="xs">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Счёт</Table.Th>
+                <Table.Th ta="right">Остаток</Table.Th>
+                <Table.Th ta="right">Пеня не включена</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {openInvoices.map((inv) => (
+                <Table.Tr key={inv.id}>
+                  <Table.Td>
+                    <Text size="sm" fw={500}>{inv.title}</Text>
+                    {inv.dueDate && <Text size="xs" c="dimmed">{fmtDate(inv.dueDate)}</Text>}
+                  </Table.Td>
+                  <Table.Td ta="right">{som(inv.remaining)}</Table.Td>
+                  <Table.Td ta="right"><Text c={inv.penalty > 0 ? 'red' : 'dimmed'}>{som(inv.penalty)}</Text></Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+        <Group justify="space-between">
+          <Text fw={700}>Итого к погашению: {som(total)}</Text>
+          <Text size="sm" c="dimmed">Справочная пеня: {som(advisoryPenalty)}, пеня не включена</Text>
+        </Group>
+        <Select label="Способ" value={method} onChange={(v) => setMethod(v ?? 'нал')}
+          data={[{ value: 'нал', label: 'Наличные' }, { value: 'карта', label: 'Карта' }, { value: 'мбанк', label: 'МБанк' }, { value: 'банк', label: 'Банк' }]} />
+        <TextInput label="Комментарий (необязательно)" value={note} onChange={(e) => setNote(e.currentTarget.value)} />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button onClick={submit} loading={saving} disabled={total <= 0}>Погасить</Button>
         </Group>
       </Stack>
     </Modal>
