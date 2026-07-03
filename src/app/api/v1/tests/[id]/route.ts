@@ -38,6 +38,22 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
       });
     }
 
+    if (role === 'parent') {
+      const parent = await prisma.parent.findUnique({ where: { userId }, select: { children: { select: { studentId: true } } } });
+      const childIds = parent?.children.map((c) => c.studentId) ?? [];
+      const attempts = childIds.length
+        ? await prisma.testAttempt.findMany({ where: { testId: id, studentId: { in: childIds } }, include: { answers: true } })
+        : [];
+      return successResponse({
+        id: test.id, title: test.title, description: test.description,
+        questions: test.questions.map((q) => ({ id: q.id, order: q.order, text: q.text, type: q.type, options: q.options, points: q.points })),
+        childAttempts: attempts.map((a) => ({ studentId: a.studentId, score: a.score, maxScore: a.maxScore })),
+      });
+    }
+
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
+    if (!STAFF.includes(role)) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+
     // staff — полный тест + попытки
     const attempts = await prisma.testAttempt.findMany({ where: { testId: id }, orderBy: { submittedAt: 'desc' } });
     const ids = [...new Set(attempts.map((a) => a.studentId))];

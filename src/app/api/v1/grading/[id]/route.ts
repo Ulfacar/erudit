@@ -38,6 +38,32 @@ export async function GET(
       return errorResponse('NOT_FOUND', 'Оценка не найдена', 404)
     }
 
+    // Ученик/родитель видят только СВОЮ опубликованную оценку (иначе — вытаскивание чужой по id).
+    const role = auth.session.user.role
+    if (role === 'student' || role === 'parent') {
+      if (grade.status !== 'published') {
+        return errorResponse('FORBIDDEN', 'Доступ запрещён', 403)
+      }
+      if (role === 'student') {
+        const me = await prisma.student.findFirst({
+          where: { userId: auth.session.user.id },
+          select: { id: true },
+        })
+        if (!me || me.id !== grade.studentId) {
+          return errorResponse('FORBIDDEN', 'Доступ запрещён', 403)
+        }
+      } else {
+        const parent = await prisma.parent.findUnique({
+          where: { userId: auth.session.user.id },
+          select: { children: { select: { studentId: true } } },
+        })
+        const ok = parent?.children.some((c) => c.studentId === grade.studentId) ?? false
+        if (!ok) {
+          return errorResponse('FORBIDDEN', 'Доступ запрещён', 403)
+        }
+      }
+    }
+
     return successResponse(grade)
   } catch (error) {
     console.error('GET /api/v1/grading/[id] error:', error)

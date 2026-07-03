@@ -28,6 +28,23 @@ export async function GET(request: NextRequest) {
     if (studentId) where.studentId = studentId;
     if (classId) where.student = { classId };
 
+    // Ученик/родитель ограничены СВОИМИ оценками — параметрами studentId/classId чужое не вытащить.
+    if (role === 'student') {
+      const me = await prisma.student.findFirst({
+        where: { userId: auth.session.user.id },
+        select: { id: true },
+      });
+      where.studentId = me?.id ?? '__none__';
+      delete where.student;
+    } else if (role === 'parent') {
+      const parent = await prisma.parent.findUnique({
+        where: { userId: auth.session.user.id },
+        select: { children: { select: { studentId: true } } },
+      });
+      where.studentId = { in: parent?.children.map((c) => c.studentId) ?? [] };
+      delete where.student;
+    }
+
     const grades = await prisma.grade.findMany({
       where,
       include: {

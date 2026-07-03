@@ -46,17 +46,6 @@ export async function GET(
                 firstName: true,
                 lastName: true,
                 middleName: true,
-                dateOfBirth: true,
-                parentLinks: {
-                  include: {
-                    parent: {
-                      select: { firstName: true, lastName: true, phone: true },
-                    },
-                  },
-                },
-                grades: {
-                  select: { value: true },
-                },
               },
               orderBy: { lastName: 'asc' },
             },

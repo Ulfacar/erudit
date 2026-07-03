@@ -20,6 +20,16 @@ export async function PUT(
       return errorResponse('NOT_FOUND', 'Срочный вопрос не найден', 404);
     }
 
+    // Правка — только тот, кому вопрос виден (как в GET): super_admin, автор или роль из visibleTo.
+    const role = auth.session.user.role;
+    const canEdit =
+      role === 'super_admin' ||
+      existing.authorId === auth.session.user.id ||
+      existing.visibleTo.includes(role);
+    if (!canEdit) {
+      return errorResponse('FORBIDDEN', 'Нет прав для изменения', 403);
+    }
+
     const data: Record<string, unknown> = {};
 
     if (status) {

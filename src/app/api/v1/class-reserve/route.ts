@@ -7,7 +7,7 @@ const ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary'] as const;
 
 /** GET /api/v1/class-reserve?classId= — очередь в класс. */
 export async function GET(request: NextRequest) {
-  const auth = await withAuth(request);
+  const auth = await withAuth(request, { roles: [...ROLES] });
   if (auth.response) return auth.response;
   const url = new URL(request.url);
   const classId = url.searchParams.get('classId');

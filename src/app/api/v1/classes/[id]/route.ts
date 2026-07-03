@@ -50,6 +50,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return errorResponse('NOT_FOUND', 'Класс не найден', 404);
     }
 
+    const role = auth.session.user.role;
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
+    if (!STAFF.includes(role)) {
+      if (role === 'student') {
+        const me = await prisma.student.findFirst({ where: { userId: auth.session.user.id }, select: { classId: true } });
+        if (!me || me.classId !== id) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      } else if (role === 'parent') {
+        const parent = await prisma.parent.findUnique({ where: { userId: auth.session.user.id }, select: { children: { select: { studentId: true } } } });
+        const childIds = parent?.children.map((c) => c.studentId) ?? [];
+        const inClass = childIds.length ? await prisma.student.count({ where: { id: { in: childIds }, classId: id } }) : 0;
+        if (!inClass) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      } else {
+        return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+      }
+    }
+
     return successResponse({
       ...cls,
       studentCount: cls._count.students,

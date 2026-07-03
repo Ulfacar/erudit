@@ -8,7 +8,7 @@ const STAFF_NOTE_ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teac
 
 /** GET — заметки по ученику (кросс-ролевые). */
 export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await withAuth(request);
+  const auth = await withAuth(request, { roles: [...STAFF_NOTE_ROLES] });
   if (auth.response) return auth.response;
   const { id } = await ctx.params;
   try {

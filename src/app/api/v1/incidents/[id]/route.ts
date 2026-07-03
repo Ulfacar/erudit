@@ -20,6 +20,13 @@ export async function PUT(
       return errorResponse('NOT_FOUND', 'Происшествие не найдено', 404);
     }
 
+    // Правка — только сотрудники (как в GET-списке) или автор.
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
+    const isAuthor = existing.authorId === auth.session.user.id;
+    if (!STAFF.includes(auth.session.user.role) && !isAuthor) {
+      return errorResponse('FORBIDDEN', 'Нет прав для изменения', 403);
+    }
+
     const data: Record<string, unknown> = {};
 
     if (status) {
