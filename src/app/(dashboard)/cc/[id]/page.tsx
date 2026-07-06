@@ -37,18 +37,18 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import {
+  CC_ADMISSION_STATUS_LABELS,
+  CC_APPLICATION_TYPE_LABELS,
+  CC_CONFLICT_STATUS_LABELS,
+  CC_DEADLINE_TYPE_LABELS,
+  CC_DOC_STATUS_LABELS,
+  CC_DOC_TYPE_LABELS,
+  CC_EXAM_TYPE_LABELS,
+} from '@/modules/cc/labels';
 import { CcPipelineKanban, type CcKanbanApplication } from '../CcPipelineKanban';
 
 const CC_ROLES = ['college_counselor', 'super_admin'] as const;
-const APP_STATUSES = [
-  { value: 'scouting', label: 'Скаутинг' },
-  { value: 'document_prep', label: 'Документы' },
-  { value: 'submitted', label: 'Отправлено' },
-  { value: 'decision_pending', label: 'Решение' },
-  { value: 'offer_received', label: 'Оффер' },
-  { value: 'rejected', label: 'Отказ' },
-  { value: 'accepted_final', label: 'Финал' },
-];
 const DOC_STATUS_COLOR: Record<string, string> = {
   not_started: 'gray',
   draft: 'blue',
@@ -334,7 +334,12 @@ function CcProfileCard() {
 
   const profile = query.data;
   const upcoming30 = profile.deadlines.filter((deadline) => deadline.daysLeft >= 0 && deadline.daysLeft <= 30);
-  const mockTests = profile.exams.filter((exam) => exam.isMock).length;
+  const bestMockScore = profile.exams.reduce<number | null>((max, exam) => {
+    if (!exam.isMock || exam.scoreCurrent == null) return max;
+    const score = Number(exam.scoreCurrent);
+    return max == null || score > max ? score : max;
+  }, null);
+  const gpaText = profile.gpa == null ? '—' : `${profile.gpa}/5`;
   const conflictColor = profile.conflictStatus === 'red' ? 'red' : profile.conflictStatus === 'yellow' ? 'yellow' : 'green';
 
   return (
@@ -346,7 +351,7 @@ function CcProfileCard() {
             <div>
               <Group gap="xs">
                 <Title order={2}>{profile.student.fio} — {profile.student.className || 'класс не указан'}</Title>
-                {profile.conflictStatus !== 'green' && <Badge color={conflictColor} variant="light" radius="sm">{profile.conflictStatus}</Badge>}
+                {profile.conflictStatus !== 'green' && <Badge color={conflictColor} variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>{CC_CONFLICT_STATUS_LABELS[profile.conflictStatus]}</Badge>}
               </Group>
               <Text c="dimmed" size="sm">ID {profile.studentId} · {fmtDate(profile.student.dateOfBirth)}</Text>
               {profile.student.parents.length > 0 && (
@@ -371,7 +376,7 @@ function CcProfileCard() {
       )}
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }}>
-        <StatTile icon={<IconStar size={18} />} label="GPA" value={profile.gpa == null ? '—' : `${profile.gpa}/5`} />
+        <StatTile icon={<IconStar size={18} />} label="GPA" value={gpaText} />
         <StatTile icon={<IconCertificate size={18} />} label="SAT" value={profile.bestScores.sat == null ? '—' : String(profile.bestScores.sat)} />
         <StatTile icon={<IconCertificate size={18} />} label="IELTS" value={profile.bestScores.ielts == null ? '—' : String(profile.bestScores.ielts)} />
         <StatTile icon={<IconSchool size={18} />} label="Заявки" value={String(profile.applications.length)} />
@@ -391,15 +396,16 @@ function CcProfileCard() {
             <Text fw={700} mb="sm">3. Академические результаты</Text>
             <Table verticalSpacing="xs">
               <Table.Tbody>
-                <Table.Tr><Table.Td>GPA</Table.Td><Table.Td>{profile.gpa == null ? '—' : `${profile.gpa}/5`}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>GPA</Table.Td><Table.Td>{gpaText}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>SAT</Table.Td><Table.Td>{profile.bestScores.sat ?? '—'}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>IELTS</Table.Td><Table.Td>{profile.bestScores.ielts ?? '—'}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>Пробные тесты</Table.Td><Table.Td>{mockTests}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>Школьные оценки</Table.Td><Table.Td>GPA из журнала</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Пробные тесты</Table.Td><Table.Td>{bestMockScore ?? '—'}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Школьные оценки</Table.Td><Table.Td>{gpaText}</Table.Td></Table.Tr>
               </Table.Tbody>
             </Table>
           </Paper>
 
+          {view === 'table' && (
           <Paper withBorder radius="sm" p="md">
             <Group justify="space-between" mb="sm">
               <Text fw={700}>5. Статус поступления</Text>
@@ -408,8 +414,7 @@ function CcProfileCard() {
                 <Button size="xs" variant="light" onClick={() => setAppOpen(true)}>+ Вуз</Button>
               </Group>
             </Group>
-            {view === 'table' ? (
-              <Table verticalSpacing="xs">
+            <Table verticalSpacing="xs">
                 <Table.Thead>
                   <Table.Tr><Table.Th>Университет</Table.Th><Table.Th>Страна</Table.Th><Table.Th>Программа</Table.Th><Table.Th>Статус</Table.Th></Table.Tr>
                 </Table.Thead>
@@ -419,15 +424,13 @@ function CcProfileCard() {
                       <Table.Td>{app.universityName}</Table.Td>
                       <Table.Td>{app.country || '—'}</Table.Td>
                       <Table.Td>{app.program || '—'}</Table.Td>
-                      <Table.Td><Badge radius="sm" variant="light">{APP_STATUSES.find((s) => s.value === app.admissionStatus)?.label ?? app.admissionStatus}</Badge></Table.Td>
+                      <Table.Td><Badge radius="sm" variant="light" style={{ whiteSpace: 'nowrap' }}>{CC_ADMISSION_STATUS_LABELS[app.admissionStatus] ?? app.admissionStatus}</Badge></Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
-              </Table>
-            ) : (
-              <CcPipelineKanban applications={profile.applications} queryKey={['cc-profile', id]} />
-            )}
+            </Table>
           </Paper>
+          )}
         </Stack>
 
         <Stack gap="md">
@@ -446,10 +449,10 @@ function CcProfileCard() {
               {profile.documents.map((doc) => (
                 <Group key={doc.id} justify="space-between" wrap="nowrap">
                   <div>
-                    <Text size="sm" fw={600}>{doc.docType}</Text>
+                    <Text size="sm" fw={600}>{CC_DOC_TYPE_LABELS[doc.docType as keyof typeof CC_DOC_TYPE_LABELS] ?? doc.docType}</Text>
                     <Text size="xs" c="dimmed">{doc.comment || fmtDate(doc.requestedDeadline)}</Text>
                   </div>
-                  <Badge color={DOC_STATUS_COLOR[doc.status] ?? 'gray'} variant="light" radius="sm">{doc.status}</Badge>
+                  <Badge color={DOC_STATUS_COLOR[doc.status] ?? 'gray'} variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>{CC_DOC_STATUS_LABELS[doc.status as keyof typeof CC_DOC_STATUS_LABELS] ?? doc.status}</Badge>
                 </Group>
               ))}
               {profile.documents.length === 0 && <Text size="sm" c="dimmed">Документы ещё не заведены</Text>}
@@ -465,9 +468,13 @@ function CcProfileCard() {
                 <Group key={`${deadline.type}-${deadline.id}`} justify="space-between" wrap="nowrap">
                   <div>
                     <Text size="sm" fw={600}>{fmtDate(deadline.date)} · {deadline.title}</Text>
-                    <Text size="xs" c="dimmed">{deadline.type}</Text>
+                    <Text size="xs" c="dimmed">
+                      {deadline.type === 'exam'
+                        ? (CC_EXAM_TYPE_LABELS[deadline.title as keyof typeof CC_EXAM_TYPE_LABELS] ?? deadline.title)
+                        : (CC_APPLICATION_TYPE_LABELS[deadline.type as keyof typeof CC_APPLICATION_TYPE_LABELS] ?? CC_DEADLINE_TYPE_LABELS[deadline.type] ?? deadline.type)}
+                    </Text>
                   </div>
-                  <Badge color={daysColor(deadline.daysLeft)} variant="light" radius="sm">{deadline.daysLeft >= 0 ? `${deadline.daysLeft} дн.` : 'просрочено'}</Badge>
+                  <Badge color={daysColor(deadline.daysLeft)} variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>{deadline.daysLeft >= 0 ? `${deadline.daysLeft} дн.` : 'просрочено'}</Badge>
                 </Group>
               ))}
               {profile.deadlines.length === 0 && <Text size="sm" c="dimmed">Нет дедлайнов</Text>}
@@ -491,6 +498,19 @@ function CcProfileCard() {
             </Stack>
           </Paper>
         </Stack>
+
+        {view === 'kanban' && (
+          <Paper withBorder radius="sm" p="md" style={{ gridColumn: '1 / -1' }}>
+            <Group justify="space-between" mb="sm">
+              <Text fw={700}>5. Статус поступления</Text>
+              <Group gap="xs">
+                <SegmentedControl size="xs" value={view} onChange={(v) => setView(v as 'table' | 'kanban')} data={[{ value: 'table', label: 'Таблица' }, { value: 'kanban', label: 'Канбан' }]} />
+                <Button size="xs" variant="light" onClick={() => setAppOpen(true)}>+ Вуз</Button>
+              </Group>
+            </Group>
+            <CcPipelineKanban applications={profile.applications} queryKey={['cc-profile', id]} />
+          </Paper>
+        )}
       </SimpleGrid>
 
       <ProfileEditModal profile={profile} opened={editOpen} onClose={() => setEditOpen(false)} />

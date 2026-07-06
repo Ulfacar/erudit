@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
       const gpa = await getOverallGpa(profile.studentId);
       const overdue = profile.applications.some((app) => app.deadlineDate && app.deadlineDate.getTime() < Date.now() && !['accepted_final', 'rejected'].includes(app.admissionStatus));
       const risks = [
+        profile.conflictStatus === 'red' && !profile.riskFlagCleared ? 'Конфликт целей' : null,
         gpa != null && gpa < 3 ? 'Низкий GPA' : null,
         profile.studentCountries.length === 0 ? 'Нет цели' : null,
         profile.meetings.length === 0 ? 'Нет контакта' : null,

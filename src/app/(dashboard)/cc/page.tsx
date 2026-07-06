@@ -21,13 +21,14 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconAlertTriangle, IconPlus, IconSearch, IconTrafficLights } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CC_CONFLICT_STATUS_LABELS } from '@/modules/cc/labels';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 const CC_ROLES = ['college_counselor', 'super_admin'] as const;
 const CONFLICTS = [
-  { value: 'green', label: 'Green' },
-  { value: 'yellow', label: 'Yellow' },
-  { value: 'red', label: 'Red' },
+  { value: 'green', label: CC_CONFLICT_STATUS_LABELS.green },
+  { value: 'yellow', label: CC_CONFLICT_STATUS_LABELS.yellow },
+  { value: 'red', label: CC_CONFLICT_STATUS_LABELS.red },
 ];
 
 type CcProfileRow = {
@@ -67,7 +68,7 @@ function daysLeft(value?: string | null) {
 
 function ConflictDot({ value }: { value: CcProfileRow['conflictStatus'] }) {
   const color = value === 'red' ? 'red' : value === 'yellow' ? 'yellow' : 'green';
-  return <ThemeIcon size={18} radius="xl" color={color} variant="filled" aria-label={value} />;
+  return <ThemeIcon size={18} radius="xl" color={color} variant="filled" aria-label={CC_CONFLICT_STATUS_LABELS[value]} />;
 }
 
 function CcDesk() {

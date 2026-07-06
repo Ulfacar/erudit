@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
           id: app.id,
           date: app.deadlineDate!.toISOString(),
           title: app.universityName,
-          type: 'application',
+          type: app.applicationType ?? 'application',
           status: app.admissionStatus,
           daysLeft: Math.ceil((Number(app.deadlineDate) - now) / 86400000),
         })),

@@ -4,6 +4,7 @@ import { useMemo, useState, type DragEvent } from 'react';
 import { Badge, Group, Loader, Paper, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { CC_ADMISSION_STATUS_LABELS } from '@/modules/cc/labels';
 import { useRole } from '@/shared/hooks/useRole';
 
 const CC_ROLES = ['college_counselor', 'super_admin'] as const;
@@ -18,16 +19,6 @@ export type CcKanbanApplication = {
   program?: string | null;
   admissionStatus: Status;
   deadlineDate?: string | null;
-};
-
-const STATUS_LABELS: Record<Status, string> = {
-  scouting: 'Скаутинг',
-  document_prep: 'Документы',
-  submitted: 'Отправлено',
-  decision_pending: 'Решение',
-  offer_received: 'Оффер',
-  rejected: 'Отказ',
-  accepted_final: 'Финал',
 };
 
 const STATUS_COLORS: Record<Status, string> = {
@@ -132,14 +123,14 @@ export function CcPipelineKanban({
   }
 
   return (
-    <Group align="stretch" wrap="nowrap" style={{ overflowX: 'auto' }}>
+    <Group align="stretch" wrap="nowrap" style={{ overflowX: 'auto', paddingBottom: 8 }}>
       {grouped.map((column) => (
         <Paper
           key={column.status}
           withBorder
           p="sm"
           radius="sm"
-          style={{ minWidth: 220, flex: 1, background: overCol === column.status ? 'var(--mantine-color-blue-0)' : undefined }}
+          style={{ minWidth: 260, flex: '0 0 260px', background: overCol === column.status ? 'var(--mantine-color-blue-0)' : undefined }}
           onDragOver={(e: DragEvent<HTMLDivElement>) => {
             if (!canManage) return;
             e.preventDefault();
@@ -155,7 +146,7 @@ export function CcPipelineKanban({
           }}
         >
           <Group justify="space-between" mb="sm" wrap="nowrap">
-            <Text size="sm" fw={600}>{STATUS_LABELS[column.status]}</Text>
+            <Text size="sm" fw={600}>{CC_ADMISSION_STATUS_LABELS[column.status]}</Text>
             <Badge variant="light" color={STATUS_COLORS[column.status]} radius="sm">{column.items.length}</Badge>
           </Group>
 
@@ -201,4 +192,3 @@ export function CcPipelineKanban({
     </Group>
   );
 }
-
