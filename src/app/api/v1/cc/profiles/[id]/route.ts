@@ -8,6 +8,7 @@ import { sendWebPush } from '@/shared/lib/agent/webpush';
 import { getOverallGpa } from '@/modules/cc/services/gpa';
 import { computeConflict } from '@/modules/cc/services/conflict';
 import { CC_ROLES } from '@/modules/cc/roles';
+import { CC_EXAM_TYPE_LABELS } from '@/modules/cc/labels';
 
 const PROFILE_FIELDS = [
   'studentCountries',
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
           id: app.id,
           date: app.deadlineDate!.toISOString(),
           title: app.universityName,
-          type: app.applicationType ?? 'application',
+          type: 'application',
           status: app.admissionStatus,
           daysLeft: Math.ceil((Number(app.deadlineDate) - now) / 86400000),
         })),
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
         .map((exam) => ({
           id: exam.id,
           date: exam.testDate!.toISOString(),
-          title: exam.examType,
+          title: CC_EXAM_TYPE_LABELS[exam.examType],
           type: 'exam',
           status: exam.verified ? 'verified' : 'planned',
           daysLeft: Math.ceil((Number(exam.testDate) - now) / 86400000),

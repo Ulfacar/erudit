@@ -39,7 +39,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import {
   CC_ADMISSION_STATUS_LABELS,
-  CC_APPLICATION_TYPE_LABELS,
   CC_CONFLICT_STATUS_LABELS,
   CC_DEADLINE_TYPE_LABELS,
   CC_DOC_STATUS_LABELS,
@@ -102,6 +101,18 @@ function daysColor(days: number) {
   if (days <= 7) return 'red';
   if (days <= 30) return 'yellow';
   return 'blue';
+}
+
+function deadlineTitle(deadline: CcProfile['deadlines'][number]) {
+  return deadline.type === 'exam'
+    ? (CC_EXAM_TYPE_LABELS[deadline.title as keyof typeof CC_EXAM_TYPE_LABELS] ?? deadline.title)
+    : deadline.title;
+}
+
+function deadlineCategory(deadline: CcProfile['deadlines'][number]) {
+  return deadline.type === 'exam'
+    ? CC_DEADLINE_TYPE_LABELS.exam
+    : CC_DEADLINE_TYPE_LABELS.application;
 }
 
 function currentAcademicYearBounds() {
@@ -464,19 +475,18 @@ function CcProfileCard() {
           <Paper withBorder radius="sm" p="md">
             <Text fw={700} mb="sm">7. Ближайшие дедлайны</Text>
             <Stack gap="xs">
-              {profile.deadlines.slice(0, 8).map((deadline) => (
-                <Group key={`${deadline.type}-${deadline.id}`} justify="space-between" wrap="nowrap">
-                  <div>
-                    <Text size="sm" fw={600}>{fmtDate(deadline.date)} · {deadline.title}</Text>
-                    <Text size="xs" c="dimmed">
-                      {deadline.type === 'exam'
-                        ? (CC_EXAM_TYPE_LABELS[deadline.title as keyof typeof CC_EXAM_TYPE_LABELS] ?? deadline.title)
-                        : (CC_APPLICATION_TYPE_LABELS[deadline.type as keyof typeof CC_APPLICATION_TYPE_LABELS] ?? CC_DEADLINE_TYPE_LABELS[deadline.type] ?? deadline.type)}
-                    </Text>
-                  </div>
-                  <Badge color={daysColor(deadline.daysLeft)} variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>{deadline.daysLeft >= 0 ? `${deadline.daysLeft} дн.` : 'просрочено'}</Badge>
-                </Group>
-              ))}
+              {profile.deadlines.slice(0, 8).map((rawDeadline) => {
+                const deadline = { ...rawDeadline, title: deadlineTitle(rawDeadline) };
+                return (
+                  <Group key={`${deadline.type}-${deadline.id}`} justify="space-between" wrap="nowrap">
+                    <div>
+                      <Text size="sm" fw={600}>{fmtDate(deadline.date)} · {deadline.title}</Text>
+                      <Text size="xs" c="dimmed">{deadlineCategory(deadline)}</Text>
+                    </div>
+                    <Badge color={daysColor(deadline.daysLeft)} variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>{deadline.daysLeft >= 0 ? `${deadline.daysLeft} дн.` : 'просрочено'}</Badge>
+                  </Group>
+                );
+              })}
               {profile.deadlines.length === 0 && <Text size="sm" c="dimmed">Нет дедлайнов</Text>}
             </Stack>
           </Paper>
