@@ -53,7 +53,7 @@ const baseSeeds = [
   'scripts/backfill-psy-codes.ts',
   'scripts/seed-roles.ts',
 ];
-const demoSeeds = ['scripts/seed-demo-intake.ts', 'scripts/seed-demo-media.ts'];
+const demoSeeds = ['scripts/seed-demo-intake.ts', 'scripts/seed-demo-media.ts', 'scripts/seed-demo-cc.ts'];
 // Сиды с демо-данными не льем в реальную школу при SEED_DEMO=0.
 const seeds = process.env.SEED_DEMO !== '0' ? [...baseSeeds, ...demoSeeds] : baseSeeds;
 

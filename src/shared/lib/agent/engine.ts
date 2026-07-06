@@ -193,6 +193,40 @@ async function ruleInvoiceOverdue(eventId: string, ctx: EventCtx) {
   }
 }
 
+async function ruleCcRecommendationRequested(eventId: string, ctx: EventCtx) {
+  const key = 'cc-recommendation-requested';
+  if (!(await ruleEnabled(key))) return;
+  const teacherUserId = ctx.payload.teacherUserId as string | undefined;
+  const documentId = ctx.payload.documentId as string | undefined;
+  if (!teacherUserId || !documentId) return;
+
+  const student = ctx.studentId ? await studentLabel(ctx.studentId) : String(ctx.payload.studentName ?? 'ученика');
+  const deadline = ctx.payload.requestedDeadline ? new Date(String(ctx.payload.requestedDeadline)).toLocaleDateString('ru-RU') : 'не указан';
+  const title = `Запрос рекомендации для ${student}`;
+  const duplicate = await prisma.agentItem.findFirst({
+    where: {
+      ruleKey: key,
+      forUserId: teacherUserId,
+      title,
+      status: { in: ['new', 'in_progress'] },
+    },
+    select: { id: true },
+  });
+  if (duplicate) return;
+
+  await createItem({
+    ruleKey: key,
+    eventId,
+    forUserId: teacherUserId,
+    studentId: ctx.studentId ?? null,
+    kind: 'task',
+    severity: 'urgent',
+    title,
+    body: `Колледж-консультант запросил рекомендацию. Дедлайн: ${deadline}.`,
+    payload: { documentId },
+  });
+}
+
 // ─── Диспетчер ───────────────────────────────────────────────────────────────
 
 async function processEvent(eventId: string, type: string, ctx: EventCtx) {
@@ -201,6 +235,7 @@ async function processEvent(eventId: string, type: string, ctx: EventCtx) {
     else if (type === 'attendance.marked') await ruleAbsenceStreak(eventId, ctx);
     else if (type === 'test.completed') await ruleTestFailed(eventId, ctx);
     else if (type === 'invoice.overdue') await ruleInvoiceOverdue(eventId, ctx);
+    else if (type === 'cc.recommendation.requested') await ruleCcRecommendationRequested(eventId, ctx);
     await prisma.agentEvent.update({ where: { id: eventId }, data: { processedAt: new Date() } });
   } catch (err) {
     console.error(`[agent] processEvent ${type} failed:`, err);

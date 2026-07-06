@@ -90,6 +90,7 @@ enum Role {
   zavuch_senior // завуч по старшим классам
   zavuch_academic // завуч по учебной части
   cambridge_coord // Кэмбридж-координатор
+  college_counselor
 }
 
 // ============ SCHOOL STRUCTURE ============
@@ -227,6 +228,7 @@ model Student {
   medicalData   Json?
   familyData    Json?
   financialData Json?
+  ccProfile     CcProfile?
 }
 
 enum StudentStatus {
@@ -2060,4 +2062,160 @@ model AdmissionLead {
 
   @@index([stage, updatedAt])
   @@index([branchId])
+}
+
+enum CcConflictStatus {
+  green
+  yellow
+  red
+}
+
+enum CcExamType {
+  sat
+  ielts
+  toefl
+  ort
+  csca
+  opt
+}
+
+enum CcApplicationType {
+  early_action
+  early_decision
+  regular_decision
+}
+
+enum CcAdmissionStatus {
+  scouting
+  document_prep
+  submitted
+  decision_pending
+  offer_received
+  rejected
+  accepted_final
+}
+
+enum CcDocType {
+  personal_statement
+  essay
+  cv
+  brag_sheet
+  recommendation
+  portfolio
+  transcript
+  passport
+  other
+}
+
+enum CcDocStatus {
+  not_started
+  draft
+  in_review
+  ready
+  received
+}
+
+model CcProfile {
+  id                 String           @id @default(cuid())
+  studentId          String           @unique
+  student            Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  counselorId        String?
+  branchId           String?
+  studentCountries   String[]
+  studentMajor       String?
+  studentMotivation  String?          @db.Text
+  parentCountries    String[]
+  parentBudgetUsd    Int?
+  parentMajor        String?
+  parentSafety       Boolean          @default(false)
+  parentExpectations String?          @db.Text
+  conflictStatus     CcConflictStatus @default(green)
+  conflictComputedAt DateTime?
+  riskFlagCleared    Boolean          @default(false)
+  counselorComment   String?          @db.Text
+  strategyAssigned   Boolean          @default(false)
+  exams              CcExam[]
+  applications       CcApplication[]
+  documents          CcDocument[]
+  meetings           CcMeeting[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([counselorId])
+  @@index([conflictStatus])
+  @@index([branchId])
+}
+
+model CcExam {
+  id             String     @id @default(cuid())
+  profileId      String
+  profile        CcProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  examType       CcExamType
+  testDate       DateTime?
+  scoreCurrent   Float?
+  scoreTarget    Float?
+  isMock         Boolean    @default(false)
+  verified       Boolean    @default(false)
+  certificateUrl String?
+  comment        String?
+  createdAt      DateTime   @default(now())
+
+  @@index([profileId])
+}
+
+model CcApplication {
+  id                String             @id @default(cuid())
+  profileId         String
+  profile           CcProfile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  universityName    String
+  country           String?
+  program           String?
+  applicationType   CcApplicationType?
+  admissionStatus   CcAdmissionStatus  @default(scouting)
+  deadlineDate      DateTime?
+  decisionDate      DateTime?
+  applicationId     String?
+  submissionProof   String?
+  scholarshipAmount String?
+  scholarshipType   String?
+  comment           String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([profileId])
+  @@index([admissionStatus])
+  @@index([deadlineDate])
+}
+
+model CcDocument {
+  id                String      @id @default(cuid())
+  profileId         String
+  profile           CcProfile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  docType           CcDocType
+  status            CcDocStatus @default(not_started)
+  fileUrl           String?
+  teacherId         String?
+  requestedDeadline DateTime?
+  receivedAt        DateTime?
+  requiredCount     Int?
+  comment           String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([profileId])
+}
+
+model CcMeeting {
+  id          String    @id @default(cuid())
+  profileId   String
+  profile     CcProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  counselorId String?
+  meetingDate DateTime  @default(now())
+  topic       String?
+  notes       String?   @db.Text
+  actionItems String?   @db.Text
+  format      String?
+  createdAt   DateTime  @default(now())
+
+  @@index([profileId])
 }

@@ -32,6 +32,7 @@ export const ALL_ROLES: AppRole[] = [
   'call_center',
   'event_manager',
   'media',
+  'college_counselor',
   'zavuch_primary',
   'zavuch_senior',
   'zavuch_academic',
@@ -67,6 +68,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   zavuch_senior: 'Завуч по старшим классам',
   zavuch_academic: 'Завуч по учебной части',
   cambridge_coord: 'Кэмбридж-координатор',
+  college_counselor: 'Колледж-консультант',
 }
 
 export const ADMIN_ROLES: AppRole[] = ['super_admin', 'analyst']

@@ -61,6 +61,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   zavuch_senior: 'Завуч по старшим классам',
   zavuch_academic: 'Завуч по учебной части',
   cambridge_coord: 'Кэмбридж-координатор',
+  college_counselor: 'Колледж-консультант',
 };
 
 interface SessionUser {

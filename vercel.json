@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/reminders", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/cc-deadlines", "schedule": "0 8 * * *" },
     { "path": "/api/cron/psy-escalation", "schedule": "0 * * * *" }
   ]
 }

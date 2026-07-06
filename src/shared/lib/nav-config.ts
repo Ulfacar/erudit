@@ -49,6 +49,7 @@ const NON_TEACHING_NO_SEC: Role[] = NON_TEACHING_AUTH.filter((r) => r !== 'secre
 const NEW_STAFF: Role[] = ['accountant', 'chief_accountant', 'finance_manager', 'psychologist', 'doctor', 'hr', 'librarian', 'cook', 'zavhoz', 'senior_psychologist', 'safeguarding_lead', 'call_center', 'media']
 // Психологическая служба (eSPSMS): кто ведёт кейсы
 const PSY_STAFF: Role[] = ['psychologist', 'senior_psychologist', 'specialist', 'super_admin']
+const CC_TIER: Role[] = ['college_counselor', 'super_admin']
 
 /** Раздел-обёртка: роли = объединение ролей детей (иначе раздел скрылся бы целиком). */
 function grp(href: string, label: string, children: NavRoute[]): NavRoute {
@@ -165,6 +166,11 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/media', label: 'Медиа-центр', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'event_manager', 'media'] },
     { href: '/purchase-requests', label: 'Заявки на закупку', roles: ['super_admin', 'analyst', 'finance_manager', 'accountant', 'chief_accountant', 'zavhoz'] },
     { href: '/lost-found', label: 'Бюро находок', roles: [...NON_TEACHING_NO_SEC, 'zavhoz'] },
+  ]),
+
+  grp('/g/college-consulting', 'Поступление за рубеж', [
+    { href: '/cc', label: 'Колледж-консалтинг', roles: CC_TIER },
+    { href: '/cc/reports', label: 'CC: отчёт', roles: ['founder', 'super_admin', 'college_counselor'] },
   ]),
 
   // ── Коммуникации ──
