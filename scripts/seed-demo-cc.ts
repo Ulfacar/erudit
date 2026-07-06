@@ -43,7 +43,19 @@ type ProfileDef = {
   scoreTarget: number
 }
 
-async function ensureCounselor() {
+async function getTargetBranchId(): Promise<string | null> {
+  const student = await prisma.student.findFirst({
+    where: { ccProfile: { is: null }, branchId: { not: null } },
+    orderBy: [{ enrolledAt: 'asc' }],
+    select: { branchId: true },
+  })
+  if (student?.branchId) return student.branchId
+
+  const branch = await prisma.branch.findFirst({ select: { id: true } })
+  return branch?.id ?? null
+}
+
+async function ensureCounselor(targetBranchId: string | null) {
   const password = await hash(DEMO_PASSWORD, 10)
   const existing = await prisma.user.findUnique({ where: { login: COUNSELOR_LOGIN } })
   if (existing) {
@@ -54,6 +66,7 @@ async function ensureCounselor() {
         role: 'college_counselor',
         starLevel: Math.max(existing.starLevel, 1),
         isActive: true,
+        branchId: targetBranchId,
       },
     })
   }
@@ -67,11 +80,12 @@ async function ensureCounselor() {
       role: 'college_counselor',
       starLevel: 1,
       isActive: true,
+      branchId: targetBranchId,
     },
   })
 }
 
-async function pickStudents(counselorId: string): Promise<DemoStudent[]> {
+async function pickStudents(counselorId: string, targetBranchId: string | null): Promise<DemoStudent[]> {
   const selected = new Map<string, DemoStudent>()
   const select = {
     id: true,
@@ -88,6 +102,7 @@ async function pickStudents(counselorId: string): Promise<DemoStudent[]> {
         { counselorComment: { startsWith: DEMO_MARKER } },
         { applications: { some: { universityName: { in: DEMO_UNIVERSITIES } } } },
       ],
+      ...(targetBranchId ? { student: { branchId: targetBranchId } } : {}),
     },
     take: 3,
     orderBy: { createdAt: 'asc' },
@@ -97,7 +112,10 @@ async function pickStudents(counselorId: string): Promise<DemoStudent[]> {
 
   if (selected.size < 3) {
     const available = await prisma.student.findMany({
-      where: { ccProfile: { is: null } },
+      where: {
+        ccProfile: { is: null },
+        ...(targetBranchId ? { branchId: targetBranchId } : {}),
+      },
       take: 3 - selected.size,
       orderBy: [{ enrolledAt: 'asc' }, { lastName: 'asc' }],
       select,
@@ -264,8 +282,9 @@ function buildDefs(students: DemoStudent[]): ProfileDef[] {
 }
 
 async function main() {
-  const counselor = await ensureCounselor()
-  const students = await pickStudents(counselor.id)
+  const targetBranchId = await getTargetBranchId()
+  const counselor = await ensureCounselor(targetBranchId)
+  const students = await pickStudents(counselor.id, targetBranchId)
   if (students.length < 2) {
     console.warn(`[seed-demo-cc] skipped: need at least 2 students without CC profiles, got ${students.length}`)
     return
