@@ -3,7 +3,9 @@
 import { Badge, Group, Loader, Paper, SimpleGrid, Stack, Table, Text, ThemeIcon, Title } from '@mantine/core';
 import { IconAlertTriangle, IconChartBar, IconSchool, IconTimelineEvent } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import type { CcAdmissionStatus } from '@prisma/client';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { CC_ADMISSION_STATUS_LABELS } from '@/modules/cc/labels';
 
 const REPORT_ROLES = ['founder', 'super_admin', 'college_counselor'] as const;
 
@@ -67,7 +69,7 @@ function CcReports() {
           <Stack gap="xs">
             {Object.entries(data.stageCounts).map(([stage, count]) => (
               <Group key={stage} justify="space-between">
-                <Text size="sm">{stage}</Text>
+                <Text size="sm">{CC_ADMISSION_STATUS_LABELS[stage as CcAdmissionStatus] ?? stage}</Text>
                 <Badge variant="light" radius="sm">{count}</Badge>
               </Group>
             ))}

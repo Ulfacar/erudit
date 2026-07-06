@@ -6,6 +6,7 @@ import {
   Avatar,
   Badge,
   Button,
+  Checkbox,
   Group,
   Loader,
   Modal,
@@ -13,6 +14,7 @@ import {
   Paper,
   SegmentedControl,
   SimpleGrid,
+  Select,
   Stack,
   Switch,
   Table,
@@ -23,6 +25,7 @@ import {
   ThemeIcon,
   Title,
 } from '@mantine/core';
+import { DateInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import {
   IconCalendarDue,
@@ -55,6 +58,9 @@ const DOC_STATUS_COLOR: Record<string, string> = {
   ready: 'green',
   received: 'teal',
 };
+const examTypeOptions = Object.entries(CC_EXAM_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+const docTypeOptions = Object.entries(CC_DOC_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+const docStatusOptions = Object.entries(CC_DOC_STATUS_LABELS).map(([value, label]) => ({ value, label }));
 
 type CcProfile = {
   id: string;
@@ -81,11 +87,18 @@ type CcProfile = {
     photo?: string | null;
     parents: { id: string; fio: string; phone?: string | null; relation: string }[];
   };
-  exams: { id: string; examType: string; testDate?: string | null; scoreCurrent?: number | null; scoreTarget?: number | null; isMock: boolean; verified: boolean; comment?: string | null }[];
+  exams: { id: string; examType: string; testDate?: string | null; scoreCurrent?: number | null; scoreTarget?: number | null; isMock: boolean; verified: boolean; certificateUrl?: string | null; comment?: string | null }[];
   applications: CcKanbanApplication[];
-  documents: { id: string; docType: string; status: string; fileUrl?: string | null; requestedDeadline?: string | null; requiredCount?: number | null; comment?: string | null }[];
+  documents: { id: string; docType: string; status: string; fileUrl?: string | null; teacherId?: string | null; requestedDeadline?: string | null; requiredCount?: number | null; comment?: string | null }[];
   meetings: { id: string; meetingDate: string; topic?: string | null; notes?: string | null; actionItems?: string | null; format?: string | null }[];
   deadlines: { id: string; date: string; title: string; type: string; status: string; daysLeft: number }[];
+};
+
+type TeacherOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string | null;
 };
 
 function fmtDate(value?: string | null) {
@@ -124,12 +137,16 @@ function currentAcademicYearBounds() {
   };
 }
 
-function validateDeadline(value: string) {
+function validateDeadline(value: string | Date) {
   const date = new Date(value);
   const { start, end } = currentAcademicYearBounds();
   if (date.getTime() < Date.now()) return 'Нельзя ставить прошедший дедлайн';
   if (date < start || date > end) return 'Дедлайн должен быть в текущем учебном году';
   return null;
+}
+
+function dateToPayload(value: Date | null) {
+  return value ? value.toISOString() : null;
 }
 
 function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -303,6 +320,192 @@ function AddMeetingModal({ profileId, opened, onClose }: { profileId: string; op
   );
 }
 
+function AddExamModal({ profileId, opened, onClose }: { profileId: string; opened: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [examType, setExamType] = useState<string | null>(examTypeOptions[0]?.value ?? null);
+  const [testDate, setTestDate] = useState<Date | null>(null);
+  const [scoreCurrent, setScoreCurrent] = useState<number | ''>('');
+  const [scoreTarget, setScoreTarget] = useState<number | ''>('');
+  const [isMock, setIsMock] = useState(false);
+  const [certificateUrl, setCertificateUrl] = useState('');
+  const [comment, setComment] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!examType) throw new Error('Укажите тип экзамена');
+      const res = await fetch('/api/v1/cc/exams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileId,
+          examType,
+          testDate: dateToPayload(testDate),
+          scoreCurrent: scoreCurrent === '' ? null : scoreCurrent,
+          scoreTarget: scoreTarget === '' ? null : scoreTarget,
+          isMock,
+          certificateUrl: certificateUrl || null,
+          comment: comment || null,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось добавить экзамен');
+      return json.data;
+    },
+    onSuccess: () => {
+      notifications.show({ color: 'green', title: 'Сохранено', message: 'Экзамен добавлен' });
+      queryClient.invalidateQueries({ queryKey: ['cc-profile', profileId] });
+      onClose();
+      setExamType(examTypeOptions[0]?.value ?? null);
+      setTestDate(null);
+      setScoreCurrent('');
+      setScoreTarget('');
+      setIsMock(false);
+      setCertificateUrl('');
+      setComment('');
+    },
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось добавить экзамен' }),
+  });
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Добавить экзамен" centered>
+      <Stack gap="sm">
+        <Select label="Тип экзамена" data={examTypeOptions} value={examType} onChange={setExamType} required />
+        <DateInput label="Дата теста" value={testDate} onChange={setTestDate} clearable />
+        <NumberInput label="Текущий балл" value={scoreCurrent} onChange={(v) => setScoreCurrent(typeof v === 'number' ? v : '')} min={0} />
+        <NumberInput label="Целевой балл" value={scoreTarget} onChange={(v) => setScoreTarget(typeof v === 'number' ? v : '')} min={0} />
+        <Checkbox label="пробный" checked={isMock} onChange={(e) => setIsMock(e.currentTarget.checked)} />
+        <TextInput label="Ссылка на сертификат" value={certificateUrl} onChange={(e) => setCertificateUrl(e.currentTarget.value)} />
+        <Textarea label="Комментарий" value={comment} onChange={(e) => setComment(e.currentTarget.value)} minRows={2} />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button loading={mutation.isPending} disabled={!examType} onClick={() => mutation.mutate()}>Добавить</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function AddDocumentModal({ profileId, opened, onClose }: { profileId: string; opened: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [docType, setDocType] = useState<string | null>('recommendation');
+  const [status, setStatus] = useState<string | null>('not_started');
+  const [teacherId, setTeacherId] = useState<string | null>(null);
+  const [requestedDeadline, setRequestedDeadline] = useState<Date | null>(null);
+  const [requiredCount, setRequiredCount] = useState<number | ''>(1);
+
+  const teachersQuery = useQuery<TeacherOption[]>({
+    queryKey: ['teachers'],
+    enabled: opened && docType === 'recommendation',
+    queryFn: async () => {
+      const res = await fetch('/api/v1/teachers');
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось загрузить учителей');
+      return json.data;
+    },
+  });
+
+  const teacherOptions = (teachersQuery.data ?? []).map((teacher) => ({
+    value: teacher.id,
+    label: [teacher.lastName, teacher.firstName, teacher.middleName].filter(Boolean).join(' '),
+  }));
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!docType) throw new Error('Укажите тип документа');
+      const deadlineError = requestedDeadline ? validateDeadline(requestedDeadline) : null;
+      if (deadlineError) throw new Error(deadlineError);
+      const isRecommendation = docType === 'recommendation';
+      const res = await fetch('/api/v1/cc/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileId,
+          docType,
+          status: status ?? 'not_started',
+          teacherId: isRecommendation ? teacherId : null,
+          requestedDeadline: isRecommendation ? dateToPayload(requestedDeadline) : null,
+          requiredCount: isRecommendation ? (requiredCount === '' ? 1 : requiredCount) : null,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось добавить документ');
+      return json.data;
+    },
+    onSuccess: () => {
+      notifications.show({ color: 'green', title: 'Сохранено', message: 'Документ добавлен' });
+      queryClient.invalidateQueries({ queryKey: ['cc-profile', profileId] });
+      onClose();
+      setDocType('recommendation');
+      setStatus('not_started');
+      setTeacherId(null);
+      setRequestedDeadline(null);
+      setRequiredCount(1);
+    },
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось добавить документ' }),
+  });
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Добавить документ" centered>
+      <Stack gap="sm">
+        <Select label="Тип документа" data={docTypeOptions} value={docType} onChange={setDocType} required />
+        <Select label="Статус" data={docStatusOptions} value={status} onChange={setStatus} required />
+        {docType === 'recommendation' && (
+          <>
+            <Select
+              label="Учитель"
+              data={teacherOptions}
+              value={teacherId}
+              onChange={setTeacherId}
+              searchable
+              clearable
+              nothingFoundMessage={teachersQuery.isLoading ? 'Загрузка...' : 'Учителя не найдены'}
+            />
+            <DateInput label="Дедлайн запроса" value={requestedDeadline} onChange={setRequestedDeadline} clearable />
+            <NumberInput label="Количество рекомендаций" value={requiredCount} onChange={(v) => setRequiredCount(typeof v === 'number' ? v : '')} min={1} />
+          </>
+        )}
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button loading={mutation.isPending} disabled={!docType || !status} onClick={() => mutation.mutate()}>Добавить</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function DocumentStatusSelect({ doc, profileId }: { doc: CcProfile['documents'][number]; profileId: string }) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (status: string) => {
+      const res = await fetch(`/api/v1/cc/documents/${doc.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось обновить статус');
+      return json.data;
+    },
+    onSuccess: () => {
+      notifications.show({ color: 'green', title: 'Сохранено', message: 'Статус документа обновлен' });
+      queryClient.invalidateQueries({ queryKey: ['cc-profile', profileId] });
+    },
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось обновить статус' }),
+  });
+
+  return (
+    <Select
+      size="xs"
+      w={150}
+      data={docStatusOptions}
+      value={doc.status}
+      onChange={(value) => value && value !== doc.status && mutation.mutate(value)}
+      disabled={mutation.isPending}
+      comboboxProps={{ withinPortal: true }}
+    />
+  );
+}
+
 function CcProfileCard() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -310,6 +513,8 @@ function CcProfileCard() {
   const [editOpen, setEditOpen] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
+  const [examOpen, setExamOpen] = useState(false);
+  const [documentOpen, setDocumentOpen] = useState(false);
   const [view, setView] = useState<'table' | 'kanban'>('table');
 
   const query = useQuery<CcProfile>({
@@ -404,7 +609,10 @@ function CcProfileCard() {
           </Paper>
 
           <Paper withBorder radius="sm" p="md">
-            <Text fw={700} mb="sm">3. Академические результаты</Text>
+            <Group justify="space-between" mb="sm">
+              <Text fw={700}>3. Академические результаты</Text>
+              <Button size="xs" variant="light" onClick={() => setExamOpen(true)}>+ экзамен</Button>
+            </Group>
             <Table verticalSpacing="xs">
               <Table.Tbody>
                 <Table.Tr><Table.Td>GPA</Table.Td><Table.Td>{gpaText}</Table.Td></Table.Tr>
@@ -455,7 +663,10 @@ function CcProfileCard() {
           </Paper>
 
           <Paper withBorder radius="sm" p="md">
-            <Group gap="xs" mb="sm"><IconFileText size={18} /><Text fw={700}>4. Документы</Text></Group>
+            <Group justify="space-between" mb="sm">
+              <Group gap="xs"><IconFileText size={18} /><Text fw={700}>4. Документы</Text></Group>
+              <Button size="xs" variant="light" onClick={() => setDocumentOpen(true)}>+ документ</Button>
+            </Group>
             <Stack gap="xs">
               {profile.documents.map((doc) => (
                 <Group key={doc.id} justify="space-between" wrap="nowrap">
@@ -463,7 +674,10 @@ function CcProfileCard() {
                     <Text size="sm" fw={600}>{CC_DOC_TYPE_LABELS[doc.docType as keyof typeof CC_DOC_TYPE_LABELS] ?? doc.docType}</Text>
                     <Text size="xs" c="dimmed">{doc.comment || fmtDate(doc.requestedDeadline)}</Text>
                   </div>
-                  <Badge color={DOC_STATUS_COLOR[doc.status] ?? 'gray'} variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>{CC_DOC_STATUS_LABELS[doc.status as keyof typeof CC_DOC_STATUS_LABELS] ?? doc.status}</Badge>
+                  <Group gap="xs" wrap="nowrap">
+                    <Badge color={DOC_STATUS_COLOR[doc.status] ?? 'gray'} variant="light" radius="sm" style={{ whiteSpace: 'nowrap' }}>{CC_DOC_STATUS_LABELS[doc.status as keyof typeof CC_DOC_STATUS_LABELS] ?? doc.status}</Badge>
+                    <DocumentStatusSelect doc={doc} profileId={profile.id} />
+                  </Group>
                 </Group>
               ))}
               {profile.documents.length === 0 && <Text size="sm" c="dimmed">Документы ещё не заведены</Text>}
@@ -526,6 +740,8 @@ function CcProfileCard() {
       <ProfileEditModal profile={profile} opened={editOpen} onClose={() => setEditOpen(false)} />
       <AddApplicationModal profileId={profile.id} opened={appOpen} onClose={() => setAppOpen(false)} />
       <AddMeetingModal profileId={profile.id} opened={meetingOpen} onClose={() => setMeetingOpen(false)} />
+      <AddExamModal profileId={profile.id} opened={examOpen} onClose={() => setExamOpen(false)} />
+      <AddDocumentModal profileId={profile.id} opened={documentOpen} onClose={() => setDocumentOpen(false)} />
     </Stack>
   );
 }
