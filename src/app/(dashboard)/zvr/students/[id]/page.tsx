@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type { Role } from '@prisma/client';
 import {
+  ActionIcon,
   Anchor,
   Badge,
   Button,
@@ -18,11 +19,23 @@ import {
   ThemeIcon,
   Timeline,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconAlertTriangle, IconArrowLeft, IconCalendarDue, IconMessageCircle, IconPhone, IconSchool, IconUserCheck } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconCalendarDue,
+  IconEye,
+  IconEyeOff,
+  IconMessageCircle,
+  IconPhone,
+  IconSchool,
+  IconUserCheck,
+} from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { Sensitive, useZvrBlur } from '@/modules/zvr/Sensitive';
 import { ZVR_MEDIATION_PARTY_LABELS } from '@/modules/zvr/labels';
 
 const ZVR_ROLES = ['safeguarding_lead', 'zavuch', 'super_admin'] as const satisfies readonly Role[];
@@ -35,9 +48,34 @@ type StudentHeader = {
 };
 
 type TimelineItem = { date: string; type: string; title: string; detail?: string; source: string };
-type StudentNote = { id: string; type: string; text: string; role: string; createdAt: string; meta?: { withWhom?: string; parentResponse?: string } | null };
-type Obligation = { id: string; party: 'student' | 'parent'; task: string; deadline: string | null; done: boolean; doneAt: string | null; createdAt: string };
+type StudentNote = {
+  id: string;
+  type: string;
+  text: string;
+  role: string;
+  createdAt: string;
+  meta?: { withWhom?: string; parentResponse?: string } | null;
+};
+type Obligation = {
+  id: string;
+  party: 'student' | 'parent';
+  task: string;
+  deadline: string | null;
+  done: boolean;
+  doneAt: string | null;
+  createdAt: string;
+};
 type Protocol = { id: string; date: string; agreement: string; obligations: Obligation[] };
+type ApiResponse<T> = { success?: boolean; data?: T; error?: { message?: string } };
+
+async function fetchData<T>(url: string) {
+  const response = await fetch(url);
+  const json = await response.json().catch(() => ({})) as ApiResponse<T>;
+  if (!response.ok || json.success === false) {
+    throw new Error(json.error?.message ?? 'Не удалось загрузить данные');
+  }
+  return json.data as T;
+}
 
 function formatDate(value?: string | null) {
   if (!value) return 'Без срока';
@@ -57,15 +95,10 @@ function withWhomLabel(value?: string) {
   return 'Беседа';
 }
 
-function TimelineTab({ studentId, enabled }: { studentId: string; enabled: boolean }) {
+function TimelineTab({ studentId, enabled, blurred }: { studentId: string; enabled: boolean; blurred: boolean }) {
   const { data = [], isLoading } = useQuery<TimelineItem[]>({
     queryKey: ['zvr-student-timeline', studentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/students/${studentId}/timeline`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось загрузить хронику');
-      return json.data;
-    },
+    queryFn: () => fetchData<TimelineItem[]>(`/api/v1/students/${studentId}/timeline`),
     enabled,
   });
 
@@ -86,7 +119,11 @@ function TimelineTab({ studentId, enabled }: { studentId: string; enabled: boole
             </Group>
           )}
         >
-          {item.detail && <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{item.detail}</Text>}
+          {item.detail && (
+            <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+              <Sensitive blurred={blurred}>{item.detail}</Sensitive>
+            </Text>
+          )}
           <Text size="xs" c="dimmed" mt={2}>{formatDate(item.date)}</Text>
         </Timeline.Item>
       ))}
@@ -94,14 +131,12 @@ function TimelineTab({ studentId, enabled }: { studentId: string; enabled: boole
   );
 }
 
-function TalksTab({ studentId, enabled }: { studentId: string; enabled: boolean }) {
+function TalksTab({ studentId, enabled, blurred }: { studentId: string; enabled: boolean; blurred: boolean }) {
   const { data = [], isLoading } = useQuery<StudentNote[]>({
     queryKey: ['zvr-student-talks', studentId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/students/${studentId}/notes`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось загрузить беседы');
-      return (json.data ?? []).filter((note: StudentNote) => note.type === 'conversation');
+      const notes = await fetchData<StudentNote[]>(`/api/v1/students/${studentId}/notes`);
+      return (notes ?? []).filter((note) => note.type === 'conversation');
     },
     enabled,
   });
@@ -132,10 +167,13 @@ function TalksTab({ studentId, enabled }: { studentId: string; enabled: boolean 
                 </Badge>
                 <Text size="xs" c="dimmed">{formatDate(note.createdAt)}</Text>
               </Group>
-              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{note.text}</Text>
+              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                <Sensitive blurred={blurred}>{note.text}</Sensitive>
+              </Text>
               {note.meta?.parentResponse && (
                 <Text size="sm" c="dimmed" mt={6}>
-                  <b>Ответ родителя:</b> {note.meta.parentResponse}
+                  <b>Ответ родителя:</b>{' '}
+                  <Sensitive blurred={blurred}>{note.meta.parentResponse}</Sensitive>
                 </Text>
               )}
             </Paper>
@@ -146,36 +184,37 @@ function TalksTab({ studentId, enabled }: { studentId: string; enabled: boolean 
   );
 }
 
-function ObligationsTab({ studentId, enabled }: { studentId: string; enabled: boolean }) {
+function ObligationsTab({ studentId, enabled, blurred }: { studentId: string; enabled: boolean; blurred: boolean }) {
   const queryClient = useQueryClient();
   const { data = [], isLoading } = useQuery<Protocol[]>({
     queryKey: ['zvr-mediation', { studentId }],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/zvr/mediation?studentId=${studentId}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось загрузить обязательства');
-      return json.data;
-    },
+    queryFn: () => fetchData<Protocol[]>(`/api/v1/zvr/mediation?studentId=${studentId}`),
     enabled,
   });
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
-      const res = await fetch(`/api/v1/zvr/mediation/obligations/${id}`, {
+      const response = await fetch(`/api/v1/zvr/mediation/obligations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ done }),
       });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось обновить обязательство');
-      return json.data as Obligation;
+      const json = await response.json().catch(() => ({})) as ApiResponse<Obligation>;
+      if (!response.ok || json.success === false) {
+        throw new Error(json.error?.message ?? 'Не удалось обновить обязательство');
+      }
+      return json.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['zvr-mediation', { studentId }] });
       queryClient.invalidateQueries({ queryKey: ['zvr-mediation'] });
     },
-    onError: (err) => {
-      notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось обновить обязательство' });
+    onError: (error) => {
+      notifications.show({
+        color: 'red',
+        title: 'Ошибка',
+        message: error instanceof Error ? error.message : 'Не удалось обновить обязательство',
+      });
     },
   });
 
@@ -186,7 +225,9 @@ function ObligationsTab({ studentId, enabled }: { studentId: string; enabled: bo
   };
 
   if (isLoading) return <Group justify="center" p="xl"><Loader /></Group>;
-  if (obligations.length === 0) return <Text c="dimmed">Обязательств пока нет. Новый протокол создаётся в разделе «Работа с семьёй».</Text>;
+  if (obligations.length === 0) {
+    return <Text c="dimmed">Обязательств пока нет. Новый протокол создаётся в разделе «Работа с семьёй».</Text>;
+  }
 
   return (
     <Stack gap="md">
@@ -207,13 +248,16 @@ function ObligationsTab({ studentId, enabled }: { studentId: string; enabled: bo
                     checked={item.done}
                     disabled={toggleMutation.isPending}
                     onChange={(event) => toggleMutation.mutate({ id: item.id, done: event.currentTarget.checked })}
-                    label={<Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>{item.task}</Text>}
+                    label={<Text size="sm" style={{ whiteSpace: 'pre-wrap' }}><Sensitive blurred={blurred}>{item.task}</Sensitive></Text>}
                   />
                   <Badge color={overdue ? 'red' : item.done ? 'green' : 'gray'} variant="light" radius="sm">
                     {item.done ? 'Выполнено' : item.deadline ? formatDate(item.deadline) : 'Без срока'}
                   </Badge>
                 </Group>
-                <Text size="xs" c="dimmed" mt={6}>Протокол от {formatDate(item.protocol.date)}: {item.protocol.agreement}</Text>
+                <Text size="xs" c="dimmed" mt={6}>
+                  Протокол от {formatDate(item.protocol.date)}:{' '}
+                  <Sensitive blurred={blurred}>{item.protocol.agreement}</Sensitive>
+                </Text>
               </Paper>
             );
           })}
@@ -226,21 +270,17 @@ function ObligationsTab({ studentId, enabled }: { studentId: string; enabled: bo
 function ZvrStudentControl() {
   const params = useParams<{ id: string }>();
   const studentId = params.id;
+  const { blurred, toggleBlur } = useZvrBlur();
   const header = useQuery<StudentHeader>({
     queryKey: ['zvr-student', studentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/zvr/students/${studentId}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось загрузить ученика');
-      return json.data;
-    },
+    queryFn: () => fetchData<StudentHeader>(`/api/v1/zvr/students/${studentId}`),
   });
   const student = header.data;
 
   return (
     <Stack gap="md">
       <Anchor component={Link} href="/zvr/incidents" size="sm">
-        <Group gap={6}><IconArrowLeft size={14} /> Инциденты и сессии</Group>
+        <Group gap={6}><IconArrowLeft size={14} /> Инциденты и Сессии</Group>
       </Anchor>
 
       <Paper withBorder radius="sm" p="md">
@@ -254,14 +294,25 @@ function ZvrStudentControl() {
               </ThemeIcon>
               <div>
                 <Title order={2}>Мой контроль</Title>
-                <Text fw={700}>{student.fio}</Text>
+                <Text fw={700}><Sensitive blurred={blurred}>{student.fio}</Sensitive></Text>
                 <Text size="sm" c="dimmed">{student.className}</Text>
               </div>
             </Group>
             <Group gap="xs">
+              <Tooltip label={blurred ? 'Показать чувствительные данные' : 'Скрыть чувствительные данные'}>
+                <ActionIcon
+                  variant={blurred ? 'filled' : 'light'}
+                  color={blurred ? 'red' : 'gray'}
+                  size="lg"
+                  aria-label={blurred ? 'Показать чувствительные данные' : 'Скрыть чувствительные данные'}
+                  onClick={toggleBlur}
+                >
+                  {blurred ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                </ActionIcon>
+              </Tooltip>
               {student.parentPhones.length > 0 ? student.parentPhones.map((phone) => (
                 <Button key={phone} component="a" href={`tel:${phone}`} variant="light" leftSection={<IconPhone size={16} />}>
-                  {phone}
+                  <Sensitive blurred={blurred}>{phone}</Sensitive>
                 </Button>
               )) : <Badge color="gray" variant="light">Нет телефона родителя</Badge>}
             </Group>
@@ -272,18 +323,18 @@ function ZvrStudentControl() {
       </Paper>
 
       {header.isSuccess && (
-      <Tabs defaultValue="timeline" variant="outline">
-        <Tabs.List>
-          <Tabs.Tab value="timeline" leftSection={<IconCalendarDue size={16} />}>Хроника</Tabs.Tab>
-          <Tabs.Tab value="talks" leftSection={<IconMessageCircle size={16} />}>Беседы</Tabs.Tab>
-          <Tabs.Tab value="obligations" leftSection={<IconUserCheck size={16} />}>Обязательства</Tabs.Tab>
-        </Tabs.List>
-        <Paper withBorder radius="sm" p="md" mt="md">
-          <Tabs.Panel value="timeline"><TimelineTab studentId={studentId} enabled={header.isSuccess} /></Tabs.Panel>
-          <Tabs.Panel value="talks"><TalksTab studentId={studentId} enabled={header.isSuccess} /></Tabs.Panel>
-          <Tabs.Panel value="obligations"><ObligationsTab studentId={studentId} enabled={header.isSuccess} /></Tabs.Panel>
-        </Paper>
-      </Tabs>
+        <Tabs defaultValue="timeline" variant="outline">
+          <Tabs.List>
+            <Tabs.Tab value="timeline" leftSection={<IconCalendarDue size={16} />}>Хроника</Tabs.Tab>
+            <Tabs.Tab value="talks" leftSection={<IconMessageCircle size={16} />}>Беседы</Tabs.Tab>
+            <Tabs.Tab value="obligations" leftSection={<IconUserCheck size={16} />}>Обязательства</Tabs.Tab>
+          </Tabs.List>
+          <Paper withBorder radius="sm" p="md" mt="md">
+            <Tabs.Panel value="timeline"><TimelineTab studentId={studentId} enabled={header.isSuccess} blurred={blurred} /></Tabs.Panel>
+            <Tabs.Panel value="talks"><TalksTab studentId={studentId} enabled={header.isSuccess} blurred={blurred} /></Tabs.Panel>
+            <Tabs.Panel value="obligations"><ObligationsTab studentId={studentId} enabled={header.isSuccess} blurred={blurred} /></Tabs.Panel>
+          </Paper>
+        </Tabs>
       )}
 
       <Divider />
