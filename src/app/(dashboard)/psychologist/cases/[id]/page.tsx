@@ -116,6 +116,8 @@ function CaseDetail() {
   const [referralTarget, setReferralTarget] = useState('psychiatrist');
   const [referralNote, setReferralNote] = useState('');
   const [interventionSaving, setInterventionSaving] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenStage, setReopenStage] = useState('ips');
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -335,6 +337,18 @@ function CaseDetail() {
     if (target) patchStage(target);
   }
 
+  async function reopenCase() {
+    const res = await fetch(`/api/v1/psy/cases/${id}/reopen`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage: reopenStage }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось переоткрыть кейс'); return; }
+    setErr('');
+    setReopenOpen(false);
+    load();
+  }
+
   async function createIps() {
     const res = await fetch(`/api/v1/psy/cases/${id}/ips`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -440,6 +454,9 @@ function CaseDetail() {
           <Group gap="xs">
             <Button variant="light" disabled={stageIndex <= 0} onClick={() => moveStage(-1)}>← Назад</Button>
             <Button disabled={stageIndex >= CASE_STAGES.length - 1} onClick={() => moveStage(1)}>→ Следующий этап</Button>
+            {c.status === 'closed' && (
+              <Button variant="light" color="blue" onClick={() => { setErr(''); setReopenOpen(true); }}>Переоткрыть</Button>
+            )}
           </Group>
         </Group>
         {err && <Text c="red" size="sm" mt="xs">{err}</Text>}
@@ -745,6 +762,26 @@ function CaseDetail() {
           <Group justify="flex-end">
             <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
             <Button onClick={addSession} loading={saving}>Сохранить сессию</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal opened={reopenOpen} onClose={() => setReopenOpen(false)} title="Переоткрыть кейс" centered>
+        <Stack gap="md">
+          <Text size="sm">Кейс вернётся в сопровождение с выбранного этапа. История сохраняется, создаётся новая версия ИПС.</Text>
+          <Select
+            label="Возобновить с этапа"
+            value={reopenStage}
+            onChange={(v) => setReopenStage(v ?? 'ips')}
+            data={[
+              { value: 'diagnosis', label: 'Комплексная диагностика (этап 2)' },
+              { value: 'ips', label: 'Индивидуальный план — ИПС (этап 3)' },
+            ]}
+          />
+          {err && <Text c="red" size="sm">{err}</Text>}
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={() => setReopenOpen(false)}>Отмена</Button>
+            <Button color="blue" onClick={reopenCase}>Переоткрыть</Button>
           </Group>
         </Stack>
       </Modal>
