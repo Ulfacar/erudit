@@ -107,6 +107,7 @@ export const SIDEBAR_ICONS: Record<string, React.ComponentType<{ size?: number; 
   '/urgent-issues': IconAlertTriangle,
   '/incidents': IconFlame,
   '/zvr/incidents': IconAlertTriangle,
+  '/zvr/family': IconUsersGroup,
   '/library': IconBooks,
   '/analytics': IconChartDots,
   '/workspace/speech': IconSpeakerphone,

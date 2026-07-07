@@ -225,6 +225,7 @@ model Student {
   incidents   BehaviorIncident[]
   incidentParticipations IncidentParticipant[] @relation("IncidentParticipations")
   supervisionCases SupervisionCase[] @relation("SupervisionCases")
+  mediationProtocols MediationProtocol[] @relation("MediationProtocols")
   feeInvoices FeeInvoice[]
 
   medicalData   Json?
@@ -588,6 +589,7 @@ model BehaviorIncident {
   student      Student               @relation(fields: [studentId], references: [id])
   participants IncidentParticipant[]
   supervisionCases SupervisionCase[]
+  mediationProtocols MediationProtocol[]
 
   @@index([studentId, createdAt])
 }
@@ -646,6 +648,41 @@ model SupervisionCase {
 
   @@index([studentId])
   @@index([behaviorIncidentId])
+}
+
+enum MediationParty {
+  student
+  parent
+}
+
+model MediationProtocol {
+  id                 String                 @id @default(cuid())
+  studentId          String
+  student            Student                @relation("MediationProtocols", fields: [studentId], references: [id], onDelete: Cascade)
+  behaviorIncidentId String?
+  incident           BehaviorIncident?      @relation(fields: [behaviorIncidentId], references: [id], onDelete: SetNull)
+  date               DateTime               @default(now())
+  agreement          String                 @db.Text
+  authorId           String
+  createdAt          DateTime               @default(now())
+  obligations        MediationObligation[]
+
+  @@index([studentId])
+  @@index([behaviorIncidentId])
+}
+
+model MediationObligation {
+  id         String             @id @default(cuid())
+  protocolId String
+  protocol   MediationProtocol  @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  party      MediationParty
+  task       String
+  deadline   DateTime?
+  done       Boolean            @default(false)
+  doneAt     DateTime?
+  createdAt  DateTime           @default(now())
+
+  @@index([protocolId])
 }
 
 // ============ NEWS ============

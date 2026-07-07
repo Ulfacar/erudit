@@ -5,6 +5,11 @@ export const ZVR_INCIDENT_ROLE_LABELS = {
   witness: 'Свидетель',
 } as const;
 
+export const ZVR_MEDIATION_PARTY_LABELS = {
+  student: 'Ученик',
+  parent: 'Родитель',
+} as const;
+
 export const ZVR_BEHAVIOR_LEVEL_LABELS = {
   low: 'Низкий',
   medium: 'Средний',

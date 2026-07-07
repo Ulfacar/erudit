@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import type { Role } from '@prisma/client';
 import {
+  Anchor,
   Badge,
   Button,
   Divider,
@@ -134,7 +136,15 @@ function IncidentCard({
             {ZVR_BEHAVIOR_LEVEL_LABELS[incident.level]}
           </Badge>
         </Group>
-        <Text size="sm">{fio(incident.student)}</Text>
+        <Anchor
+          component={Link}
+          href={`/zvr/students/${incident.student.id}`}
+          size="sm"
+          fw={600}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {fio(incident.student)}
+        </Anchor>
         <Group gap="xs">
           <Badge color="gray" variant="outline" radius="sm">{className(incident.student)}</Badge>
           <Text size="xs" c="dimmed">{formatDate(incident.createdAt)}</Text>
@@ -164,7 +174,9 @@ function ParticipantRow({
       <Stack gap="xs">
         <Group justify="space-between" wrap="nowrap" align="flex-start">
           <div>
-            <Text fw={600} size="sm">{fio(student)}</Text>
+            <Anchor component={Link} href={`/zvr/students/${student.id}`} fw={600} size="sm">
+              {fio(student)}
+            </Anchor>
             <Text size="xs" c="dimmed">{className(student)}</Text>
           </div>
           <Badge color={color} variant="light" radius="sm">
