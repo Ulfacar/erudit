@@ -22,6 +22,7 @@ async function main() {
     { login: 'zavhoz1', role: 'zavhoz', email: 'zavhoz@erudit.kg' },
     // eSPSMS: психологическая служба
     { login: 'senior_psy', role: 'senior_psychologist', email: 'senior.psy@erudit.kg' },
+    { login: 'psy_coord', role: 'psy_coordinator', email: 'psy.coord@erudit.kg' },
     { login: 'safeguard', role: 'safeguarding_lead', email: 'safeguard@erudit.kg' },
     // финансы
     { login: 'callcenter1', role: 'call_center', email: 'callcenter@erudit.kg' },

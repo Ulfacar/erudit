@@ -15,6 +15,8 @@ export const ROLES: Record<string, { login: string; role: Role }> = {
   curator: { login: 'curator1', role: 'curator' },
   specialist: { login: 'specialist1', role: 'specialist' },
   psychologist: { login: 'psychologist1', role: 'psychologist' },
+  senior_psychologist: { login: 'senior_psy', role: 'senior_psychologist' },
+  psy_coordinator: { login: 'psy_coord', role: 'psy_coordinator' },
   student: { login: 'student1', role: 'student' },
   parent: { login: 'parent1', role: 'parent' },
 };
