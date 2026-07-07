@@ -227,6 +227,31 @@ async function ruleCcRecommendationRequested(eventId: string, ctx: EventCtx) {
   });
 }
 
+function intakeVerdictLabel(verdict: unknown): string {
+  if (verdict === 'recommended') return 'рекомендован';
+  if (verdict === 'not_recommended') return 'не рекомендован';
+  if (verdict === 'redirected') return 'перенаправлен';
+  return 'заключение не указано';
+}
+
+async function ruleIntakeCompleted(eventId: string, ctx: EventCtx) {
+  const key = 'intake-completed-secretary';
+  if (!(await ruleEnabled(key))) return;
+
+  const childName = String(ctx.payload.childName ?? 'Поступающий');
+  const verdict = ctx.payload.verdict;
+  await createItem({
+    ruleKey: key,
+    eventId,
+    forRole: 'secretary',
+    kind: 'task',
+    severity: 'info',
+    title: '🎓 Заключение психолога по поступающему',
+    body: `${childName}: ${intakeVerdictLabel(verdict)}`,
+    payload: { leadId: ctx.payload.leadId, caseId: ctx.payload.caseId, verdict, childName },
+  });
+}
+
 // ─── Диспетчер ───────────────────────────────────────────────────────────────
 
 async function processEvent(eventId: string, type: string, ctx: EventCtx) {
@@ -236,6 +261,7 @@ async function processEvent(eventId: string, type: string, ctx: EventCtx) {
     else if (type === 'test.completed') await ruleTestFailed(eventId, ctx);
     else if (type === 'invoice.overdue') await ruleInvoiceOverdue(eventId, ctx);
     else if (type === 'cc.recommendation.requested') await ruleCcRecommendationRequested(eventId, ctx);
+    else if (type === 'intake.completed') await ruleIntakeCompleted(eventId, ctx);
     await prisma.agentEvent.update({ where: { id: eventId }, data: { processedAt: new Date() } });
   } catch (err) {
     console.error(`[agent] processEvent ${type} failed:`, err);

@@ -33,6 +33,7 @@ import { RoleGate } from '@/shared/components/auth/RoleGate';
  */
 
 type Stage = 'lead' | 'testing' | 'psych' | 'director' | 'contract' | 'enrolled' | 'rejected';
+type Verdict = 'recommended' | 'not_recommended' | 'redirected';
 
 interface Lead {
   id: string;
@@ -60,6 +61,12 @@ const RISK_META: Record<string, { label: string; color: string }> = {
   red: { label: 'Красный', color: 'red' },
 };
 
+const VERDICT_META: Record<Verdict, { label: string; color: string }> = {
+  recommended: { label: 'Рекомендован', color: 'green' },
+  not_recommended: { label: 'Не рекомендован', color: 'red' },
+  redirected: { label: 'Перенаправлен', color: 'orange' },
+};
+
 interface PsychConclusion {
   riskLevel: string;
   status: string;
@@ -67,6 +74,7 @@ interface PsychConclusion {
   assessment: string;
   observation: string;
   hasConclusion: boolean;
+  verdict?: Verdict | null;
 }
 
 interface ClassOption {
@@ -549,16 +557,30 @@ export default function AdmissionPage() {
           <Text c="dimmed" size="sm">Заключение не найдено.</Text>
         ) : !concl.hasConclusion ? (
           <Stack gap="xs">
-            <Badge color={RISK_META[concl.riskLevel]?.color ?? 'gray'} variant="light">
-              Уровень: {RISK_META[concl.riskLevel]?.label ?? concl.riskLevel}
-            </Badge>
+            <Group gap="xs">
+              <Badge color={RISK_META[concl.riskLevel]?.color ?? 'gray'} variant="light">
+                Уровень: {RISK_META[concl.riskLevel]?.label ?? concl.riskLevel}
+              </Badge>
+              {concl.verdict && (
+                <Badge color={VERDICT_META[concl.verdict].color} variant="light">
+                  Заключение: {VERDICT_META[concl.verdict].label}
+                </Badge>
+              )}
+            </Group>
             <Text c="dimmed" size="sm">Психолог ещё не завершил первичную диагностику — заключение появится позже.</Text>
           </Stack>
         ) : (
           <Stack gap="sm">
-            <Badge color={RISK_META[concl.riskLevel]?.color ?? 'gray'} variant="light" size="lg">
-              Уровень: {RISK_META[concl.riskLevel]?.label ?? concl.riskLevel}
-            </Badge>
+            <Group gap="xs">
+              <Badge color={RISK_META[concl.riskLevel]?.color ?? 'gray'} variant="light" size="lg">
+                Уровень: {RISK_META[concl.riskLevel]?.label ?? concl.riskLevel}
+              </Badge>
+              {concl.verdict && (
+                <Badge color={VERDICT_META[concl.verdict].color} variant="light" size="lg">
+                  Заключение: {VERDICT_META[concl.verdict].label}
+                </Badge>
+              )}
+            </Group>
             {concl.summary && (
               <div>
                 <Text size="xs" fw={600} c="dimmed">Итог / вердикт</Text>

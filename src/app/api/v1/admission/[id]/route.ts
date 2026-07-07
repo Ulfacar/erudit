@@ -97,20 +97,25 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       // PRE-тест: intake-кейс психолога со стартовой картиной (PRE/POST история).
       try {
         const psychNote = (data.psychNote as string) || lead.psychNote;
-        const psychologist = await prisma.user.findFirst({ where: { role: 'psychologist', isActive: true }, select: { id: true } });
-        if (psychNote && psychologist) {
-          const intake = await prisma.psyCase.create({
-            data: {
-              studentId: student.id, ownerId: psychologist.id,
-              title: 'Первичная диагностика (поступление)', reason: 'PRE-тест при поступлении',
-              isIntake: true, status: 'in_progress',
-            },
-            select: { id: true },
-          });
-          await prisma.psySession.create({
-            data: { caseId: intake.id, authorId: psychologist.id, type: 'primary_diagnosis', dapData: psychNote, isHumanVerified: true, verifiedAt: new Date() },
-          });
-          data.psychCaseId = intake.id;
+        if (lead.psychCaseId) {
+          await prisma.psyCase.update({ where: { id: lead.psychCaseId }, data: { studentId: student.id } });
+          data.psychCaseId = lead.psychCaseId;
+        } else if (psychNote) {
+          const psychologist = await prisma.user.findFirst({ where: { role: 'psychologist', isActive: true }, select: { id: true } });
+          if (psychologist) {
+            const intake = await prisma.psyCase.create({
+              data: {
+                studentId: student.id, ownerId: psychologist.id,
+                title: 'Первичная диагностика (поступление)', reason: 'PRE-тест при поступлении',
+                isIntake: true, status: 'in_progress',
+              },
+              select: { id: true },
+            });
+            await prisma.psySession.create({
+              data: { caseId: intake.id, authorId: psychologist.id, type: 'primary_diagnosis', dapData: psychNote, isHumanVerified: true, verifiedAt: new Date() },
+            });
+            data.psychCaseId = intake.id;
+          }
         }
       } catch (err) {
         console.error('[admission] intake PsyCase failed:', err);

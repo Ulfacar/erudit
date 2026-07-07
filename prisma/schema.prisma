@@ -1034,6 +1034,7 @@ model PsyCase {
   courseRound       Int           @default(1) // номер раунда из ~6 сессий
   outcome           PsyOutcome    @default(in_progress)
   isIntake          Boolean       @default(false) // PRE-тест при поступлении (из приёмки)
+  intakeVerdict     String?       // заключение экспресс-теста поступающего: recommended | not_recommended | redirected
   openedAt          DateTime      @default(now())
   closedAt          DateTime?
   createdAt         DateTime      @default(now())

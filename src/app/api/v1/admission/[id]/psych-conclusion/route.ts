@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
     const psyCase = await prisma.psyCase.findUnique({
       where: { id: lead.psychCaseId },
       select: {
-        isIntake: true, riskLevel: true, status: true, summary: true,
+        isIntake: true, riskLevel: true, status: true, summary: true, intakeVerdict: true,
         sessions: {
           where: { type: 'primary_diagnosis' },
           orderBy: { date: 'asc' },
@@ -44,6 +44,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
       riskLevel: psyCase.riskLevel,
       status: psyCase.status,
       summary: psyCase.summary ?? '',
+      verdict: psyCase.intakeVerdict ?? null,
       assessment,
       observation,
       hasConclusion,

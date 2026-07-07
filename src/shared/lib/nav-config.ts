@@ -138,6 +138,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   grp('/g/psy', 'Психология и здоровье', [
     { href: '/psychologist', label: 'Кабинет психолога', roles: PSY_STAFF },
     { href: '/psychologist/screening', label: 'Скрининг', roles: ['psychologist', 'senior_psychologist', 'psy_coordinator', 'super_admin'] },
+    { href: '/psychologist/intake', label: 'Приём', roles: ['psychologist', 'senior_psychologist', 'specialist', 'super_admin'] },
     { href: '/psychologist/calendar', label: 'Календарь психолога', roles: PSY_STAFF },
     { href: '/psychologist/methods', label: 'Конструктор методик', roles: ['senior_psychologist', 'super_admin'] },
     { href: '/psychologist/overview', label: 'Психология: сводка', roles: ['super_admin', 'analyst', 'zavuch', 'senior_psychologist', 'safeguarding_lead'] },
