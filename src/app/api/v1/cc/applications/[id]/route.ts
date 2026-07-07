@@ -51,27 +51,31 @@ async function syncApplicationOutcome(
   app: {
     admissionStatus: string;
     profileId: string;
+    profile: { studentId: string; alumniAbroad: boolean };
+  },
+  saved: {
     universityName: string;
     country: string | null;
     program: string | null;
-    profile: { studentId: string };
   },
   nextStatus: string,
   authorId: string,
 ) {
   if (app.admissionStatus === nextStatus) return;
-  if (nextStatus !== 'offer_received' && nextStatus !== 'accepted_final') return;
 
-  if (nextStatus === 'accepted_final') {
+  const shouldBeAlumni = nextStatus === 'accepted_final';
+  if (app.profile.alumniAbroad !== shouldBeAlumni) {
     try {
-      await prisma.ccProfile.update({ where: { id: app.profileId }, data: { alumniAbroad: true } });
+      await prisma.ccProfile.update({ where: { id: app.profileId }, data: { alumniAbroad: shouldBeAlumni } });
     } catch (error) {
       console.error('set CC alumniAbroad failed:', error);
     }
   }
 
+  if (nextStatus !== 'offer_received' && nextStatus !== 'accepted_final') return;
+
   try {
-    const title = `${nextStatus === 'offer_received' ? `Оффер: ${app.universityName}` : `Зачислен: ${app.universityName}`}${app.program ? ` — ${app.program}` : ''}`;
+    const title = `${nextStatus === 'offer_received' ? `Оффер: ${saved.universityName}` : `Зачислен: ${saved.universityName}`}${saved.program ? ` — ${saved.program}` : ''}`;
     const existing = await prisma.achievement.findFirst({
       where: { studentId: app.profile.studentId, title },
       select: { id: true },
@@ -81,7 +85,7 @@ async function syncApplicationOutcome(
         data: {
           studentId: app.profile.studentId,
           title,
-          description: achievementDescription(app),
+          description: achievementDescription(saved),
           category: 'academic',
           level: 'international',
           place: nextStatus === 'offer_received' ? 'оффер' : 'зачислен',
@@ -130,7 +134,7 @@ async function validateTransition(
   return { app, nextStatus };
 }
 
-export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+async function handleUpdate(request: NextRequest, ctx: { params: Promise<{ id: string }> }, logLabel: string) {
   try {
     const auth = await withAuth(request, { roles: [...CC_ROLES] });
     if (auth.response) return auth.response;
@@ -145,35 +149,21 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
     if ('response' in validation) return validation.response;
 
     const updated = await prisma.ccApplication.update({ where: { id }, data });
-    await syncApplicationOutcome(validation.app, validation.nextStatus, auth.session.user.id);
+    await syncApplicationOutcome(validation.app, updated, validation.nextStatus, auth.session.user.id);
     return successResponse(updated);
   } catch (error) {
-    console.error('PUT /api/v1/cc/applications/[id] error:', error);
-    return errorResponse('INTERNAL_ERROR', 'Не удалось обновить заявку', 500);
+    console.error(`${logLabel} /api/v1/cc/applications/[id] error:`, error);
+    const message = logLabel === 'PATCH' ? 'Не удалось обновить статус заявки' : 'Не удалось обновить заявку';
+    return errorResponse('INTERNAL_ERROR', message, 500);
   }
 }
 
-export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  try {
-    const auth = await withAuth(request, { roles: [...CC_ROLES] });
-    if (auth.response) return auth.response;
-    const { id } = await ctx.params;
-    const body = await request.json();
-    const data = pickUpdate(body);
-    if (body.deadlineDate) {
-      const deadlineError = validateDeadline(String(body.deadlineDate));
-      if (deadlineError) return errorResponse('VALIDATION_ERROR', deadlineError);
-    }
-    const validation = await validateTransition(id, data, auth.session.user);
-    if ('response' in validation) return validation.response;
+export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  return handleUpdate(request, ctx, 'PUT');
+}
 
-    const updated = await prisma.ccApplication.update({ where: { id }, data });
-    await syncApplicationOutcome(validation.app, validation.nextStatus, auth.session.user.id);
-    return successResponse(updated);
-  } catch (error) {
-    console.error('PATCH /api/v1/cc/applications/[id] error:', error);
-    return errorResponse('INTERNAL_ERROR', 'Не удалось обновить статус заявки', 500);
-  }
+export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  return handleUpdate(request, ctx, 'PATCH');
 }
 
 export async function DELETE(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {

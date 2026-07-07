@@ -2,12 +2,7 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
-
-function payloadDocumentId(payload: unknown) {
-  if (!payload || typeof payload !== 'object') return null;
-  const value = (payload as { documentId?: unknown }).documentId;
-  return typeof value === 'string' ? value : null;
-}
+import { closeRecommendationTask } from '@/modules/cc/recommendation';
 
 export async function POST(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -36,23 +31,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
       data: { fileUrl, status: 'received', receivedAt: new Date() },
     });
 
-    const openItems = await prisma.agentItem.findMany({
-      where: {
-        ruleKey: 'cc-recommendation-requested',
-        status: { in: ['new', 'in_progress'] },
-      },
-      select: { id: true, payload: true },
-    });
-    const item = openItems.find((candidate) => payloadDocumentId(candidate.payload) === id);
-    if (item) {
-      await prisma.agentItem.update({
-        where: { id: item.id },
-        data: { status: 'done', resolvedAt: new Date(), resolvedBy: auth.session.user.id },
-      });
-      await prisma.agentActionLog.create({
-        data: { itemId: item.id, action: 'done', byUserId: auth.session.user.id, detail: { documentId: id } },
-      });
-    }
+    await closeRecommendationTask(id, auth.session.user.id);
 
     return successResponse(updated);
   } catch (error) {

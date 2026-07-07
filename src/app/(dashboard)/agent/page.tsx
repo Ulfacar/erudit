@@ -104,6 +104,12 @@ export default function AgentPanelPage() {
       }
       setRecommendationUrls((prev) => ({ ...prev, [item.id]: '' }));
       await load();
+    } catch {
+      notifications.show({
+        color: 'red',
+        title: 'РћС€РёР±РєР°',
+        message: 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЂРµРєРѕРјРµРЅРґР°С†РёСЋ',
+      });
     } finally {
       setBusy(null);
     }
