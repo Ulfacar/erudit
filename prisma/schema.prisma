@@ -998,6 +998,15 @@ enum PsyOutcome {
 }
 
 // Этап 9: субъект кейса психолога — 4 кабинета (ученик/родитель/учитель/группа-класс).
+enum PsyCaseStage {
+  assessment
+  diagnosis
+  ips
+  intervention
+  review
+  closed
+}
+
 enum PsySubject {
   student
   parent
@@ -1018,6 +1027,7 @@ model PsyCase {
   riskLevel         PsyRisk       @default(green)
   riskJustification String?       @db.VarChar(1000) // обязателен при red (валидируется в API)
   status            PsyCaseStatus @default(new)
+  stage             PsyCaseStage  @default(assessment)
   summary           String? // итоговое заключение по курсу (6 сессий)
   courseRound       Int           @default(1) // номер раунда из ~6 сессий
   outcome           PsyOutcome    @default(in_progress)
@@ -1030,6 +1040,8 @@ model PsyCase {
   sessions      PsySession[]
   collaborators PsyCaseCollaborator[]
   tests         PsyTestResult[]
+  ips           PsyIps[]
+  interventions PsyIntervention[]
   measurements  PsyMeasurement[]
   alerts        PsyAlert[]
   referrals     PsyReferral[]
@@ -1066,6 +1078,8 @@ model PsyCaseCollaborator {
 }
 
 model PsySession {
+  interventionId String?
+  intervention   PsyIntervention? @relation(fields: [interventionId], references: [id])
   id              String         @id @default(cuid())
   caseId          String
   case            PsyCase        @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -1086,6 +1100,7 @@ model PsySession {
 
   @@index([caseId])
   @@index([authorId])
+  @@index([interventionId])
 }
 
 model PsyDiagnosticTemplate {
@@ -1158,6 +1173,57 @@ model PsyAlert {
 
   @@index([status])
   @@index([caseId])
+}
+
+model PsyIps {
+  id            String            @id @default(cuid())
+  caseId        String
+  case          PsyCase           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  version       Int               @default(1)
+  parentIpsId   String?
+  status        String            @default("draft")
+  approvedAt    DateTime?
+  approvedBy    String?
+  createdBy     String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  goals         PsyIpsGoal[]
+  interventions PsyIntervention[]
+
+  @@index([caseId])
+}
+
+model PsyIpsGoal {
+  id          String    @id @default(cuid())
+  ipsId       String
+  ips         PsyIps    @relation(fields: [ipsId], references: [id], onDelete: Cascade)
+  specific    String
+  measurable  String?
+  achievable  String?
+  relevant    String?
+  timeBound   String?
+  deadline    String
+  directions  Json?
+  achieved    Boolean   @default(false)
+  achievedAt  DateTime?
+
+  @@index([ipsId])
+}
+
+model PsyIntervention {
+  id              String       @id @default(cuid())
+  caseId          String
+  case            PsyCase      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  ipsId           String
+  ips             PsyIps       @relation(fields: [ipsId], references: [id], onDelete: Cascade)
+  plannedMeetings Int          @default(5)
+  status          String       @default("active")
+  startedAt       DateTime     @default(now())
+  completedAt     DateTime?
+  sessions        PsySession[]
+
+  @@index([caseId])
+  @@index([ipsId])
 }
 
 // ============ STAFF / HR ============
