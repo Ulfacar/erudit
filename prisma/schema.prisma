@@ -1118,6 +1118,8 @@ model PsyDiagnosticTemplate {
   mappingRule      Json? // правило пересчёта относительно прошлой версии (патч аналит. коллапса)
   gradeBand        String? // ступень: "1-4" | "5-9" | "10-11"
   direction        String? // направление: адаптация | тревожность | мотивация | агрессия_депрессия | социометрия | профориентация | стресс
+  isBase           Boolean  @default(false) // поставляемый базовый шаблон — нередактируем, только копия
+  isPublished      Boolean  @default(false) // опубликован старшим психологом на всю службу
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
 
