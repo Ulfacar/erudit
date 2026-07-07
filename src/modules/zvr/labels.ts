@@ -27,3 +27,23 @@ export const ZVR_SUPERVISION_STATUS_LABELS = {
   no_change: 'Без изменений',
   needs_council: 'Требуется повторный консилиум',
 } as const;
+
+export const EVENT_SOCIAL_GOAL_LABELS = {
+  integration: 'Интеграция',
+  adaptation: 'Адаптация',
+  teambuilding: 'Командообразование',
+  friendship: 'Дружба',
+  tradition: 'Традиции',
+  discipline_council: 'Совет дисциплины',
+  civic: 'Гражданская позиция',
+} as const;
+
+export const EVENT_SOCIAL_GOAL_COLORS = {
+  integration: 'green',
+  adaptation: 'teal',
+  teambuilding: 'blue',
+  friendship: 'cyan',
+  tradition: 'grape',
+  discipline_council: 'red',
+  civic: 'indigo',
+} as const;

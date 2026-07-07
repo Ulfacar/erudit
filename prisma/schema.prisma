@@ -1335,6 +1335,16 @@ model OlympiadParticipation {
 
 // ============ SCHOOL EVENTS ============
 
+enum EventSocialGoal {
+  integration
+  adaptation
+  teambuilding
+  friendship
+  tradition
+  discipline_council
+  civic
+}
+
 model SchoolEvent {
   id          String   @id @default(cuid())
   title       String
@@ -1344,6 +1354,8 @@ model SchoolEvent {
   location    String?
   organizerId String?  // user.id
   audience    String[] @default([])
+  socialGoal  EventSocialGoal?
+  targetClassIds String[] @default([])
   report      String?  @db.Text
   completedAt DateTime?
   createdAt   DateTime @default(now())

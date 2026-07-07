@@ -4,6 +4,8 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 
 const WRITE = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'safeguarding_lead', 'event_manager'] as const;
+const EVENT_SOCIAL_GOALS = ['integration', 'adaptation', 'teambuilding', 'friendship', 'tradition', 'discipline_council', 'civic'] as const;
+type EventSocialGoalValue = (typeof EVENT_SOCIAL_GOALS)[number];
 
 export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const auth = await withAuth(request, { roles: [...WRITE] });
@@ -11,7 +13,12 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
 
   const { id } = await ctx.params;
   const body = await request.json().catch(() => ({}));
-  const data: { report?: string | null; completedAt?: Date | null } = {};
+  const data: {
+    report?: string | null;
+    completedAt?: Date | null;
+    socialGoal?: EventSocialGoalValue | null;
+    targetClassIds?: string[];
+  } = {};
 
   if ('report' in body) {
     data.report = body.report === null || body.report === undefined ? null : String(body.report);
@@ -26,6 +33,24 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     } else {
       data.completedAt = null;
     }
+  }
+  if ('socialGoal' in body) {
+    const socialGoal = body.socialGoal ? String(body.socialGoal) : null;
+    if (socialGoal && !EVENT_SOCIAL_GOALS.includes(socialGoal as EventSocialGoalValue)) {
+      return errorResponse('VALIDATION_ERROR', 'Недопустимая социальная цель');
+    }
+    data.socialGoal = socialGoal as EventSocialGoalValue | null;
+  }
+  if ('targetClassIds' in body) {
+    if (!Array.isArray(body.targetClassIds)) {
+      return errorResponse('VALIDATION_ERROR', 'targetClassIds должен быть массивом строк');
+    }
+    const classIds = body.targetClassIds as unknown[];
+    data.targetClassIds = [...new Set(
+      classIds
+        .filter((classId): classId is string => typeof classId === 'string' && classId.trim().length > 0)
+        .map((classId) => classId.trim()),
+    )];
   }
   if (Object.keys(data).length === 0) {
     return errorResponse('VALIDATION_ERROR', 'Нет полей для обновления');

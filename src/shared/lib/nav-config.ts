@@ -148,6 +148,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   grp('/g/zvr', 'Кабинет ЗВР', [
     { href: '/zvr/incidents', label: 'Инциденты и Сессии', roles: ZVR_TIER },
     { href: '/zvr/family', label: 'Работа с семьёй', roles: ZVR_TIER },
+    { href: '/zvr/culture', label: 'Культура и Сплочение', roles: ZVR_TIER },
   ]),
 
   // ── Кадры ──
