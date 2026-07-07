@@ -20,6 +20,7 @@ import {
 import { IconArrowRight, IconMaximize } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { TYPE_COLORS, TYPE_LABELS, type GraphNode, type GraphLinkRaw, type ScenarioStep } from './CoreGraph';
+import type { AppRole } from '@/shared/constants/roles';
 
 // canvas-граф — только на клиенте (ssr:false)
 const CoreGraph = dynamic(() => import('./CoreGraph'), {
@@ -42,6 +43,7 @@ interface GraphData {
   nodes: GraphNode[];
   links: GraphLinkRaw[];
   scenario?: ScenarioStep[];
+  usersByRole?: Partial<Record<AppRole, number>>;
   stats?: Record<string, number>;
 }
 
@@ -227,7 +229,19 @@ export default function CoreGraphPage() {
           <Group gap="xs">
             {data?.stats &&
               Object.entries(data.stats).map(([k, v]) => (
-                <Badge key={k} variant="light" size="lg" radius="sm">
+                <Badge
+                  key={k}
+                  variant="light"
+                  size="lg"
+                  radius="sm"
+                  styles={{
+                    root: {
+                      backgroundColor: 'rgba(255, 169, 77, 0.14)',
+                      border: '1px solid rgba(255, 169, 77, 0.22)',
+                      color: '#f08c00',
+                    },
+                  }}
+                >
                   {k}: {v}
                 </Badge>
               ))}
@@ -256,7 +270,7 @@ export default function CoreGraphPage() {
           radius="lg"
           style={{
             overflow: 'hidden',
-            background: 'radial-gradient(ellipse at 50% 38%, #10213f 0%, #0b1220 55%, #060b14 100%)',
+            background: 'radial-gradient(1200px at 50% 45%, #241611 0%, #1a1114 55%, #120d16 100%)',
           }}
         >
           {error ? (
@@ -275,6 +289,7 @@ export default function CoreGraphPage() {
               nodes={data.nodes}
               links={data.links}
               scenario={data.scenario ?? []}
+              usersByRole={data.usersByRole}
               onNodeClick={setSelected}
             />
           )}

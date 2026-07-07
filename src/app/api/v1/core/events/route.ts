@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
       if (e.type === 'grade.created') {
         path = [
           ...(teacher ? [`t-${teacher.id}`] : []),
+          'hub-pedagogi',
           'd-journal',
           'school',
           ...(classId ? [`c-${classId}`] : []),
@@ -80,29 +81,35 @@ export async function GET(request: NextRequest) {
         ];
         caption = `Оценка ${payload.value ?? ''} — ${sName}${sClass ? `, ${sClass}` : ''}`;
       } else if (e.type === 'attendance.marked') {
-        path = ['d-journal', 'school', ...(classId ? [`c-${classId}`] : []), ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        path = ['hub-pedagogi', 'd-journal', 'school', ...(classId ? [`c-${classId}`] : []), ...(e.studentId ? [`s-${e.studentId}`] : [])];
         caption = `Посещаемость: ${sName}${sClass ? `, ${sClass}` : ''}`;
       } else if (e.type === 'admission.enrolled') {
-        path = ['d-admission', 'school', ...(classId ? [`c-${classId}`] : []), ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        path = ['hub-spec', 'd-admission', 'school', ...(classId ? [`c-${classId}`] : []), ...(e.studentId ? [`s-${e.studentId}`] : [])];
         caption = `🎉 Зачислен новый ученик: ${sName}`;
       } else if (e.type === 'test.completed') {
-        path = ['d-journal', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        path = ['hub-pedagogi', 'd-journal', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
         caption = `Тест пройден — ${sName}`;
       } else if (e.type === 'psych.case.opened') {
-        path = ['d-psych', 'school', ...(classId ? [`c-${classId}`] : []), ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        path = ['hub-psy', 'd-psych', 'school', ...(classId ? [`c-${classId}`] : []), ...(e.studentId ? [`s-${e.studentId}`] : [])];
         caption = `🧠 Психолог открыл кейс — ${sName}${sClass ? `, ${sClass}` : ''}`;
       } else if (e.type === 'safeguard.alert') {
         // слепое событие: без имён (приватность ТЗ) — путь только домен → ядро
         path = ['d-safeguard', 'school'];
         caption = '🔒 Safeguarding: критический сигнал — координатору';
+      } else if (e.type === 'invoice.overdue') {
+        path = ['hub-finansy', 'd-finance', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        caption = `💸 Просрочка оплаты — ${sName}`;
       } else if (e.type === 'callcenter.promise') {
-        path = ['d-callcenter', 'd-finance', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        path = ['d-callcenter', 'hub-finansy', 'd-finance', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
         caption = `🎧 Колл-центр: обещание оплаты — ${sName}`;
       } else if (e.type === 'contract.created') {
-        path = ['d-contracts', 'd-finance', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        path = ['d-contracts', 'hub-finansy', 'd-finance', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
         caption = `📄 Договор оформлен — ${sName}`;
+      } else if (e.type === 'cc.recommendation.requested') {
+        path = ['hub-spec', 'd-admission', 'school', ...(e.studentId ? [`s-${e.studentId}`] : [])];
+        caption = `🗺️ Запрос рекомендации — ${sName}`;
       } else if (e.type === 'hr.candidate.added') {
-        path = ['d-hr', 'school'];
+        path = ['hub-hoz', 'd-hr', 'school'];
         caption = '📋 HR: новый кандидат в резерве';
       }
 

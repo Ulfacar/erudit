@@ -14,7 +14,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 interface GraphNode {
   id: string;
   label: string;
-  type: 'school' | 'domain' | 'class' | 'teacher' | 'student' | 'parent';
+  type: 'school' | 'domain' | 'class' | 'teacher' | 'student' | 'parent' | 'hub' | 'role';
   val: number;
   count?: number;
   meta?: string;
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       studentCount, teacherCount, parentCount, gradeCount, invoiceCount,
       sessionCount, leadCount, mealCount, assetCount, libraryCount, agentItemCount, knowledgeCount,
       psyCaseCount, contractCount, candidateCount, vacancyCount, psyAlertCount, promiseCount,
-      classes, teachers, students,
+      classes, teachers, students, usersByRoleRows,
     ] = await Promise.all([
       prisma.student.count(),
       prisma.teacher.count(),
@@ -76,7 +76,12 @@ export async function GET(request: NextRequest) {
         select: { id: true, firstName: true, lastName: true, classId: true },
         take: 1000,
       }),
+      prisma.user.groupBy({
+        by: ['role'],
+        _count: true,
+      }),
     ]);
+    const usersByRole = Object.fromEntries(usersByRoleRows.map((row) => [row.role, row._count]));
 
     const nodes: GraphNode[] = [];
     const links: GraphLink[] = [];
@@ -200,6 +205,7 @@ export async function GET(request: NextRequest) {
       nodes,
       links,
       scenario,
+      usersByRole,
       stats: { учеников: studentCount, педагогов: teacherCount, классов: classes.length, родителей: parentCount, узлов: nodes.length, связей: links.length },
     });
   } catch (error) {
