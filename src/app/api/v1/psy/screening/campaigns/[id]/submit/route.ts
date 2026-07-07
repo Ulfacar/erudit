@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
       },
     });
 
-    return successResponse({ isRisk }, existing ? 200 : 201);
+    return successResponse({ ok: true }, existing ? 200 : 201);
   } catch (e) {
     console.error('POST psy/screening/campaigns/[id]/submit error:', e);
     return errorResponse('INTERNAL_ERROR', 'Failed to save screening result', 500);

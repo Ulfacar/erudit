@@ -66,6 +66,7 @@ function grp(href: string, label: string, children: NavRoute[]): NavRoute {
 export const SIDEBAR_NAV: NavRoute[] = [
   // ── Личные ленты / вход ──
   { href: '/diary', label: 'Дневник', roles: ['student', 'parent'] },
+  { href: '/screening', label: 'Скрининг', roles: ['student'] },
   { href: '/today', label: 'Сегодня', roles: ['teacher', 'curator', 'super_admin', 'zavuch'] },
   { href: '/home', label: 'Главная', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist', 'teacher', 'curator'] },
   { href: '/agent', label: 'Панель агента', roles: [...ALL_AUTH, ...NEW_STAFF] },
@@ -136,6 +137,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   // ── Психология и здоровье ──
   grp('/g/psy', 'Психология и здоровье', [
     { href: '/psychologist', label: 'Кабинет психолога', roles: PSY_STAFF },
+    { href: '/psychologist/screening', label: 'Скрининг', roles: ['psychologist', 'senior_psychologist', 'psy_coordinator', 'super_admin'] },
     { href: '/psychologist/calendar', label: 'Календарь психолога', roles: PSY_STAFF },
     { href: '/psychologist/methods', label: 'Конструктор методик', roles: ['senior_psychologist', 'super_admin'] },
     { href: '/psychologist/overview', label: 'Психология: сводка', roles: ['super_admin', 'analyst', 'zavuch', 'senior_psychologist', 'safeguarding_lead'] },
