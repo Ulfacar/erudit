@@ -16,3 +16,9 @@ export const ZVR_INCIDENT_STATUS_LABELS = {
   moderated: 'Идёт работа',
   resolved: 'Архив',
 } as const;
+
+export const ZVR_SUPERVISION_STATUS_LABELS = {
+  improved: 'Поведение улучшилось',
+  no_change: 'Без изменений',
+  needs_council: 'Требуется повторный консилиум',
+} as const;

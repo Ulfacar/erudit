@@ -11,6 +11,7 @@ import {
   Loader,
   Paper,
   ScrollArea,
+  Select,
   Stack,
   Text,
   ThemeIcon,
@@ -24,10 +25,12 @@ import {
   ZVR_BEHAVIOR_LEVEL_LABELS,
   ZVR_INCIDENT_ROLE_LABELS,
   ZVR_INCIDENT_STATUS_LABELS,
+  ZVR_SUPERVISION_STATUS_LABELS,
 } from '@/modules/zvr/labels';
 
 const ZVR_ROLES = ['safeguarding_lead', 'zavuch', 'super_admin'] as const satisfies readonly Role[];
 const STATUSES = ['pending', 'moderated', 'resolved'] as const;
+const SUPERVISION_STATUSES = ['improved', 'no_change', 'needs_council'] as const;
 const INCIDENT_TYPE_LABELS: Record<string, string> = {
   aggression: 'Агрессия',
   rudeness: 'Грубость',
@@ -50,6 +53,7 @@ const ROLE_COLORS: Record<IncidentRole, string> = {
 type IncidentStatus = (typeof STATUSES)[number];
 type IncidentRole = keyof typeof ZVR_INCIDENT_ROLE_LABELS;
 type BehaviorLevel = keyof typeof ZVR_BEHAVIOR_LEVEL_LABELS;
+type SupervisionStatus = (typeof SUPERVISION_STATUSES)[number];
 
 type StudentBrief = {
   id: string;
@@ -75,6 +79,15 @@ type ZvrIncident = {
   createdAt: string;
   student: StudentBrief;
   participants: IncidentParticipant[];
+};
+
+type SupervisionCase = {
+  id: string;
+  studentId: string;
+  behaviorIncidentId: string | null;
+  sessionsPlanned: number;
+  sessionsDone: number;
+  status: SupervisionStatus;
 };
 
 function fio(student: StudentBrief) {
@@ -135,22 +148,55 @@ function ParticipantRow({
   student,
   label,
   color,
+  supervisionCase,
+  onStatusChange,
+  updating,
 }: {
   student: StudentBrief;
   label: string;
   color: string;
+  supervisionCase?: SupervisionCase;
+  onStatusChange: (caseId: string, status: SupervisionStatus) => void;
+  updating: boolean;
 }) {
   return (
     <Paper withBorder radius="sm" p="sm">
-      <Group justify="space-between" wrap="nowrap">
-        <div>
-          <Text fw={600} size="sm">{fio(student)}</Text>
-          <Text size="xs" c="dimmed">{className(student)}</Text>
-        </div>
-        <Badge color={color} variant="light" radius="sm">
-          {label}
-        </Badge>
-      </Group>
+      <Stack gap="xs">
+        <Group justify="space-between" wrap="nowrap" align="flex-start">
+          <div>
+            <Text fw={600} size="sm">{fio(student)}</Text>
+            <Text size="xs" c="dimmed">{className(student)}</Text>
+          </div>
+          <Badge color={color} variant="light" radius="sm">
+            {label}
+          </Badge>
+        </Group>
+        {supervisionCase && (
+          <Stack gap={6}>
+            <Group gap="xs">
+              <Badge color="blue" variant="light" radius="sm">
+                Сессия {supervisionCase.sessionsDone} из {supervisionCase.sessionsPlanned}
+              </Badge>
+              <Badge color="gray" variant="outline" radius="sm">
+                {ZVR_SUPERVISION_STATUS_LABELS[supervisionCase.status]}
+              </Badge>
+            </Group>
+            <Select
+              size="xs"
+              aria-label="Статус сопровождения"
+              value={supervisionCase.status}
+              data={SUPERVISION_STATUSES.map((status) => ({
+                value: status,
+                label: ZVR_SUPERVISION_STATUS_LABELS[status],
+              }))}
+              disabled={updating}
+              onChange={(value) => {
+                if (value) onStatusChange(supervisionCase.id, value as SupervisionStatus);
+              }}
+            />
+          </Stack>
+        )}
+      </Stack>
     </Paper>
   );
 }
@@ -170,6 +216,21 @@ function ZvrIncidentsDesk() {
   });
 
   const selected = incidents.find((incident) => incident.id === selectedId) ?? incidents[0] ?? null;
+
+  const { data: supervisionCases = [], isFetching: supervisionLoading } = useQuery<SupervisionCase[]>({
+    queryKey: ['zvr-supervision', selected?.id],
+    enabled: Boolean(selected?.id),
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/zvr/supervision?incidentId=${selected?.id}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось загрузить карту сопровождения');
+      return json.data;
+    },
+  });
+
+  const supervisionByStudent = useMemo(() => {
+    return new Map(supervisionCases.map((item) => [item.studentId, item]));
+  }, [supervisionCases]);
 
   useEffect(() => {
     if (!selectedId && incidents[0]) setSelectedId(incidents[0].id);
@@ -199,10 +260,31 @@ function ZvrIncidentsDesk() {
     onSuccess: (updated) => {
       setSelectedId(updated.id);
       queryClient.invalidateQueries({ queryKey: ['zvr-incidents'] });
+      queryClient.invalidateQueries({ queryKey: ['zvr-supervision', updated.id] });
       notifications.show({ color: 'green', title: 'Статус обновлён', message: ZVR_INCIDENT_STATUS_LABELS[updated.status] });
     },
     onError: (err) => {
       notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось обновить статус' });
+    },
+  });
+
+  const supervisionMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: SupervisionStatus }) => {
+      const res = await fetch(`/api/v1/zvr/supervision/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось обновить сопровождение');
+      return json.data as SupervisionCase;
+    },
+    onSuccess: () => {
+      if (selected?.id) queryClient.invalidateQueries({ queryKey: ['zvr-supervision', selected.id] });
+      notifications.show({ color: 'green', title: 'Сопровождение обновлено', message: 'Статус сохранён' });
+    },
+    onError: (err) => {
+      notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось обновить сопровождение' });
     },
   });
 
@@ -216,7 +298,7 @@ function ZvrIncidentsDesk() {
             <IconAlertTriangle size={22} />
           </ThemeIcon>
           <div>
-            <Title order={2}>Инциденты и Сессии</Title>
+            <Title order={2}>Инциденты и сессии</Title>
             <Text size="sm" c="dimmed">Доска реагирования ЗВР</Text>
           </div>
         </Group>
@@ -289,18 +371,31 @@ function ZvrIncidentsDesk() {
 
                 <div style={{ minHeight: 0, flex: 1 }}>
                   <Group justify="space-between" mb="xs">
-                    <Text fw={700}>Вовлечённые ученики</Text>
+                    <Group gap="xs">
+                      <Text fw={700}>Вовлечённые ученики</Text>
+                      {supervisionLoading && <Loader size="xs" />}
+                    </Group>
                     <Badge color="gray" variant="light" radius="sm">{participantCount}</Badge>
                   </Group>
                   <ScrollArea h="100%" type="auto" offsetScrollbars>
                     <Stack gap="sm" pr="xs">
-                      <ParticipantRow student={selected.student} label="Главный фигурант" color="gray" />
+                      <ParticipantRow
+                        student={selected.student}
+                        label="Главный фигурант"
+                        color="gray"
+                        supervisionCase={supervisionByStudent.get(selected.student.id)}
+                        updating={supervisionMutation.isPending}
+                        onStatusChange={(caseId, status) => supervisionMutation.mutate({ id: caseId, status })}
+                      />
                       {selected.participants.map((participant) => (
                         <ParticipantRow
                           key={participant.id}
                           student={participant.student}
                           label={ZVR_INCIDENT_ROLE_LABELS[participant.role]}
                           color={ROLE_COLORS[participant.role]}
+                          supervisionCase={supervisionByStudent.get(participant.student.id)}
+                          updating={supervisionMutation.isPending}
+                          onStatusChange={(caseId, status) => supervisionMutation.mutate({ id: caseId, status })}
                         />
                       ))}
                     </Stack>

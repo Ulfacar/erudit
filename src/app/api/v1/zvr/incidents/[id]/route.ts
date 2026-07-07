@@ -4,6 +4,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getBranchScope } from '@/shared/lib/branch-scope';
+import { hasIncompleteSupervisionCycle, monitoringDeadline } from '@/modules/zvr/supervision';
 
 const ZVR_ROLES = ['safeguarding_lead', 'zavuch', 'super_admin'] as const satisfies readonly Role[];
 const INCIDENT_STATUSES = ['pending', 'moderated', 'resolved'] as const;
@@ -15,7 +16,11 @@ async function guardBranch(request: NextRequest, ctx: { params: Promise<{ id: st
   const { id } = await ctx.params;
   const incident = await prisma.behaviorIncident.findUnique({
     where: { id },
-    select: { id: true, student: { select: { branchId: true } } },
+    select: {
+      id: true,
+      level: true,
+      student: { select: { branchId: true } },
+    },
   });
   if (!incident) return { response: errorResponse('NOT_FOUND', 'Инцидент не найден', 404) };
   if (auth.session.user.role !== 'super_admin') {
@@ -38,38 +43,60 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       return errorResponse('BAD_REQUEST', 'Недопустимый статус', 400);
     }
 
-    const updated = await prisma.behaviorIncident.update({
-      where: { id: guard.incident.id },
-      data: {
-        status: body.status,
-        moderatedBy: guard.auth.session.user.id,
-        moderatedAt: new Date(),
-      },
-      include: {
-        student: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            middleName: true,
-            class: { select: { grade: true, letter: true } },
-          },
+    if (body.status === 'resolved' && guard.incident.level === 'high') {
+      const blocked = await hasIncompleteSupervisionCycle(prisma, guard.incident.id);
+      if (blocked) {
+        return errorResponse('CONFLICT', 'Нельзя закрыть: не пройден цикл бесед (мин. по каждому вовлечённому)', 409);
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const next = await tx.behaviorIncident.update({
+        where: { id: guard.incident.id },
+        data: {
+          status: body.status,
+          moderatedBy: guard.auth.session.user.id,
+          moderatedAt: now,
         },
-        participants: {
-          include: {
-            student: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                middleName: true,
-                class: { select: { grade: true, letter: true } },
-              },
+        include: {
+          student: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              middleName: true,
+              class: { select: { grade: true, letter: true } },
             },
           },
-          orderBy: { createdAt: 'asc' },
+          participants: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  middleName: true,
+                  class: { select: { grade: true, letter: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
         },
-      },
+      });
+
+      if (body.status === 'resolved') {
+        await tx.supervisionCase.updateMany({
+          where: {
+            behaviorIncidentId: guard.incident.id,
+            closedAt: null,
+          },
+          data: { monitoringUntil: monitoringDeadline(now) },
+        });
+      }
+
+      return next;
     });
 
     return successResponse(updated);

@@ -5,9 +5,12 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response'
 import { withAuth } from '@/shared/lib/api-auth'
 import { canAccessStudent } from '@/shared/lib/student-access'
 import { getBranchScope } from '@/shared/lib/branch-scope'
+import { hasIncompleteSupervisionCycle, monitoringDeadline } from '@/modules/zvr/supervision'
 
 const VALID_LEVELS = ['low', 'medium', 'high'] as const
 const VALID_PARTICIPANT_ROLES = ['initiator', 'victim', 'accomplice', 'witness'] as const
+const VALID_STATUSES = ['pending', 'moderated', 'resolved'] as const
+const ZVR_ROLES = ['safeguarding_lead', 'zavuch', 'super_admin'] as const satisfies readonly Role[]
 
 type BehaviorLevelValue = (typeof VALID_LEVELS)[number]
 type IncidentRoleValue = (typeof VALID_PARTICIPANT_ROLES)[number]
@@ -159,6 +162,26 @@ export async function POST(
         })
       }
 
+      if (level === 'high') {
+        const now = new Date()
+        const studentIds = [id, ...participants.keys()]
+        const rawReason = typeof body.type === 'string'
+          ? body.type
+          : typeof body.description === 'string'
+            ? body.description
+            : 'Инцидент'
+        const reason = rawReason.trim().slice(0, 300)
+
+        await tx.supervisionCase.createMany({
+          data: studentIds.map((studentId) => ({
+            studentId,
+            behaviorIncidentId: created.id,
+            reason,
+            openedAt: now,
+          })),
+        })
+      }
+
       return tx.behaviorIncident.findUnique({
         where: { id: created.id },
         include: { participants: true },
@@ -178,7 +201,7 @@ export async function PATCH(
 ) {
   try {
     const auth = await withAuth(request, {
-      roles: ['super_admin', 'zavuch'],
+      roles: [...ZVR_ROLES],
     })
     if (auth.response) return auth.response
 
@@ -189,14 +212,15 @@ export async function PATCH(
       return errorResponse('BAD_REQUEST', 'Необходимо указать incidentId и status', 400)
     }
 
-    const validStatuses = ['pending', 'moderated', 'resolved']
-    if (!validStatuses.includes(body.status)) {
+    if (!VALID_STATUSES.includes(body.status)) {
       return errorResponse('BAD_REQUEST', 'Недопустимый статус', 400)
     }
 
     const incident = await prisma.behaviorIncident.findUnique({
       where: { id: body.incidentId },
       select: {
+        id: true,
+        level: true,
         parentNotified: true,
         student: { select: { branchId: true } },
       },
@@ -213,14 +237,36 @@ export async function PATCH(
       }
     }
 
-    const updated = await prisma.behaviorIncident.update({
-      where: { id: body.incidentId },
-      data: {
-        status: body.status,
-        moderatedBy: auth.session.user.id,
-        moderatedAt: new Date(),
-        parentNotified: body.parentNotified ?? incident.parentNotified,
-      },
+    if (body.status === 'resolved' && incident.level === 'high') {
+      const blocked = await hasIncompleteSupervisionCycle(prisma, incident.id)
+      if (blocked) {
+        return errorResponse('CONFLICT', 'Нельзя закрыть: не пройден цикл бесед (мин. по каждому вовлечённому)', 409)
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const now = new Date()
+      const next = await tx.behaviorIncident.update({
+        where: { id: body.incidentId },
+        data: {
+          status: body.status,
+          moderatedBy: auth.session.user.id,
+          moderatedAt: now,
+          parentNotified: body.parentNotified ?? incident.parentNotified,
+        },
+      })
+
+      if (body.status === 'resolved') {
+        await tx.supervisionCase.updateMany({
+          where: {
+            behaviorIncidentId: incident.id,
+            closedAt: null,
+          },
+          data: { monitoringUntil: monitoringDeadline(now) },
+        })
+      }
+
+      return next
     })
 
     return successResponse(updated)
