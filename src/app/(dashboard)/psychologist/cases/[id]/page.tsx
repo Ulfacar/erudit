@@ -24,6 +24,22 @@ const STYPE_LABELS: Record<string, string> = {
   primary_diagnosis: 'Первичная диагностика', planned: 'Плановая встреча', emergency: 'Экстренная интервенция',
   parent_meeting: 'Встреча с родителями', teacher_meeting: 'Встреча с учителями', group: 'Групповая работа',
 };
+const CASE_STAGES = ['assessment', 'diagnosis', 'ips', 'intervention', 'review', 'closed'] as const;
+type CaseStage = (typeof CASE_STAGES)[number];
+const STAGE_LABELS: Record<CaseStage, string> = {
+  assessment: 'Оценка',
+  diagnosis: 'Диагностика',
+  ips: 'ИПС',
+  intervention: 'Интервенция',
+  review: 'Обзор',
+  closed: 'Закрытие',
+};
+const IPS_STATUS_LABELS: Record<string, string> = { draft: 'черновик', approved: 'утверждён', superseded: 'заменён' };
+const INTERVENTION_OUTCOMES = [
+  { value: 'improved', label: 'Явные улучшения' },
+  { value: 'referred', label: 'Направить к специалисту' },
+  { value: 'continue', label: 'Продолжить (нужна новая интервенция)' },
+];
 
 interface Session {
   id: string; type: string; date: string; rawNote: string | null;
@@ -34,8 +50,13 @@ interface PsyCase {
   id: string; studentId: string | null; subjectType?: 'student' | 'parent' | 'teacher' | 'group'; subjectName?: string | null;
   title: string; reason: string | null;
   riskLevel: keyof typeof RISK; status: keyof typeof STATUS; summary: string | null;
-  courseRound?: number; outcome?: string;
+  stage: CaseStage | string; outcome?: string;
   sessions: Session[]; tests: TestResult[];
+}
+interface PsyIps { id: string; version: number; status: string; approvedAt?: string | null }
+interface PsyIntervention {
+  id: string; ipsId: string; plannedMeetings: number; status: string;
+  startedAt?: string; completedAt?: string | null; _count?: { sessions: number };
 }
 
 function CaseDetail() {
@@ -61,13 +82,15 @@ function CaseDetail() {
   const [dapPlan, setDapPlan] = useState('');
   const [qualNote, setQualNote] = useState('');
   const [verify, setVerify] = useState(false);
-  // завершение курса
-  const [courseOpen, setCourseOpen] = useState(false);
+  const [ipsList, setIpsList] = useState<PsyIps[]>([]);
+  const [interventions, setInterventions] = useState<PsyIntervention[]>([]);
+  const [plannedMeetings, setPlannedMeetings] = useState('5');
+  const [interventionDoneOpen, setInterventionDoneOpen] = useState(false);
   const [outcome, setOutcome] = useState('improved');
-  const [courseSummary, setCourseSummary] = useState('');
+  const [interventionSummary, setInterventionSummary] = useState('');
   const [referralTarget, setReferralTarget] = useState('psychiatrist');
   const [referralNote, setReferralNote] = useState('');
-  const [courseSaving, setCourseSaving] = useState(false);
+  const [interventionSaving, setInterventionSaving] = useState(false);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -81,10 +104,19 @@ function CaseDetail() {
   const [hasAudio, setHasAudio] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string | null; mode?: string; signals?: string[] } | null>(null);
+  const activeIntervention = interventions.find((item) => item.status === 'active') ?? null;
+  const latestApprovedIps = ipsList.find((item) => item.status === 'approved') ?? null;
+  const stageIndex = Math.max(0, CASE_STAGES.indexOf((c?.stage ?? 'assessment') as CaseStage));
 
   const load = useCallback(async () => {
     setLoading(true);
-    const j = await fetch(`/api/v1/psy/cases/${id}`).then((r) => r.json()).catch(() => ({}));
+    const [j, ips, interventionItems] = await Promise.all([
+      fetch(`/api/v1/psy/cases/${id}`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/v1/psy/cases/${id}/ips`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/v1/psy/cases/${id}/interventions`).then((r) => r.json()).catch(() => ({})),
+    ]);
+    if (ips.success) setIpsList(ips.data ?? []);
+    if (interventionItems.success) setInterventions(interventionItems.data ?? []);
     if (j.success) {
       setC(j.data);
       // Имя субъекта: для ученика тянем из карточки, для остальных — из subjectName кейса.
@@ -205,13 +237,60 @@ function CaseDetail() {
     load();
   }
 
+  async function patchStage(stage: CaseStage) {
+    const res = await fetch(`/api/v1/psy/cases/${id}/stage`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось сменить этап'); return; }
+    setErr('');
+    load();
+  }
+
+  function moveStage(delta: -1 | 1) {
+    const target = CASE_STAGES[stageIndex + delta];
+    if (target) patchStage(target);
+  }
+
+  async function createIps() {
+    const res = await fetch(`/api/v1/psy/cases/${id}/ips`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось создать ИПС'); return; }
+    setErr('');
+    load();
+  }
+
+  async function approveIps(ipsId: string) {
+    const res = await fetch(`/api/v1/psy/ips/${ipsId}/approve`, { method: 'POST' });
+    const j = await res.json().catch(() => ({}));
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось утвердить ИПС'); return; }
+    setErr('');
+    load();
+  }
+
+  async function startIntervention() {
+    if (!latestApprovedIps) return;
+    const res = await fetch(`/api/v1/psy/cases/${id}/interventions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ipsId: latestApprovedIps.id, plannedMeetings: Number(plannedMeetings) }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось начать интервенцию'); return; }
+    setErr('');
+    load();
+  }
+
   async function addSession() {
     setErr('');
     if (verify && !dapData.trim() && !dapAssessment.trim() && !dapPlan.trim()) { setErr('Нельзя завершить сессию без заполненного DAP'); return; }
     setSaving(true);
     const res = await fetch('/api/v1/psy/sessions', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caseId: id, type, rawNote, dapData, dapAssessment, dapPlan, qualNote }),
+      body: JSON.stringify({ caseId: id, type, rawNote, dapData, dapAssessment, dapPlan, qualNote, ...(activeIntervention ? { interventionId: activeIntervention.id } : {}) }),
     });
     const j = await res.json();
     if (j.success && verify) {
@@ -224,14 +303,18 @@ function CaseDetail() {
     load();
   }
 
-  async function completeCourse() {
-    setCourseSaving(true);
-    const res = await fetch(`/api/v1/psy/cases/${id}/course`, {
+  async function completeIntervention() {
+    if (!activeIntervention) return;
+    setInterventionSaving(true);
+    const res = await fetch(`/api/v1/psy/interventions/${activeIntervention.id}/complete`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ outcome, courseSummary, referralTarget, referralNote }),
+      body: JSON.stringify({ outcome, summary: interventionSummary, referralTarget, referralNote }),
     });
-    setCourseSaving(false);
-    if ((await res.json()).success) { setCourseOpen(false); load(); }
+    const j = await res.json().catch(() => ({}));
+    setInterventionSaving(false);
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось завершить интервенцию'); return; }
+    setInterventionDoneOpen(false); setInterventionSummary(''); setReferralNote(''); setOutcome('improved'); setErr('');
+    load();
   }
 
   async function verifySession(sid: string) {
@@ -263,6 +346,23 @@ function CaseDetail() {
         </Group>
       </Group>
 
+      <Paper withBorder p="md" radius="md">
+        <Group justify="space-between" align="center" wrap="wrap">
+          <Group gap="xs" wrap="wrap">
+            {CASE_STAGES.map((stage, index) => (
+              <Badge key={stage} color={index === stageIndex ? 'grape' : index < stageIndex ? 'green' : 'gray'} variant={index === stageIndex ? 'filled' : 'light'}>
+                {index + 1}. {STAGE_LABELS[stage]}
+              </Badge>
+            ))}
+          </Group>
+          <Group gap="xs">
+            <Button variant="light" disabled={stageIndex <= 0} onClick={() => moveStage(-1)}>← Назад</Button>
+            <Button disabled={stageIndex >= CASE_STAGES.length - 1} onClick={() => moveStage(1)}>→ Следующий этап</Button>
+          </Group>
+        </Group>
+        {err && <Text c="red" size="sm" mt="xs">{err}</Text>}
+      </Paper>
+
       {isCoordinator && (
         <Paper withBorder p="md" radius="md" bg="grape.0">
           <Group justify="space-between" align="flex-end" wrap="wrap">
@@ -287,10 +387,55 @@ function CaseDetail() {
         </Paper>
       )}
 
+      <Paper withBorder p="md" radius="md">
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Title order={4}>Сопровождение</Title>
+            <Button variant="light" leftSection={<IconPlus size={16} />} onClick={createIps}>Создать ИПС</Button>
+          </Group>
+          <Stack gap="xs">
+            <Text size="sm" fw={600}>ИПС</Text>
+            {ipsList.length === 0 ? <Text size="sm" c="dimmed">ИПС пока нет.</Text> : (
+              <Stack gap={6}>
+                {ipsList.map((ips) => (
+                  <Group key={ips.id} justify="space-between" gap="xs" wrap="wrap">
+                    <Group gap="xs">
+                      <Text size="sm" fw={500}>v{ips.version}</Text>
+                      <Badge variant="light" color={ips.status === 'approved' ? 'green' : ips.status === 'draft' ? 'yellow' : 'gray'}>{IPS_STATUS_LABELS[ips.status] ?? ips.status}</Badge>
+                    </Group>
+                    {ips.status === 'draft' && <Button size="xs" variant="light" onClick={() => approveIps(ips.id)}>Утвердить</Button>}
+                  </Group>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+          <Divider />
+          <Stack gap="xs">
+            <Text size="sm" fw={600}>Интервенция</Text>
+            {activeIntervention ? (
+              <Group justify="space-between" align="center" wrap="wrap">
+                <div>
+                  <Text size="sm">План: {activeIntervention.plannedMeetings} встреч</Text>
+                  <Text size="sm" c="dimmed">Проведено сессий: {activeIntervention._count?.sessions ?? 0}</Text>
+                </div>
+                <Button color="teal" variant="light" onClick={() => setInterventionDoneOpen(true)}>Завершить интервенцию</Button>
+              </Group>
+            ) : latestApprovedIps ? (
+              <Group align="flex-end" gap="xs" wrap="wrap">
+                <Select label="План встреч" w={140} value={plannedMeetings} onChange={(v) => setPlannedMeetings(v ?? '5')}
+                  data={[{ value: '3', label: '3' }, { value: '5', label: '5' }, { value: '7', label: '7' }]} />
+                <Button onClick={startIntervention}>Начать</Button>
+              </Group>
+            ) : (
+              <Text size="sm" c="dimmed">Для начала интервенции нужен утверждённый ИПС.</Text>
+            )}
+          </Stack>
+        </Stack>
+      </Paper>
+
       <Group justify="space-between">
-        <Title order={4}>Сессии ({c.sessions.length}) · раунд {c.courseRound ?? 1}</Title>
+        <Title order={4}>Сессии ({c.sessions.length})</Title>
         <Group gap="xs">
-          {c.status !== 'closed' && <Button variant="light" color="teal" onClick={() => setCourseOpen(true)}>Завершить курс</Button>}
           <Button leftSection={<IconPlus size={16} />} onClick={openComposer}>Новая сессия</Button>
         </Group>
       </Group>
@@ -328,7 +473,7 @@ function CaseDetail() {
 
       <Divider my="sm" />
       <Paper withBorder p="md" radius="md">
-        <Title order={5} mb="xs">Итоговое заключение по курсу</Title>
+        <Title order={5} mb="xs">Итоговое заключение</Title>
         <Textarea autosize minRows={3} placeholder="Резюме по итогам всех сессий (для завершения кейса)"
           defaultValue={c.summary ?? ''} onBlur={(e) => e.currentTarget.value !== (c.summary ?? '') && patchCase({ summary: e.currentTarget.value })} />
       </Paper>
@@ -392,26 +537,21 @@ function CaseDetail() {
         </Stack>
       </Modal>
 
-      <Modal opened={courseOpen} onClose={() => setCourseOpen(false)} title="Завершить курс (≈6 сессий)" centered>
+      <Modal opened={interventionDoneOpen} onClose={() => setInterventionDoneOpen(false)} title="Завершить интервенцию" centered>
         <Stack gap="md">
-          <Select label="Исход курса" value={outcome} onChange={(v) => setOutcome(v ?? 'improved')}
-            data={[
-              { value: 'improved', label: 'Явные улучшения — закрыть кейс' },
-              { value: 'repeat', label: 'Нет улучшений — новый раунд с другими методиками' },
-              { value: 'referred', label: 'Направить к узкому специалисту' },
-            ]} />
-          <Textarea label="Итоговое заключение по курсу" autosize minRows={3} value={courseSummary} onChange={(e) => setCourseSummary(e.currentTarget.value)} />
+          <Select label="Исход" value={outcome} onChange={(v) => setOutcome(v ?? 'improved')} data={INTERVENTION_OUTCOMES} />
+          <Textarea label="Итоговое заключение" autosize minRows={3} value={interventionSummary} onChange={(e) => setInterventionSummary(e.currentTarget.value)} />
           {outcome === 'referred' && (
             <>
               <Select label="Специалист" value={referralTarget} onChange={(v) => setReferralTarget(v ?? 'psychiatrist')}
                 data={[{ value: 'psychiatrist', label: 'Психиатр' }, { value: 'speech', label: 'Логопед' }, { value: 'medical', label: 'Врач' }, { value: 'other', label: 'Другое' }]} />
-              <Textarea label="Комментарий к направлению" autosize minRows={2} value={referralNote} onChange={(e) => setReferralNote(e.currentTarget.value)} />
+              <Textarea label="Комментарий" autosize minRows={2} value={referralNote} onChange={(e) => setReferralNote(e.currentTarget.value)} />
             </>
           )}
-          <Text size="xs" c="dimmed">«Повтор» и «направление» уведомят старшего психолога.</Text>
+          {err && <Text c="red" size="sm">{err}</Text>}
           <Group justify="flex-end">
-            <Button variant="subtle" color="gray" onClick={() => setCourseOpen(false)}>Отмена</Button>
-            <Button color="teal" onClick={completeCourse} loading={courseSaving}>Завершить</Button>
+            <Button variant="subtle" color="gray" onClick={() => setInterventionDoneOpen(false)}>Отмена</Button>
+            <Button color="teal" onClick={completeIntervention} loading={interventionSaving}>Завершить</Button>
           </Group>
         </Stack>
       </Modal>

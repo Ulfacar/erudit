@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   if (auth.response) return auth.response;
 
   const body = await request.json().catch(() => ({}));
-  const { caseId, type, date, templateId, rawNote, dapData, dapAssessment, dapPlan, qualNote } = body as Record<string, string>;
+  const { caseId, type, date, templateId, rawNote, dapData, dapAssessment, dapPlan, qualNote, interventionId } = body as Record<string, string>;
   if (!caseId) return errorResponse('VALIDATION_ERROR', 'Параметр caseId обязателен');
 
   const scope = getPsyScope(auth.session.user.id, auth.session.user.role);
@@ -43,8 +43,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    let validInterventionId: string | null = null;
+    if (interventionId) {
+      const intervention = await prisma.psyIntervention.findFirst({
+        where: { id: interventionId, caseId, status: 'active' },
+        select: { id: true },
+      });
+      if (!intervention) return errorResponse('VALIDATION_ERROR', 'Некорректная интервенция');
+      validInterventionId = intervention.id;
+    }
+
     const created = await prisma.psySession.create({
       data: {
+        interventionId: validInterventionId,
         caseId,
         authorId: auth.session.user.id,
         type: (SESSION_TYPES.includes(type) ? type : 'planned') as 'planned',
