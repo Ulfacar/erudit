@@ -26,6 +26,17 @@ export async function GET(request: NextRequest) {
       orderBy: [{ riskLevel: 'desc' }, { updatedAt: 'desc' }],
       include: { _count: { select: { sessions: true } } },
     });
+    const caseIds = cases.map((c) => c.id);
+    const deadlineDays = Number(process.env.PSY_DOC_DEADLINE_DAYS) || 2;
+    const cutoff = new Date(Date.now() - deadlineDays * 86400000);
+    const overdue = caseIds.length
+      ? await prisma.psySession.findMany({
+          where: { caseId: { in: caseIds }, isHumanVerified: false, date: { lt: cutoff } },
+          select: { caseId: true },
+          distinct: ['caseId'],
+        })
+      : [];
+    const overdueSet = new Set(overdue.map((o) => o.caseId));
     const studentIds = [...new Set(cases.map((c) => c.studentId).filter((id): id is string => !!id))];
     const students = studentIds.length
       ? await prisma.student.findMany({
@@ -46,6 +57,7 @@ export async function GET(request: NextRequest) {
       const fio = canSeeFio(scope, c.ownerId);
       return {
         ...c,
+        docOverdue: overdueSet.has(c.id),
         subjectName: fio ? c.subjectName : null,
         subjectDisplay: subjectDisplay(scope, c, student),
         className: c.subjectType === 'student' ? (student ? `${student.class.grade}${student.class.letter}` : 'Без класса') : null,
