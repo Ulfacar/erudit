@@ -74,11 +74,6 @@ export function NewPsyCaseModal({
   );
   const foreignActive = active.filter((a) => !a.isMine);
 
-  async function requestCollab(caseId: string) {
-    await fetch(`/api/v1/psy/cases/${caseId}/collaborators`, { method: 'POST' });
-    setErr('Запрос со-терапевтического доступа отправлен владельцу кейса.');
-  }
-
   async function create() {
     setErr('');
     if (!subjectId || !title.trim()) { setErr(`Выберите ${cfg.noun} и укажите название`); return; }
@@ -115,7 +110,6 @@ export function NewPsyCaseModal({
               {foreignActive.map((a) => (
                 <Group key={a.id} justify="space-between">
                   <Text size="sm">У коллеги <b>{a.ownerName}</b> (риск: {RISK[a.riskLevel].label})</Text>
-                  <Button size="xs" variant="light" onClick={() => requestCollab(a.id)}>Запросить со-доступ</Button>
                 </Group>
               ))}
             </Stack>
