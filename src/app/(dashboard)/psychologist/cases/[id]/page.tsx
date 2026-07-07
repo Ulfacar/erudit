@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ActionIcon, Anchor, Badge, Button, Card, Checkbox, Group, Loader, Modal, Paper, Select,
+  ActionIcon, Anchor, Badge, Button, Card, Checkbox, Group, Loader, Modal, Paper, Rating, Select,
   Stack, TagsInput, Text, Textarea, Title, Divider, Tooltip,
 } from '@mantine/core';
 import { IconArrowLeft, IconBrain, IconCheck, IconPlus, IconMicrophone, IconWand, IconShieldLock } from '@tabler/icons-react';
@@ -129,6 +129,9 @@ function CaseDetail() {
   const [hasAudio, setHasAudio] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string | null; mode?: string; signals?: string[] } | null>(null);
+  const [aiRating, setAiRating] = useState(0);
+  const [aiComment, setAiComment] = useState('');
+  const [aiRated, setAiRated] = useState(false);
   const activeIntervention = interventions.find((item) => item.status === 'active') ?? null;
   const latestApprovedIps = ipsList.find((item) => item.status === 'approved') ?? null;
   const stageIndex = Math.max(0, CASE_STAGES.indexOf((c?.stage ?? 'assessment') as CaseStage));
@@ -235,6 +238,7 @@ function CaseDetail() {
     if (d) { setType(d.type || 'planned'); setRawNote(d.rawNote); setDapData(d.dapData); setDapAssessment(d.dapAssessment); setDapPlan(d.dapPlan); }
     const audio = await loadAudio(id); // офлайн-патч: незавершённое аудио пережило перезагрузку/потерю сети
     setHasAudio(!!audio);
+    setAiRating(0); setAiComment(''); setAiRated(false);
     setErr(''); setAiInfo(null); setVerify(false); setOpen(true);
   }
   // автосейв черновика (UC-2 офлайн-патч)
@@ -306,6 +310,7 @@ function CaseDetail() {
     if (!j.success) { setErr(j.error?.message ?? 'Ошибка AI'); return; }
     setDapData(j.data.dap.data); setDapAssessment(j.data.dap.assessment); setDapPlan(j.data.dap.plan);
     setAiInfo({ source: j.data.source, masked: j.data.privacy.maskedEntities, sent: j.data.privacy.sentToCloud, mode: j.data.privacy.mode, signals: j.data.privacy.residualSignals });
+    setAiRating(0); setAiComment(''); setAiRated(false);
     setVerify(false); // anti-hallucination: всегда требуем повторной проверки человеком
   }
 
@@ -665,20 +670,70 @@ function CaseDetail() {
           </div>
 
           {aiInfo && (
-            <Paper withBorder p="xs" radius="sm" bg={aiInfo.mode === 'local-only' ? 'orange.0' : 'gray.0'}>
-              <Group gap="xs" wrap="nowrap" align="flex-start">
-                <IconShieldLock size={14} color={aiInfo.mode === 'local-only' ? '#e8590c' : '#2f9e44'} style={{ marginTop: 2 }} />
-                {aiInfo.mode === 'local-only' ? (
-                  <Text size="xs" c="dimmed">
-                    🔒 <b>Строгий режим приватности:</b> в тексте остался возможный идентификатор{aiInfo.signals?.length ? ` (${aiInfo.signals.join(', ')})` : ''} — данные <b>НЕ отправлены в облако</b>, структурировано локально. Подсказка может быть проще, но данные ребёнка не покинули сервер.
-                  </Text>
-                ) : (
-                  <Text size="xs" c="dimmed">
-                    Источник: <b>{aiInfo.source === 'llm' ? 'Claude (облако)' : 'локальный сплиттер'}</b> · обезличено сущностей: <b>{aiInfo.masked}</b> · в облако ушёл текст с маркерами, не ФИО.
-                  </Text>
-                )}
-              </Group>
-            </Paper>
+            <>
+              <Paper withBorder p="xs" radius="sm" bg={aiInfo.mode === 'local-only' ? 'orange.0' : 'gray.0'}>
+                <Group gap="xs" wrap="nowrap" align="flex-start">
+                  <IconShieldLock size={14} color={aiInfo.mode === 'local-only' ? '#e8590c' : '#2f9e44'} style={{ marginTop: 2 }} />
+                  {aiInfo.mode === 'local-only' ? (
+                    <Text size="xs" c="dimmed">
+                      🔒 <b>Строгий режим приватности:</b> в тексте остался возможный идентификатор{aiInfo.signals?.length ? ` (${aiInfo.signals.join(', ')})` : ''} — данные <b>НЕ отправлены в облако</b>, структурировано локально. Подсказка может быть проще, но данные ребёнка не покинули сервер.
+                    </Text>
+                  ) : (
+                    <Text size="xs" c="dimmed">
+                      Источник: <b>{aiInfo.source === 'llm' ? 'Claude (облако)' : 'локальный сплиттер'}</b> · обезличено сущностей: <b>{aiInfo.masked}</b> · в облако ушёл текст с маркерами, не ФИО.
+                    </Text>
+                  )}
+                </Group>
+              </Paper>
+
+              <Paper withBorder p="xs" radius="sm">
+                <Stack gap="xs">
+                  <Text size="sm" fw={500}>Оцените качество ИИ-черновика (черновик до вашего подтверждения)</Text>
+                  <Rating value={aiRating} onChange={setAiRating} />
+                  <Textarea
+                    label="Комментарий (необязательно)"
+                    autosize
+                    minRows={1}
+                    value={aiComment}
+                    onChange={(e) => setAiComment(e.currentTarget.value)}
+                  />
+                  {aiRated ? (
+                    <Stack gap={2}>
+                      <Text size="sm" c="green">✓ Оценка сохранена</Text>
+                      <Text size="xs" c="dimmed">Спасибо, оценка сохранена</Text>
+                    </Stack>
+                  ) : (
+                    <Group justify="flex-start">
+                      <Button
+                        size="xs"
+                        disabled={aiRating === 0 || aiRated}
+                        onClick={async () => {
+                          const res = await fetch('/api/v1/psy/ai-feedback', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              caseId: id,
+                              rating: aiRating,
+                              source: aiInfo.source === 'llm' ? 'llm' : 'local',
+                              comment: aiComment || undefined,
+                            }),
+                          });
+                          const j = await res.json().catch(() => ({}));
+                          if (!res.ok || j.success === false) {
+                            setErr(j.error?.message ?? 'Не удалось сохранить оценку');
+                            return;
+                          }
+                          setErr('');
+                          setAiRated(true);
+                        }}
+                      >
+                        Оценить черновик
+                      </Button>
+                    </Group>
+                  )}
+                </Stack>
+              </Paper>
+            </>
           )}
 
           <Textarea label="Data — факты, наблюдения" autosize minRows={2} value={dapData} onChange={(e) => setDapData(e.currentTarget.value)} />

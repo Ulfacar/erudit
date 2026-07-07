@@ -1047,6 +1047,7 @@ model PsyCase {
   interventions PsyIntervention[]
   measurements  PsyMeasurement[]
   alerts        PsyAlert[]
+  aiFeedback    PsyAiFeedback[]
   referrals     PsyReferral[]
 
   @@index([studentId])
@@ -1212,6 +1213,20 @@ model PsyAlert {
   createdAt DateTime       @default(now())
 
   @@index([status])
+  @@index([caseId])
+}
+
+model PsyAiFeedback {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      PsyCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sessionId String?
+  rating    Int      // 1..5 — оценка качества ИИ-черновика DAP
+  source    String?  // llm | local — какой контур сгенерил черновик
+  comment   String?
+  createdBy String    // психолог (user.id)
+  createdAt DateTime @default(now())
+
   @@index([caseId])
 }
 
