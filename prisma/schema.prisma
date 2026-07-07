@@ -228,6 +228,7 @@ model Student {
   supervisionCases SupervisionCase[] @relation("SupervisionCases")
   mediationProtocols MediationProtocol[] @relation("MediationProtocols")
   feeInvoices FeeInvoice[]
+  screeningResults PsyScreeningResult[]
 
   medicalData   Json?
   familyData    Json?
@@ -1113,6 +1114,8 @@ model PsyDiagnosticTemplate {
   schema           Json // вопросы / шкалы 1..10 / симптомы / файловые поля
   scaleConfig      Json?
   mappingRule      Json? // правило пересчёта относительно прошлой версии (патч аналит. коллапса)
+  gradeBand        String? // ступень: "1-4" | "5-9" | "10-11"
+  direction        String? // направление: адаптация | тревожность | мотивация | агрессия_депрессия | социометрия | профориентация | стресс
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
 
@@ -1148,6 +1151,41 @@ model PsyMeasurement {
   date            DateTime @default(now())
 
   @@index([caseId, metric])
+}
+
+model PsyScreeningCampaign {
+  id            String               @id @default(cuid())
+  title         String
+  gradeBand     String
+  grade         Int?
+  templateId    String
+  createdBy     String
+  branchId      String?
+  status        String               @default("active")
+  riskThreshold Int?
+  openedAt      DateTime             @default(now())
+  closedAt      DateTime?
+  createdAt     DateTime             @default(now())
+  results       PsyScreeningResult[]
+
+  @@index([status])
+  @@index([gradeBand])
+}
+
+model PsyScreeningResult {
+  id          String               @id @default(cuid())
+  campaignId  String
+  campaign    PsyScreeningCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  rawScores   Json?
+  score       Int?
+  isRisk      Boolean              @default(false)
+  completedAt DateTime             @default(now())
+
+  @@unique([campaignId, studentId])
+  @@index([campaignId, isRisk])
+  @@index([studentId])
 }
 
 // Safeguarding-алерт (UC-5): слепое экстренное уведомление координатору.
