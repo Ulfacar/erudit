@@ -1,4 +1,5 @@
 import { prisma } from '@/shared/lib/prisma'
+import { getBranchScope } from '@/shared/lib/branch-scope'
 import type { Role } from '@prisma/client'
 
 const STAFF_ROLES: ReadonlySet<Role> = new Set([
@@ -32,10 +33,20 @@ export async function canAccessStudent(
   role: string,
   userId: string,
   studentId: string,
+  sessionBranchId?: string | null,
 ): Promise<boolean> {
   try {
-    if (STAFF_ROLES.has(role as Role)) {
-      return true
+    if (STAFF_ROLES.has(role as Role) || role === 'founder') {
+      const scope = await getBranchScope(userId, role as Role, sessionBranchId)
+      if (scope.canSeeAll) return true
+      if (scope.closed || !scope.branchId) return false
+
+      const student = await prisma.student.findUnique({
+        where: { id: studentId },
+        select: { branchId: true },
+      })
+
+      return student?.branchId === scope.branchId
     }
 
     if (role === 'student') {
