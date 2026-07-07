@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import {
   Box,
   Button,
   Checkbox,
+  Collapse,
   Group,
   PasswordInput,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -16,60 +18,61 @@ import {
 import { useForm } from '@mantine/form';
 import {
   IconArrowRight,
+  IconBolt,
   IconLock,
   IconMessageCircle,
   IconSchool,
   IconSparkles,
   IconUser,
 } from '@tabler/icons-react';
+import OrganismHero from './OrganismHero';
+import { CLUSTERS, getRoleLabel } from '@/shared/constants/role-clusters';
 
 const DEMO_PASSWORD = 'erudit2025';
+const WARM_TEXT = '#2b2118';
+const WARM_BORDER = '#eadfce';
+const WARM_ACCENT = '#e8590c';
+const WARM_AMBER = '#f08c00';
 
-const ROLE_TABS = [
-  { id: 'admin', label: 'Школа', login: 'admin', emoji: '🏫', color: '#1c7ed6' },
+type LoginTab = {
+  id: string;
+  label: string;
+  login: string;
+  emoji: string;
+  color: string;
+};
+
+const ROLE_TABS: LoginTab[] = [
+  { id: 'super_admin', label: 'Школа', login: 'admin', emoji: '🏫', color: '#ffd43b' },
   { id: 'secretary', label: 'Ассистент', login: 'secretary1', emoji: '🗂️', color: '#1098ad' },
-  { id: 'teacher', label: 'Учитель', login: 'matematik', emoji: '👩‍🏫', color: '#7048e8' },
-  { id: 'student', label: 'Ученик', login: 'student1', emoji: '🎒', color: '#0ca678' },
+  { id: 'teacher', label: 'Учитель', login: 'matematik', emoji: '👩‍🏫', color: '#ff922b' },
+  { id: 'student', label: 'Ученик', login: 'student1', emoji: '🎒', color: '#51cf66' },
   { id: 'parent', label: 'Родитель', login: 'parent1', emoji: '👨‍👩‍👧', color: '#e8590c' },
 ];
 
-// Сотрудники: у каждого свой кабинет (демо «9 доменов — 1 ядро»)
-const STAFF_TABS = [
-  { id: 'accountant', label: 'Кассир', login: 'accountant1', emoji: '💰', color: '#e8590c' },
-  { id: 'chief_accountant', label: 'Бухгалтер', login: 'chief_accountant1', emoji: '📊', color: '#2b8a3e' },
-  { id: 'finance_manager', label: 'Финменеджер', login: 'finance_manager1', emoji: '📈', color: '#1864ab' },
-  { id: 'psychologist', label: 'Психолог', login: 'psychologist1', emoji: '🧠', color: '#9c36b5' },
-  { id: 'doctor', label: 'Врач', login: 'doctor1', emoji: '🩺', color: '#e03131' },
-  { id: 'hr', label: 'HR (кадры)', login: 'hr1', emoji: '📋', color: '#2f9e44' },
-  { id: 'call_center', label: 'Колл-центр', login: 'callcenter1', emoji: '🎧', color: '#1971c2' },
-  { id: 'senior_psychologist', label: 'Ст. психолог', login: 'senior_psy', emoji: '🧩', color: '#ae3ec9' },
-  { id: 'safeguarding_lead', label: 'Воспит. работа', login: 'safeguard', emoji: '🎭', color: '#e8590c' },
-  { id: 'event_manager', label: 'Ивент-менеджер', login: 'event1', emoji: '🎉', color: '#e64980' },
-  { id: 'librarian', label: 'Библиотека', login: 'librarian1', emoji: '📚', color: '#1971c2' },
-  { id: 'cook', label: 'Столовая', login: 'cook1', emoji: '🍲', color: '#f08c00' },
-  { id: 'zavhoz', label: 'АХЧ', login: 'zavhoz1', emoji: '🔧', color: '#495057' },
-  // Завучи (наследуют доступ zavuch)
-  { id: 'zavuch_primary', label: 'Завуч (мл.)', login: 'zavuch_primary1', emoji: '🧒', color: '#1c7ed6' },
-  { id: 'zavuch_senior', label: 'Завуч (ст.)', login: 'zavuch_senior1', emoji: '🎓', color: '#1c7ed6' },
-  { id: 'zavuch_academic', label: 'Завуч (учеб.)', login: 'zavuch_academic1', emoji: '📚', color: '#3b5bdb' },
-  { id: 'cambridge_coord', label: 'Кэмбридж', login: 'cambridge1', emoji: '🌐', color: '#7048e8' },
-  { id: 'media', label: 'Медиа-центр', login: 'media1', emoji: '🎬', color: '#c2255c' },
-  { id: 'founder', label: 'Учредитель', login: 'founder1', emoji: '🏛️', color: '#5f3dc4' },
-];
-
-const ALL_TABS = [...ROLE_TABS, ...STAFF_TABS];
-
 const FEATURES = [
-  { icon: IconSparkles, title: 'Автоматическая аналитика', desc: 'Тренды успеваемости и группы риска', ml: 0 },
-  { icon: IconMessageCircle, title: 'Прямая связь с родителями', desc: 'Уведомления в Telegram и WhatsApp', ml: 32 },
-  { icon: IconSchool, title: 'Адаптировано для школ КР', desc: '5-балльная шкала, двуязычие, ЕГСУ', ml: 64 },
+  { icon: IconSparkles, title: 'Сигналы без ручной сборки', desc: 'Риски, события и задачи сходятся в одном ядре' },
+  { icon: IconMessageCircle, title: 'Связь вокруг ученика', desc: 'Команды, семья и модули видят общий контекст' },
+  { icon: IconSchool, title: 'Кабинеты по ролям', desc: 'Каждый сотрудник открывает свой рабочий контур' },
 ];
 
-/** Куда направлять после входа: у каждой роли свой «дом». */
+type ClusterRole = (typeof CLUSTERS)[number]['roles'][number];
+
+function hasDemoLogin(role: ClusterRole): role is ClusterRole & { readonly demoLogin: string } {
+  return 'demoLogin' in role && typeof role.demoLogin === 'string';
+}
+
+function buildDemoRoles() {
+  return CLUSTERS.flatMap((cluster) =>
+    cluster.roles
+      .filter(hasDemoLogin)
+      .map((role) => ({ ...role, cluster, label: getRoleLabel(role.role) })),
+  );
+}
+
 function landingForRole(role?: string): string {
   if (role === 'student' || role === 'parent') return '/diary';
   if (role === 'teacher' || role === 'curator') return '/today';
-  // узкие роли сотрудников — сразу в свой кабинет
   const staffHome: Record<string, string> = {
     accountant: '/workspace/accounting',
     psychologist: '/psychologist',
@@ -83,7 +86,6 @@ function landingForRole(role?: string): string {
     zavhoz: '/workspace/maintenance',
   };
   if (role && staffHome[role]) return staffHome[role];
-  // админ/завуч/секретарь/аналитик/специалист — на «Главную»-хаб (Этап 9)
   return '/home';
 }
 
@@ -92,21 +94,28 @@ export default function LoginPage() {
   const { status, data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeRole, setActiveRole] = useState('admin');
+  const [activeRole, setActiveRole] = useState('super_admin');
+  const [staffOpen, setStaffOpen] = useState(false);
+  const demoRoles = useMemo(buildDemoRoles, []);
+  const sessionRole = (session?.user as { role?: string } | undefined)?.role;
+  const loginByRole = useMemo(
+    () => new Map([...ROLE_TABS.map((tab) => [tab.id, tab.login] as const), ...demoRoles.map((role) => [role.role, role.demoLogin!] as const)]),
+    [demoRoles],
+  );
 
   const form = useForm({
-    initialValues: { login: 'admin', password: 'erudit2025' },
+    initialValues: { login: 'admin', password: DEMO_PASSWORD },
     validate: {
       login: (v) => (v.length < 1 ? 'Введите логин' : null),
       password: (v) => (v.length < 1 ? 'Введите пароль' : null),
     },
   });
 
-  if (status === 'authenticated') {
-    const role = (session?.user as { role?: string })?.role;
-    router.push(landingForRole(role));
-    return null;
-  }
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push(landingForRole(sessionRole));
+    }
+  }, [router, sessionRole, status]);
 
   async function doLogin(login: string, password: string) {
     setError(null);
@@ -133,121 +142,211 @@ export default function LoginPage() {
   });
 
   function selectRole(id: string) {
+    const login = loginByRole.get(id);
     setActiveRole(id);
-    const tab = ALL_TABS.find((t) => t.id === id);
-    if (tab) {
-      form.setFieldValue('login', tab.login);
+    if (login) {
+      form.setFieldValue('login', login);
       form.setFieldValue('password', DEMO_PASSWORD);
     }
   }
 
-  if (status === 'loading') return null;
+  if (status === 'loading' || status === 'authenticated') return null;
+
+  const staffGroups = (
+    <Stack gap={12}>
+      {CLUSTERS.map((cluster) => {
+        const roles = cluster.roles.filter(hasDemoLogin);
+        if (roles.length === 0) return null;
+
+        return (
+          <Group key={cluster.id} align="flex-start" gap={14} wrap="nowrap">
+            <Group gap={7} w={104} pt={8} wrap="nowrap">
+              <Box style={{ width: 6, height: 6, borderRadius: '50%', background: cluster.color, flex: '0 0 auto' }} />
+              <Text
+                size="11px"
+                fw={800}
+                tt="uppercase"
+                style={{ color: cluster.color, lineHeight: 1.15, letterSpacing: 0 }}
+              >
+                {cluster.shortLabel}
+              </Text>
+            </Group>
+            <Group gap={6} wrap="wrap" style={{ flex: 1 }}>
+              {roles.map((role) => {
+                const active = activeRole === role.role;
+                const roleLabel = role.role === 'college_counselor' ? 'Колледж' : getRoleLabel(role.role);
+                return (
+                  <Button
+                    key={role.role}
+                    variant="subtle"
+                    size="compact-sm"
+                    onClick={() => selectRole(role.role)}
+                    leftSection={<span style={{ fontSize: 14 }}>{role.emoji}</span>}
+                    style={{
+                      borderRadius: 10,
+                      padding: '7px 11px',
+                      fontWeight: 700,
+                      fontSize: 12.5,
+                      border: active ? `1.5px solid ${role.color}` : `1px solid ${WARM_BORDER}`,
+                      background: active ? `${cluster.color}16` : '#fff',
+                      color: active ? role.color : '#6b5f52',
+                      transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                      transform: active ? 'translateY(-1px)' : 'none',
+                    }}
+                  >
+                    {roleLabel}
+                  </Button>
+                );
+              })}
+            </Group>
+          </Group>
+        );
+      })}
+    </Stack>
+  );
 
   return (
-    <Box style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '1fr 1.1fr', background: '#fff' }}>
-      {/* ═══ LEFT: Form ═══ */}
-      <Box style={{ display: 'flex', flexDirection: 'column', padding: '40px 64px', justifyContent: 'space-between', maxWidth: 560, margin: '0 auto', width: '100%' }}>
-        {/* Brand */}
+    <>
+      <style>{`
+        .login-shell {
+          min-height: 100vh;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          background: #faf6ef;
+        }
+
+        @media (min-width: 62em) {
+          .login-shell {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+          }
+        }
+      `}</style>
+      <Box className="login-shell">
+      <Box
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '40px clamp(24px, 5vw, 64px)',
+          justifyContent: 'space-between',
+          maxWidth: 620,
+          margin: '0 auto',
+          width: '100%',
+          color: WARM_TEXT,
+        }}
+      >
         <Group gap={12}>
-          <div className="brand-mark" style={{ width: 40, height: 40, fontSize: 18, borderRadius: 10 }}>B</div>
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: `linear-gradient(135deg, ${WARM_AMBER}, ${WARM_ACCENT})`,
+              color: '#fff7e6',
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: 18,
+              fontWeight: 800,
+            }}
+          >
+            B
+          </Box>
           <div>
-            <Text fw={700} size="lg" style={{ letterSpacing: '-0.02em' }}>Bilim OS</Text>
-            <Text size="xs" c="dimmed" fw={500}>Школьная ERP-система</Text>
+            <Text fw={800} size="lg" style={{ letterSpacing: 0 }}>
+              Bilim OS
+            </Text>
+            <Text size="xs" fw={600} style={{ color: '#7a6b5d' }}>
+              Школьная ERP-система
+            </Text>
           </div>
         </Group>
 
-        {/* Form area */}
-        <Box>
-          <Text size="sm" c="blue.7" fw={600} style={{ letterSpacing: '0.02em' }} mb={12}>
+        <Box py={34}>
+          <Text size="sm" fw={800} mb={12} style={{ color: WARM_ACCENT, letterSpacing: '0.02em' }}>
             Добро пожаловать
           </Text>
-          <Text fw={700} style={{ fontSize: 36, letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+          <Text fw={800} style={{ fontSize: 36, letterSpacing: 0, lineHeight: 1.15 }}>
             Войдите в свой кабинет
           </Text>
-          <Text size="md" c="dimmed" mt={14} style={{ lineHeight: 1.55, maxWidth: 420 }}>
-            Цифровой кабинет для директоров, учителей, учеников и родителей школы.
+          <Text size="md" mt={14} style={{ lineHeight: 1.55, maxWidth: 440, color: '#6b5f52' }}>
+            Выберите роль, чтобы подставить демо-логин, или введите свои данные вручную.
           </Text>
 
-          {/* Выбор роли: основные — карточки с иконками */}
-          <Group gap={10} mt={32} wrap="wrap" style={{ maxWidth: 480 }}>
-            {ROLE_TABS.map((t) => {
-              const active = activeRole === t.id;
+          <SimpleGrid cols={{ base: 2, xs: 3, sm: 5 }} spacing={10} mt={30} style={{ maxWidth: 520 }}>
+            {ROLE_TABS.map((tab) => {
+              const active = activeRole === tab.id;
               return (
                 <Button
-                  key={t.id}
+                  key={tab.id}
                   variant="subtle"
-                  onClick={() => selectRole(t.id)}
+                  onClick={() => selectRole(tab.id)}
                   h="auto"
                   p={0}
                   style={{
-                    flex: '1 1 100px',
-                    borderRadius: 14,
-                    border: active ? `2px solid ${t.color}` : '1.5px solid #e3e7ee',
-                    background: active ? `${t.color}10` : 'white',
-                    boxShadow: active ? `0 6px 16px ${t.color}26` : '0 1px 2px rgba(15,23,42,0.04)',
-                    transition: 'all 130ms ease',
+                    borderRadius: 16,
+                    border: active ? `2px solid ${tab.color}` : `1.5px solid ${WARM_BORDER}`,
+                    background: active ? `${tab.color}14` : '#fff',
+                    boxShadow: active ? `0 10px 24px ${tab.color}30` : '0 1px 2px rgba(43,33,24,0.04)',
+                    transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                    transform: active ? 'translateY(-2px)' : 'none',
                   }}
                 >
-                  <Stack gap={2} align="center" py={12} px={8} w="100%">
-                    <Text style={{ fontSize: 24, lineHeight: 1 }}>{t.emoji}</Text>
-                    <Text size="sm" fw={700} c={active ? t.color : '#3b4252'}>
-                      {t.label}
+                  <Stack gap={3} align="center" py={13} px={8} w="100%">
+                    <Text style={{ fontSize: 23, lineHeight: 1 }}>{tab.emoji}</Text>
+                    <Text size="sm" fw={800} style={{ color: active ? tab.color : WARM_TEXT }}>
+                      {tab.label}
                     </Text>
                   </Stack>
                 </Button>
               );
             })}
-          </Group>
+          </SimpleGrid>
 
-          {/* Сотрудники: у каждого свой кабинет */}
-          <Text size="xs" fw={600} c="#9aa3b2" mt={16} mb={6} style={{ letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            Кабинеты сотрудников
-          </Text>
-          <Group gap={6} wrap="wrap" style={{ maxWidth: 480 }}>
-            {STAFF_TABS.map((t) => {
-              const active = activeRole === t.id;
-              return (
-                <Button
-                  key={t.id}
-                  variant="subtle"
-                  size="compact-sm"
-                  onClick={() => selectRole(t.id)}
-                  leftSection={<span style={{ fontSize: 15 }}>{t.emoji}</span>}
-                  style={{
-                    borderRadius: 99,
-                    padding: '6px 13px',
-                    fontWeight: 600,
-                    fontSize: 12.5,
-                    border: active ? `1.5px solid ${t.color}` : '1.5px solid #e3e7ee',
-                    background: active ? `${t.color}12` : 'white',
-                    color: active ? t.color : '#5b6472',
-                    transition: 'all 130ms ease',
-                  }}
-                >
-                  {t.label}
-                </Button>
-              );
-            })}
+          <Group justify="space-between" align="center" mt={18} mb={8}>
+            <Text size="xs" fw={800} style={{ color: '#9a7251', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Кабинеты сотрудников
+            </Text>
+            <Button
+              hiddenFrom="md"
+              size="compact-xs"
+              variant="subtle"
+              onClick={() => setStaffOpen((open) => !open)}
+              style={{ color: WARM_ACCENT, fontWeight: 800 }}
+            >
+              Все кабинеты ({demoRoles.length})
+            </Button>
           </Group>
+          <Box visibleFrom="md">{staffGroups}</Box>
+          <Box hiddenFrom="md">
+            <Collapse in={staffOpen}>{staffGroups}</Collapse>
+          </Box>
 
-          {/* Form fields */}
           <form onSubmit={handleSubmit}>
-            <Stack gap={14} mt={24} maw={420}>
+            <Stack gap={14} mt={24} maw={430}>
               <TextInput
                 label="Логин или email"
                 leftSection={<IconUser size={17} />}
                 size="md"
-                styles={{ label: { fontSize: 12.5, fontWeight: 600, color: '#374151', marginBottom: 6 } }}
+                radius={10}
+                styles={{
+                  label: { fontSize: 12.5, fontWeight: 700, color: WARM_TEXT, marginBottom: 6 },
+                  input: { background: '#fff', borderColor: WARM_BORDER, color: WARM_TEXT, '--input-bd-focus': WARM_AMBER },
+                }}
                 {...form.getInputProps('login')}
               />
               <Box>
                 <Group justify="space-between" mb={6}>
-                  <Text size="xs" fw={600} c="#374151">Пароль</Text>
-                  <Text size="xs" fw={600} c="blue.7" style={{ cursor: 'pointer' }}>Забыли пароль?</Text>
+                  <Text size="xs" fw={700} style={{ color: WARM_TEXT }}>
+                    Пароль
+                  </Text>
+                  <Text size="xs" fw={700} style={{ color: WARM_ACCENT, cursor: 'pointer' }}>
+                    Забыли пароль?
+                  </Text>
                 </Group>
                 <PasswordInput
                   leftSection={<IconLock size={17} />}
                   size="md"
+                  radius={10}
+                  styles={{ input: { background: '#fff', borderColor: WARM_BORDER, color: WARM_TEXT, '--input-bd-focus': WARM_AMBER } }}
                   {...form.getInputProps('password')}
                 />
               </Box>
@@ -257,10 +356,15 @@ export default function LoginPage() {
                 defaultChecked
                 size="sm"
                 mt={4}
-                styles={{ label: { fontSize: 13, color: '#374151' } }}
+                color="orange"
+                styles={{ label: { fontSize: 13, color: WARM_TEXT } }}
               />
 
-              {error && <Text size="sm" c="red" ta="center">{error}</Text>}
+              {error && (
+                <Text size="sm" c="red" ta="center">
+                  {error}
+                </Text>
+              )}
 
               <Button
                 type="submit"
@@ -268,103 +372,122 @@ export default function LoginPage() {
                 size="lg"
                 mt={6}
                 loading={loading}
+                radius={12}
                 rightSection={<IconArrowRight size={17} />}
-                style={{ fontWeight: 600 }}
+                variant="gradient"
+                gradient={{ from: WARM_AMBER, to: WARM_ACCENT, deg: 135 }}
+                style={{ fontWeight: 800, boxShadow: '0 12px 26px rgba(232,89,12,0.22)' }}
               >
                 Войти в кабинет
               </Button>
-
             </Stack>
           </form>
         </Box>
 
-        {/* Footer */}
-        <Group justify="space-between" style={{ fontSize: 12, color: '#9ba2ad' }}>
-          <span>© 2026 Bilim OS · Разработано Asystem</span>
-        </Group>
+        <Text size="xs" style={{ color: '#9a8b7b' }}>
+          © 2026 Bilim OS · Разработано Asystem
+        </Text>
       </Box>
 
-      {/* ═══ RIGHT: Visual panel ═══ */}
       <Box
+        visibleFrom="md"
         style={{
-          background: 'linear-gradient(135deg, #1864ab 0%, #1971c2 35%, #228be6 100%)',
+          background: 'radial-gradient(900px at 60% 40%, #2a1a12 0%, #1a1114 55%, #120d16 100%)',
           position: 'relative',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          padding: 48,
-          color: 'white',
+          justifyContent: 'center',
+          padding: '52px clamp(42px, 5vw, 72px)',
+          color: '#f7efe4',
         }}
-        visibleFrom="md"
       >
-        {/* Decorative grid */}
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.18 }} preserveAspectRatio="none">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-        <Box style={{ position: 'absolute', right: -180, top: -160, width: 520, height: 520, background: 'radial-gradient(circle, rgba(255,255,255,0.18), transparent 70%)', borderRadius: '50%' }} />
-        <Box style={{ position: 'absolute', left: -140, bottom: -200, width: 480, height: 480, background: 'radial-gradient(circle, rgba(116,192,252,0.32), transparent 70%)', borderRadius: '50%' }} />
+        <OrganismHero />
+        <Box style={{ position: 'relative', zIndex: 1, maxWidth: 560 }}>
+          <Group
+            gap={8}
+            w="fit-content"
+            style={{
+              background: 'rgba(255,214,165,0.10)',
+              border: '1px solid rgba(255,214,165,0.16)',
+              borderRadius: 999,
+              padding: '6px 12px',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <IconBolt size={14} color="#ffd8a8" />
+            <Text size="xs" fw={800} style={{ color: '#ffd8a8' }}>
+              Живое ядро
+            </Text>
+          </Group>
 
-        <Box style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 560 }}>
-          <Box style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', borderRadius: 999, padding: '4px 12px', width: 'fit-content', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Box style={{ width: 6, height: 6, borderRadius: '50%', background: '#69db7c' }} />
-            Новое в этом году
-          </Box>
-
-          <Text fw={700} style={{ fontSize: 40, letterSpacing: '-0.025em', lineHeight: 1.15, marginTop: 18 }}>
-            Школа, в&nbsp;которой всё&nbsp;на&nbsp;своих местах.
+          <Text fw={800} mt={18} style={{ fontSize: 38, letterSpacing: 0, lineHeight: 1.12, color: '#f7efe4' }}>
+            Школа — единый организм.
           </Text>
-          <Text style={{ fontSize: 16, lineHeight: 1.55, marginTop: 18, color: 'rgba(255,255,255,0.85)', maxWidth: 480 }}>
-            Журналы, расписание, аналитика и связь с родителями — единая платформа для школ Кыргызстана.
+          <Text mt={18} style={{ fontSize: 16, lineHeight: 1.6, color: 'rgba(247,239,228,0.75)', maxWidth: 500 }}>
+            29 ролей, 15 модулей и каждый ученик связаны одним ядром данных.
           </Text>
 
-          {/* Feature cards */}
-          <Stack gap={14} mt={48} maw={420}>
-            {FEATURES.map((f, i) => (
+          <Group gap={26} mt={34}>
+            {[
+              { val: '29', label: 'ролей' },
+              { val: '15', label: 'модулей' },
+              { val: 'live', label: 'события' },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <Text fw={800} style={{ fontSize: 30, color: '#ffd8a8', lineHeight: 1 }}>
+                  {stat.val}
+                </Text>
+                <Text mt={5} style={{ fontSize: 13, color: 'rgba(247,239,228,0.7)' }}>
+                  {stat.label}
+                </Text>
+              </div>
+            ))}
+          </Group>
+
+          <Stack gap={14} mt={40} maw={440}>
+            {FEATURES.map((feature) => (
               <Box
-                key={i}
+                key={feature.title}
                 style={{
-                  background: 'rgba(255,255,255,0.12)',
-                  border: '1px solid rgba(255,255,255,0.18)',
-                  borderRadius: 14,
+                  background: 'rgba(255,214,165,0.08)',
+                  border: '1px solid rgba(255,214,165,0.16)',
+                  borderRadius: 12,
                   padding: 16,
                   backdropFilter: 'blur(12px)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 14,
-                  marginLeft: f.ml,
                 }}
               >
-                <Box style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(255,255,255,0.18)', display: 'grid', placeItems: 'center' }}>
-                  <f.icon size={20} />
+                <Box
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 10,
+                    background: 'rgba(255,169,77,0.15)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: '#ffd8a8',
+                    flex: '0 0 auto',
+                  }}
+                >
+                  <feature.icon size={20} />
                 </Box>
                 <div>
-                  <Text fw={600} style={{ fontSize: 14.5 }}>{f.title}</Text>
-                  <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>{f.desc}</Text>
+                  <Text fw={700} style={{ fontSize: 14.5, color: '#f7efe4' }}>
+                    {feature.title}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: 'rgba(247,239,228,0.72)', marginTop: 2 }}>
+                    {feature.desc}
+                  </Text>
                 </div>
               </Box>
             ))}
           </Stack>
-
-          {/* Stats */}
-          <Group gap={32} mt={48}>
-            {[
-              { val: '140+', label: 'школ в системе' },
-              { val: '87K', label: 'учеников' },
-              { val: '99.9%', label: 'uptime' },
-            ].map((s) => (
-              <div key={s.val}>
-                <Text fw={700} style={{ fontSize: 32, letterSpacing: '-0.02em' }}>{s.val}</Text>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>{s.label}</Text>
-              </div>
-            ))}
-          </Group>
         </Box>
       </Box>
-    </Box>
+      </Box>
+    </>
   );
 }
