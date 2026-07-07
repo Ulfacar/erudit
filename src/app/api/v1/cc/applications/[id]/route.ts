@@ -6,6 +6,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { createCrudId } from '@/shared/lib/crud';
 import { canAccessCcProfileBranch } from '@/modules/cc/server-branch-access';
 import { CC_ROLES } from '@/modules/cc/roles';
+import { validateDeadline } from '@/modules/cc/deadline';
 
 const STATUS_ORDER = ['scouting', 'document_prep', 'submitted', 'decision_pending', 'offer_received', 'rejected', 'accepted_final'] as const;
 const SUBMITTED_OR_LATER = new Set(['submitted', 'decision_pending', 'offer_received', 'rejected', 'accepted_final']);
@@ -40,6 +41,58 @@ function pickUpdate(body: Record<string, unknown>): Prisma.CcApplicationUpdateIn
     data[field] = field === 'deadlineDate' || field === 'decisionDate' ? parseDate(body[field]) : body[field];
   }
   return data;
+}
+
+function achievementDescription(app: { country: string | null; program: string | null }) {
+  return [app.country, app.program].filter(Boolean).join('\n') || null;
+}
+
+async function syncApplicationOutcome(
+  app: {
+    admissionStatus: string;
+    profileId: string;
+    universityName: string;
+    country: string | null;
+    program: string | null;
+    profile: { studentId: string };
+  },
+  nextStatus: string,
+  authorId: string,
+) {
+  if (app.admissionStatus === nextStatus) return;
+  if (nextStatus !== 'offer_received' && nextStatus !== 'accepted_final') return;
+
+  if (nextStatus === 'accepted_final') {
+    try {
+      await prisma.ccProfile.update({ where: { id: app.profileId }, data: { alumniAbroad: true } });
+    } catch (error) {
+      console.error('set CC alumniAbroad failed:', error);
+    }
+  }
+
+  try {
+    const title = `${nextStatus === 'offer_received' ? `Оффер: ${app.universityName}` : `Зачислен: ${app.universityName}`}${app.program ? ` — ${app.program}` : ''}`;
+    const existing = await prisma.achievement.findFirst({
+      where: { studentId: app.profile.studentId, title },
+      select: { id: true },
+    });
+    if (!existing) {
+      await prisma.achievement.create({
+        data: {
+          studentId: app.profile.studentId,
+          title,
+          description: achievementDescription(app),
+          category: 'academic',
+          level: 'international',
+          place: nextStatus === 'offer_received' ? 'оффер' : 'зачислен',
+          date: new Date(),
+          authorId,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('sync CC application outcome failed:', error);
+  }
 }
 
 async function validateTransition(
@@ -84,10 +137,15 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
     const { id } = await ctx.params;
     const body = await request.json();
     const data = pickUpdate(body);
+    if (body.deadlineDate) {
+      const deadlineError = validateDeadline(String(body.deadlineDate));
+      if (deadlineError) return errorResponse('VALIDATION_ERROR', deadlineError);
+    }
     const validation = await validateTransition(id, data, auth.session.user);
     if ('response' in validation) return validation.response;
 
     const updated = await prisma.ccApplication.update({ where: { id }, data });
+    await syncApplicationOutcome(validation.app, validation.nextStatus, auth.session.user.id);
     return successResponse(updated);
   } catch (error) {
     console.error('PUT /api/v1/cc/applications/[id] error:', error);
@@ -102,10 +160,15 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     const { id } = await ctx.params;
     const body = await request.json();
     const data = pickUpdate(body);
+    if (body.deadlineDate) {
+      const deadlineError = validateDeadline(String(body.deadlineDate));
+      if (deadlineError) return errorResponse('VALIDATION_ERROR', deadlineError);
+    }
     const validation = await validateTransition(id, data, auth.session.user);
     if ('response' in validation) return validation.response;
 
     const updated = await prisma.ccApplication.update({ where: { id }, data });
+    await syncApplicationOutcome(validation.app, validation.nextStatus, auth.session.user.id);
     return successResponse(updated);
   } catch (error) {
     console.error('PATCH /api/v1/cc/applications/[id] error:', error);

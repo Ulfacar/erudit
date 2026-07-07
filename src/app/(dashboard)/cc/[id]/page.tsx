@@ -48,6 +48,7 @@ import {
   CC_DOC_TYPE_LABELS,
   CC_EXAM_TYPE_LABELS,
 } from '@/modules/cc/labels';
+import { currentAcademicYearBounds, validateDeadline } from '@/modules/cc/deadline';
 import { CcPipelineKanban, type CcKanbanApplication } from '../CcPipelineKanban';
 
 const CC_ROLES = ['college_counselor', 'super_admin'] as const;
@@ -126,23 +127,6 @@ function deadlineCategory(deadline: CcProfile['deadlines'][number]) {
   return deadline.type === 'exam'
     ? CC_DEADLINE_TYPE_LABELS.exam
     : CC_DEADLINE_TYPE_LABELS.application;
-}
-
-function currentAcademicYearBounds() {
-  const now = new Date();
-  const startYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
-  return {
-    start: new Date(startYear, 7, 1),
-    end: new Date(startYear + 1, 6, 31, 23, 59, 59),
-  };
-}
-
-function validateDeadline(value: string | Date) {
-  const date = new Date(value);
-  const { start, end } = currentAcademicYearBounds();
-  if (date.getTime() < Date.now()) return 'Нельзя ставить прошедший дедлайн';
-  if (date < start || date > end) return 'Дедлайн должен быть в текущем учебном году';
-  return null;
 }
 
 function dateToPayload(value: Date | null) {

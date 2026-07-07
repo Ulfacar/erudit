@@ -6,6 +6,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 import { emitEvent } from '@/shared/lib/agent/engine';
+import { validateDeadline } from '@/modules/cc/deadline';
 import type { Prisma, Role } from '@prisma/client';
 
 const crud = createCrud({
@@ -29,6 +30,10 @@ export async function POST(request: NextRequest) {
     if (auth.response) return auth.response;
     const body = await request.json().catch(() => ({}));
     const profileId = String(body.profileId || '').trim();
+    if (body.requestedDeadline) {
+      const deadlineError = validateDeadline(String(body.requestedDeadline));
+      if (deadlineError) return errorResponse('VALIDATION_ERROR', deadlineError);
+    }
     if (!profileId || !body.docType) return errorResponse('VALIDATION_ERROR', 'profileId и docType обязательны');
 
     const where: Prisma.CcProfileWhereInput = { id: profileId };

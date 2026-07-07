@@ -2134,6 +2134,7 @@ model CcProfile {
   riskFlagCleared    Boolean          @default(false)
   counselorComment   String?          @db.Text
   strategyAssigned   Boolean          @default(false)
+  alumniAbroad       Boolean          @default(false)
   exams              CcExam[]
   applications       CcApplication[]
   documents          CcDocument[]

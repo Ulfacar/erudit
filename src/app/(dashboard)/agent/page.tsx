@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActionIcon, Alert, Badge, Button, Card, Group, Loader, Stack, Switch, Text, Textarea, Title,
+  ActionIcon, Alert, Badge, Button, Card, Group, Loader, Stack, Switch, Text, Textarea, TextInput, Title,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {
   IconRobot, IconAlertTriangle, IconChecklist, IconBulb, IconMail, IconCheck, IconX, IconPlayerPlay,
   IconBrandTelegram, IconSend,
@@ -13,6 +14,7 @@ import { EnablePushButton } from '@/shared/components/pwa/EnablePushButton';
 interface Item {
   id: string; ruleKey: string | null; kind: string; severity: string;
   title: string; body: string; status: string; studentId: string | null; createdAt: string;
+  payload?: { documentId?: string } | null;
 }
 
 const KIND_ICON: Record<string, React.ReactNode> = {
@@ -36,6 +38,7 @@ export default function AgentPanelPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [tg, setTg] = useState<{ configured: boolean; linked: boolean; url: string | null } | null>(null);
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [recommendationUrls, setRecommendationUrls] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/v1/agent/items${showAll ? '?status=all' : ''}`);
@@ -78,6 +81,33 @@ export default function AgentPanelPage() {
       setBusy(null);
     }
   }, [load]);
+
+  const fulfillRecommendation = useCallback(async (item: Item) => {
+    const documentId = item.payload?.documentId;
+    const fileUrl = recommendationUrls[item.id]?.trim();
+    if (!documentId || !fileUrl) return;
+    setBusy(item.id);
+    try {
+      const res = await fetch(`/api/v1/cc/documents/${documentId}/fulfill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileUrl }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        notifications.show({
+          color: 'red',
+          title: 'Ошибка',
+          message: json.error?.message ?? 'Не удалось загрузить рекомендацию',
+        });
+        return;
+      }
+      setRecommendationUrls((prev) => ({ ...prev, [item.id]: '' }));
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  }, [load, recommendationUrls]);
 
   const isClosed = (s: string) => s === 'done' || s === 'dismissed';
 
@@ -163,6 +193,26 @@ export default function AgentPanelPage() {
                       </Button>
                       <Button size="xs" color="green" leftSection={<IconSend size={14} />} loading={busy === it.id} onClick={() => approve(it.id, edits[it.id] ?? it.body)}>
                         Согласовать и отправить
+                      </Button>
+                    </Group>
+                  </Stack>
+                )}
+                {!closed && it.ruleKey === 'cc-recommendation-requested' && it.payload?.documentId && (
+                  <Stack gap="xs" mt="sm">
+                    <TextInput
+                      size="xs"
+                      placeholder="Ссылка на файл"
+                      value={recommendationUrls[it.id] ?? ''}
+                      onChange={(e) => setRecommendationUrls((prev) => ({ ...prev, [it.id]: e.currentTarget.value }))}
+                    />
+                    <Group justify="flex-end">
+                      <Button
+                        size="xs"
+                        loading={busy === it.id}
+                        disabled={!recommendationUrls[it.id]?.trim()}
+                        onClick={() => fulfillRecommendation(it)}
+                      >
+                        Загрузить рекомендацию
                       </Button>
                     </Group>
                   </Stack>

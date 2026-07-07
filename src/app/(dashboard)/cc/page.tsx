@@ -56,6 +56,14 @@ type StudentOption = {
   class?: { grade: number; letter: string };
 };
 
+type CcMeeting = {
+  id: string;
+  meetingDate: string;
+  topic?: string | null;
+  notes?: string | null;
+  actionItems?: string | null;
+};
+
 function dateText(value?: string | null) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('ru-RU').format(new Date(value));
@@ -81,6 +89,7 @@ function CcDesk() {
   const [withoutStrategy, setWithoutStrategy] = useState(false);
   const [opened, setOpened] = useState(false);
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [meetingsProfile, setMeetingsProfile] = useState<CcProfileRow | null>(null);
 
   const params = useMemo(() => {
     const p = new URLSearchParams();
@@ -111,6 +120,17 @@ function CcDesk() {
       return json.data;
     },
     enabled: opened,
+  });
+
+  const { data: meetings = [], isLoading: meetingsLoading } = useQuery<CcMeeting[]>({
+    queryKey: ['cc-meetings', meetingsProfile?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/cc/meetings?profileId=${meetingsProfile?.id}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось загрузить встречи');
+      return json.data;
+    },
+    enabled: Boolean(meetingsProfile?.id),
   });
 
   const createMutation = useMutation({
@@ -230,7 +250,19 @@ function CcDesk() {
                     </Table.Td>
                     <Table.Td>{dateText(profile.lastContact)}</Table.Td>
                     <Table.Td><Text size="sm" lineClamp={2}>{profile.nextStep || '—'}</Text></Table.Td>
-                    <Table.Td><ConflictDot value={profile.conflictStatus} /></Table.Td>
+                    <Table.Td>
+                      <button
+                        type="button"
+                        aria-label="История встреч"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setMeetingsProfile(profile);
+                        }}
+                        style={{ border: 0, background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex' }}
+                      >
+                        <ConflictDot value={profile.conflictStatus} />
+                      </button>
+                    </Table.Td>
                   </Table.Tr>
                 );
               })}
@@ -263,6 +295,25 @@ function CcDesk() {
             </Button>
           </Group>
         </Stack>
+      </Modal>
+
+      <Modal opened={Boolean(meetingsProfile)} onClose={() => setMeetingsProfile(null)} title={meetingsProfile ? `История встреч: ${meetingsProfile.fio}` : 'История встреч'} centered>
+        {meetingsLoading ? (
+          <Group justify="center" py="md"><Loader /></Group>
+        ) : meetings.length === 0 ? (
+          <Text c="dimmed">Встреч пока нет</Text>
+        ) : (
+          <Stack gap="sm">
+            {meetings.map((meeting) => (
+              <Paper key={meeting.id} withBorder radius="sm" p="sm">
+                <Text fw={600}>{dateText(meeting.meetingDate)}</Text>
+                {meeting.topic && <Text size="sm">{meeting.topic}</Text>}
+                {meeting.notes && <Text size="sm" c="dimmed" mt={4}>{meeting.notes}</Text>}
+                {meeting.actionItems && <Text size="sm" mt={4}>{meeting.actionItems}</Text>}
+              </Paper>
+            ))}
+          </Stack>
+        )}
       </Modal>
     </Stack>
   );
