@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ActionIcon, Anchor, Badge, Button, Card, Checkbox, Group, Loader, Modal, Paper, Select,
-  Stack, Text, Textarea, Title, Divider, Tooltip,
+  Stack, TagsInput, Text, Textarea, Title, Divider, Tooltip,
 } from '@mantine/core';
 import { IconArrowLeft, IconBrain, IconCheck, IconPlus, IconMicrophone, IconWand, IconShieldLock } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
@@ -35,6 +35,14 @@ const STAGE_LABELS: Record<CaseStage, string> = {
   closed: 'Закрытие',
 };
 const IPS_STATUS_LABELS: Record<string, string> = { draft: 'черновик', approved: 'утверждён', superseded: 'заменён' };
+const IPS_GOAL_DEADLINE_LABELS = {
+  '2w': '2 недели',
+  '3w': '3 недели',
+  '4w': '4 недели',
+  '3m': '3 месяца',
+  '6m': '6 месяцев',
+} as const;
+type IpsGoalDeadline = keyof typeof IPS_GOAL_DEADLINE_LABELS;
 const INTERVENTION_OUTCOMES = [
   { value: 'improved', label: 'Явные улучшения' },
   { value: 'referred', label: 'Направить к специалисту' },
@@ -55,9 +63,22 @@ interface PsyCase {
   sessions: Session[]; tests: TestResult[];
 }
 interface PsyIps { id: string; version: number; status: string; approvedAt?: string | null }
+interface PsyIpsGoal {
+  id: string; specific: string; measurable?: string | null; achievable?: string | null;
+  relevant?: string | null; timeBound?: string | null; deadline: IpsGoalDeadline | string;
+  directions: string[]; achieved: boolean; achievedAt?: string | null;
+}
+interface IpsGoalForm {
+  specific: string; measurable: string; achievable: string; relevant: string;
+  timeBound: string; deadline: IpsGoalDeadline | null; directions: string[];
+}
 interface PsyIntervention {
   id: string; ipsId: string; plannedMeetings: number; status: string;
   startedAt?: string; completedAt?: string | null; _count?: { sessions: number };
+}
+
+function emptyIpsGoalForm(): IpsGoalForm {
+  return { specific: '', measurable: '', achievable: '', relevant: '', timeBound: '', deadline: null, directions: [] };
 }
 
 function CaseDetail() {
@@ -84,6 +105,9 @@ function CaseDetail() {
   const [qualNote, setQualNote] = useState('');
   const [verify, setVerify] = useState(false);
   const [ipsList, setIpsList] = useState<PsyIps[]>([]);
+  const [ipsGoals, setIpsGoals] = useState<Record<string, PsyIpsGoal[]>>({});
+  const [ipsGoalForms, setIpsGoalForms] = useState<Record<string, IpsGoalForm>>({});
+  const [goalSaving, setGoalSaving] = useState<Record<string, boolean>>({});
   const [interventions, setInterventions] = useState<PsyIntervention[]>([]);
   const [plannedMeetings, setPlannedMeetings] = useState('5');
   const [interventionDoneOpen, setInterventionDoneOpen] = useState(false);
@@ -125,6 +149,64 @@ function CaseDetail() {
     setLoading(false);
   }, [id]);
   useEffect(() => { load(); }, [load]);
+
+  const loadIpsGoals = useCallback(async (ipsId: string) => {
+    const j = await fetch(`/api/v1/psy/ips/${ipsId}/goals`).then((r) => r.json()).catch(() => ({}));
+    if (Array.isArray(j)) {
+      setIpsGoals((prev) => ({ ...prev, [ipsId]: j }));
+      return;
+    }
+    if (j.success) setIpsGoals((prev) => ({ ...prev, [ipsId]: j.data ?? [] }));
+  }, []);
+
+  useEffect(() => {
+    ipsList.forEach((ips) => { loadIpsGoals(ips.id); });
+  }, [ipsList, loadIpsGoals]);
+
+  function updateIpsGoalForm(ipsId: string, patch: Partial<IpsGoalForm>) {
+    setIpsGoalForms((prev) => ({
+      ...prev,
+      [ipsId]: { ...emptyIpsGoalForm(), ...prev[ipsId], ...patch },
+    }));
+  }
+
+  async function addIpsGoal(ipsId: string) {
+    const form = { ...emptyIpsGoalForm(), ...ipsGoalForms[ipsId] };
+    const directions = form.directions.map((item) => item.trim()).filter(Boolean);
+    if (!form.specific.trim()) { setErr('Укажите конкретную цель'); return; }
+    if (!form.deadline) { setErr('Выберите срок цели'); return; }
+    if (directions.length < 1 || directions.length > 3) { setErr('Укажите от 1 до 3 направлений'); return; }
+    setGoalSaving((prev) => ({ ...prev, [ipsId]: true }));
+    const res = await fetch(`/api/v1/psy/ips/${ipsId}/goals`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        specific: form.specific.trim(),
+        measurable: form.measurable.trim(),
+        achievable: form.achievable.trim(),
+        relevant: form.relevant.trim(),
+        timeBound: form.timeBound.trim(),
+        deadline: form.deadline,
+        directions,
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setGoalSaving((prev) => ({ ...prev, [ipsId]: false }));
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось добавить цель'); return; }
+    setErr('');
+    setIpsGoalForms((prev) => ({ ...prev, [ipsId]: emptyIpsGoalForm() }));
+    loadIpsGoals(ipsId);
+  }
+
+  async function toggleIpsGoal(goalId: string, ipsId: string, achieved: boolean) {
+    const res = await fetch(`/api/v1/psy/goals/${goalId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ achieved }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!j.success) { setErr(j.error?.message ?? 'Не удалось обновить цель'); return; }
+    setErr('');
+    loadIpsGoals(ipsId);
+  }
 
   const loadCollab = useCallback(async () => {
     if (!isCoordinator) return;
@@ -392,15 +474,95 @@ function CaseDetail() {
             <Text size="sm" fw={600}>ИПС</Text>
             {ipsList.length === 0 ? <Text size="sm" c="dimmed">ИПС пока нет.</Text> : (
               <Stack gap={6}>
-                {ipsList.map((ips) => (
-                  <Group key={ips.id} justify="space-between" gap="xs" wrap="wrap">
-                    <Group gap="xs">
-                      <Text size="sm" fw={500}>v{ips.version}</Text>
-                      <Badge variant="light" color={ips.status === 'approved' ? 'green' : ips.status === 'draft' ? 'yellow' : 'gray'}>{IPS_STATUS_LABELS[ips.status] ?? ips.status}</Badge>
-                    </Group>
-                    {ips.status === 'draft' && <Button size="xs" variant="light" onClick={() => approveIps(ips.id)}>Утвердить</Button>}
-                  </Group>
-                ))}
+                {ipsList.map((ips) => {
+                  const form = { ...emptyIpsGoalForm(), ...ipsGoalForms[ips.id] };
+                  const goals = ipsGoals[ips.id] ?? [];
+                  return (
+                    <Paper key={ips.id} withBorder p="sm" radius="sm">
+                      <Stack gap="sm">
+                        <Group justify="space-between" gap="xs" wrap="wrap">
+                          <Group gap="xs">
+                            <Text size="sm" fw={500}>v{ips.version}</Text>
+                            <Badge variant="light" color={ips.status === 'approved' ? 'green' : ips.status === 'draft' ? 'yellow' : 'gray'}>{IPS_STATUS_LABELS[ips.status] ?? ips.status}</Badge>
+                          </Group>
+                          {ips.status === 'draft' && <Button size="xs" variant="light" onClick={() => approveIps(ips.id)}>Утвердить</Button>}
+                        </Group>
+
+                        <Stack gap="xs">
+                          <Text size="sm" fw={600}>Цели (SMART)</Text>
+                          {goals.length === 0 ? (
+                            <Text size="sm" c="dimmed">Целей пока нет.</Text>
+                          ) : (
+                            <Stack gap="xs">
+                              {goals.map((goal) => (
+                                <Paper key={goal.id} withBorder p="xs" radius="sm" bg="gray.0">
+                                  <Group justify="space-between" align="flex-start" gap="xs" wrap="wrap">
+                                    <Stack gap={4} style={{ flex: 1 }}>
+                                      <Text size="sm" fw={600}>{goal.specific}</Text>
+                                      <Group gap={4} wrap="wrap">
+                                        {goal.directions.map((direction) => <Badge key={direction} variant="light">{direction}</Badge>)}
+                                        <Badge variant="light" color="blue">{IPS_GOAL_DEADLINE_LABELS[goal.deadline as IpsGoalDeadline] ?? goal.deadline}</Badge>
+                                        {c.stage !== 'review' && (
+                                          <Badge color={goal.achieved ? 'green' : 'gray'} variant="light">{goal.achieved ? 'достигнута' : 'в работе'}</Badge>
+                                        )}
+                                      </Group>
+                                    </Stack>
+                                    {c.stage === 'review' && (
+                                      <Checkbox
+                                        label="Достигнута"
+                                        checked={goal.achieved}
+                                        onChange={(e) => toggleIpsGoal(goal.id, ips.id, e.currentTarget.checked)}
+                                      />
+                                    )}
+                                  </Group>
+                                </Paper>
+                              ))}
+                            </Stack>
+                          )}
+                        </Stack>
+
+                        {ips.status === 'draft' && (
+                          <Stack gap="xs">
+                            <Textarea
+                              label="Цель (Specific — конкретно)"
+                              autosize
+                              minRows={2}
+                              value={form.specific}
+                              onChange={(e) => updateIpsGoalForm(ips.id, { specific: e.currentTarget.value })}
+                              required
+                            />
+                            <Group grow align="flex-start">
+                              <Textarea label="Measurable — как измерим" autosize minRows={1} value={form.measurable} onChange={(e) => updateIpsGoalForm(ips.id, { measurable: e.currentTarget.value })} />
+                              <Textarea label="Achievable — реалистичность" autosize minRows={1} value={form.achievable} onChange={(e) => updateIpsGoalForm(ips.id, { achievable: e.currentTarget.value })} />
+                            </Group>
+                            <Group grow align="flex-start">
+                              <Textarea label="Relevant — актуальность" autosize minRows={1} value={form.relevant} onChange={(e) => updateIpsGoalForm(ips.id, { relevant: e.currentTarget.value })} />
+                              <Textarea label="Time-bound — привязка ко времени" autosize minRows={1} value={form.timeBound} onChange={(e) => updateIpsGoalForm(ips.id, { timeBound: e.currentTarget.value })} />
+                            </Group>
+                            <Group grow align="flex-end">
+                              <Select
+                                label="Срок"
+                                value={form.deadline}
+                                onChange={(v) => updateIpsGoalForm(ips.id, { deadline: v as IpsGoalDeadline | null })}
+                                data={Object.entries(IPS_GOAL_DEADLINE_LABELS).map(([value, label]) => ({ value, label }))}
+                              />
+                              <TagsInput
+                                label="Направления (1–3)"
+                                maxTags={3}
+                                value={form.directions}
+                                onChange={(directions) => updateIpsGoalForm(ips.id, { directions })}
+                                data={form.directions}
+                              />
+                            </Group>
+                            <Group justify="flex-end">
+                              <Button size="xs" onClick={() => addIpsGoal(ips.id)} loading={!!goalSaving[ips.id]}>Добавить цель</Button>
+                            </Group>
+                          </Stack>
+                        )}
+                      </Stack>
+                    </Paper>
+                  );
+                })}
               </Stack>
             )}
           </Stack>
