@@ -11,13 +11,13 @@ import type { Role } from '@prisma/client';
  */
 
 // Роли с полным доступом ко всем кейсам.
-const FULL_ACCESS: Role[] = ['senior_psychologist', 'super_admin'];
+const FULL_ACCESS: Role[] = ['senior_psychologist', 'psy_coordinator', 'super_admin'];
 
 // Роли, которые могут вести кейсы (быть owner/collaborator).
 export const CASE_OWNER_ROLES: Role[] = ['psychologist', 'senior_psychologist', 'specialist'];
 
 // Роли, видящие кабинет психолога целиком.
-export const PSY_CABINET_ROLES: Role[] = ['psychologist', 'senior_psychologist', 'specialist', 'super_admin'];
+export const PSY_CABINET_ROLES: Role[] = ['psychologist', 'senior_psychologist', 'psy_coordinator', 'specialist', 'super_admin'];
 
 export interface PsyScope {
   userId: string;
@@ -27,6 +27,26 @@ export interface PsyScope {
 
 export function getPsyScope(userId: string, role: Role): PsyScope {
   return { userId, role, full: FULL_ACCESS.includes(role) };
+}
+
+export function canSeeFio(scope: PsyScope, ownerId: string): boolean {
+  if (scope.role === 'psy_coordinator' || scope.role === 'super_admin') return true;
+  if (scope.role === 'senior_psychologist') return false;
+  return ownerId === scope.userId;
+}
+
+export function subjectDisplay(
+  scope: PsyScope,
+  c: { id: string; subjectType: string; ownerId: string; subjectName: string | null },
+  student: { firstName: string; lastName: string; middleName: string | null; psyCode: string | null } | null,
+): string {
+  const fio = canSeeFio(scope, c.ownerId);
+  if (c.subjectType === 'student') {
+    if (fio && student) return `${student.lastName} ${student.firstName}`.trim();
+    return student?.psyCode ?? 'код скрыт';
+  }
+  if (fio) return c.subjectName ?? '—';
+  return `К-${c.id.slice(-6).toUpperCase()}`;
 }
 
 /** Prisma where-фильтр для списка кейсов под RLS текущего пользователя. */

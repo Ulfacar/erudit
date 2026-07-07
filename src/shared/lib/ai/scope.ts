@@ -53,6 +53,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   cook: 'Повар (столовая)',
   zavhoz: 'Завхоз (АХЧ)',
   senior_psychologist: 'Старший психолог',
+  psy_coordinator: 'Координатор ПС',
   safeguarding_lead: 'Завуч по воспитательной работе',
   call_center: 'Колл-центр',
   event_manager: 'Ивент-менеджер',
@@ -106,6 +107,16 @@ export async function resolveScope(user: SessionUser): Promise<AssistantScope> {
     case 'psychologist':
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: false, canSeePsych: true, allowedSpecialistKinds: ['psych'], canSeeSchoolStats: true };
 
+    case 'psy_coordinator':
+      return {
+        ...base,
+        allowedClassIds: 'all',
+        allowedStudentIds: 'all',
+        canSeeFinance: false,
+        canSeePsych: true,
+        allowedSpecialistKinds: ['psych'],
+        canSeeSchoolStats: true,
+      }
     case 'senior_psychologist':
       // старший психолог: весь психо-домен + школьная статистика (конструктор, дашборд)
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: false, canSeePsych: true, allowedSpecialistKinds: ['psych'], canSeeSchoolStats: true };

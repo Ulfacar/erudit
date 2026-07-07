@@ -48,6 +48,7 @@ interface Session {
 interface TestResult { id: string; aiInterpretation: string | null; isHumanVerified: boolean; rawScores?: { methodology?: string } | null }
 interface PsyCase {
   id: string; studentId: string | null; subjectType?: 'student' | 'parent' | 'teacher' | 'group'; subjectName?: string | null;
+  subjectDisplay?: string;
   title: string; reason: string | null;
   riskLevel: keyof typeof RISK; status: keyof typeof STATUS; summary: string | null;
   stage: CaseStage | string; outcome?: string;
@@ -119,13 +120,7 @@ function CaseDetail() {
     if (interventionItems.success) setInterventions(interventionItems.data ?? []);
     if (j.success) {
       setC(j.data);
-      // Имя субъекта: для ученика тянем из карточки, для остальных — из subjectName кейса.
-      if (j.data.studentId) {
-        const s = await fetch(`/api/v1/students/${j.data.studentId}`).then((r) => r.json()).catch(() => ({}));
-        if (s.success) setStudentName(`${s.data.lastName} ${s.data.firstName}`);
-      } else {
-        setStudentName(j.data.subjectName ?? '');
-      }
+      setStudentName(j.data.subjectDisplay ?? j.data.subjectName ?? '');
     }
     setLoading(false);
   }, [id]);

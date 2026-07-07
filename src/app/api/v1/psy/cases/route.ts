@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
-import { getPsyScope, caseWhereForScope, CASE_OWNER_ROLES, PSY_CABINET_ROLES } from '@/shared/lib/psy-scope';
+import { getPsyScope, caseWhereForScope, canSeeFio, subjectDisplay, CASE_OWNER_ROLES, PSY_CABINET_ROLES } from '@/shared/lib/psy-scope';
 import { emitSafeguardingAlert } from '@/shared/lib/psy-safeguarding';
 import { emitEvent } from '@/shared/lib/agent/engine';
 
@@ -26,7 +26,32 @@ export async function GET(request: NextRequest) {
       orderBy: [{ riskLevel: 'desc' }, { updatedAt: 'desc' }],
       include: { _count: { select: { sessions: true } } },
     });
-    return successResponse(cases);
+    const studentIds = [...new Set(cases.map((c) => c.studentId).filter((id): id is string => !!id))];
+    const students = studentIds.length
+      ? await prisma.student.findMany({
+          where: { id: { in: studentIds } },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            middleName: true,
+            psyCode: true,
+            class: { select: { grade: true, letter: true } },
+          },
+        })
+      : [];
+    const studentById = new Map(students.map((s) => [s.id, s]));
+    const payload = cases.map((c) => {
+      const student = c.studentId ? studentById.get(c.studentId) ?? null : null;
+      const fio = canSeeFio(scope, c.ownerId);
+      return {
+        ...c,
+        subjectName: fio ? c.subjectName : null,
+        subjectDisplay: subjectDisplay(scope, c, student),
+        className: c.subjectType === 'student' ? (student ? `${student.class.grade}${student.class.letter}` : 'Без класса') : null,
+      };
+    });
+    return successResponse(payload);
   } catch (e) {
     console.error('GET psy/cases error:', e);
     return errorResponse('INTERNAL_ERROR', 'Не удалось загрузить кейсы', 500);

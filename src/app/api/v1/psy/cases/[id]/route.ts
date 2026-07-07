@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
-import { getPsyScope, canAccessCase, CASE_OWNER_ROLES, PSY_CABINET_ROLES } from '@/shared/lib/psy-scope';
+import { getPsyScope, canAccessCase, canSeeFio, subjectDisplay, CASE_OWNER_ROLES, PSY_CABINET_ROLES } from '@/shared/lib/psy-scope';
 import { emitSafeguardingAlert } from '@/shared/lib/psy-safeguarding';
 
 /** GET /api/v1/psy/cases/[id] — деталь кейса (с RLS-проверкой). */
@@ -28,7 +28,13 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
       },
     });
     if (!c) return errorResponse('NOT_FOUND', 'Кейс не найден', 404);
-    return successResponse(c);
+    const student = c.studentId
+      ? await prisma.student.findUnique({
+          where: { id: c.studentId },
+          select: { firstName: true, lastName: true, middleName: true, psyCode: true },
+        })
+      : null;
+    return successResponse({ ...c, subjectName: canSeeFio(scope, c.ownerId) ? c.subjectName : null, subjectDisplay: subjectDisplay(scope, c, student) });
   } catch (e) {
     console.error('GET psy/cases/[id] error:', e);
     return errorResponse('INTERNAL_ERROR', 'Ошибка', 500);

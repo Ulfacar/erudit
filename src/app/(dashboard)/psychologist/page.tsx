@@ -30,9 +30,9 @@ const CABINETS: { value: SubjectType; label: string }[] = [
   { value: 'teacher', label: 'Учителя' },
 ];
 
-interface Student { id: string; firstName: string; lastName: string; middleName?: string | null; class?: { grade: number; letter: string } | null }
 interface PsyCase {
   id: string; subjectType: SubjectType; studentId: string | null; subjectId: string | null; subjectName: string | null;
+  subjectDisplay: string; className?: string | null;
   title: string; riskLevel: keyof typeof RISK; status: keyof typeof STATUS; updatedAt: string; isIntake?: boolean; _count?: { sessions: number };
 }
 
@@ -51,29 +51,25 @@ const riskColor = (rank: number) => (rank === 2 ? 'red' : rank === 1 ? 'yellow' 
 function PsychologistCabinet() {
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<PsyCase[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [cabinet, setCabinet] = useState<SubjectType>('student');
   const [open, setOpen] = useState(false);
   const [cardStudentId, setCardStudentId] = useState<string | null>(null);
 
   const studentInfo = useMemo(() => {
     const m: Record<string, { name: string; className: string }> = {};
-    for (const s of students) {
-      m[s.id] = {
-        name: `${s.lastName} ${s.firstName}${s.middleName ? ' ' + s.middleName : ''}`,
-        className: s.class ? `${s.class.grade}${s.class.letter}` : 'Без класса',
+    for (const c of cases) {
+      if (!c.studentId) continue;
+      m[c.studentId] = {
+        name: c.subjectDisplay,
+        className: c.className ?? 'Без класса',
       };
     }
     return m;
-  }, [students]);
+  }, [cases]);
 
   async function load() {
-    const [cRes, sRes] = await Promise.all([
-      fetch('/api/v1/psy/cases').then((r) => r.json()).catch(() => ({ data: [] })),
-      fetch('/api/v1/students').then((r) => r.json()).catch(() => ({ data: [] })),
-    ]);
+    const cRes = await fetch('/api/v1/psy/cases').then((r) => r.json()).catch(() => ({ data: [] }));
     setCases(cRes.data ?? []);
-    setStudents(sRes.data ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
@@ -129,7 +125,7 @@ function PsychologistCabinet() {
     const m = new Map<string, { name: string; list: PsyCase[] }>();
     for (const c of cabinetCases) {
       const key = c.subjectId ?? c.id;
-      if (!m.has(key)) m.set(key, { name: c.subjectName ?? '—', list: [] });
+      if (!m.has(key)) m.set(key, { name: c.subjectDisplay, list: [] });
       m.get(key)!.list.push(c);
     }
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
