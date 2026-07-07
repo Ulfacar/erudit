@@ -1544,6 +1544,7 @@ model PsyAppointment {
   withName       String?  // отображаемое имя/название (денормализация для списка)
   topic          String   // тема встречи
   status         String   @default("scheduled") // scheduled | done | cancelled
+  trainingType   String?  // тип тренинга/встречи: consultation | seminar | online_module
   note           String?
   branchId       String?
   createdAt      DateTime @default(now())

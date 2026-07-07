@@ -9,6 +9,7 @@ import { IconBrain, IconUserPlus, IconAlertTriangle, IconActivity, IconFlame, Ic
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { DrilldownByClass, type DrillGroup } from '@/shared/components/DrilldownByClass';
 import { StudentPsyCard } from './StudentPsyCard';
+import { SubjectPsyCard } from './SubjectPsyCard';
 import { NewPsyCaseModal, type SubjectType } from './NewPsyCaseModal';
 
 const RISK = {
@@ -62,6 +63,7 @@ function PsychologistCabinet() {
   const [cabinet, setCabinet] = useState<SubjectType>('student');
   const [open, setOpen] = useState(false);
   const [cardStudentId, setCardStudentId] = useState<string | null>(null);
+  const [cardSubject, setCardSubject] = useState<{ type: 'parent' | 'teacher'; id: string; name: string } | null>(null);
 
   const studentInfo = useMemo(() => {
     const m: Record<string, { name: string; className: string }> = {};
@@ -143,7 +145,7 @@ function PsychologistCabinet() {
       if (!m.has(key)) m.set(key, { name: c.subjectDisplay, list: [] });
       m.get(key)!.list.push(c);
     }
-    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    return [...m.entries()].map(([id, value]) => ({ id, ...value })).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   }, [cabinetCases]);
 
   return (
@@ -219,9 +221,18 @@ function PsychologistCabinet() {
         ) : (
           <Stack gap="md">
             {subjectGroups.map((g) => (
-              <div key={g.name}>
+              <div key={g.id}>
                 <Group gap="xs" mb={6}>
                   <Text fw={600}>{g.name}</Text>
+                  {(cabinet === 'parent' || cabinet === 'teacher') && (
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      onClick={() => setCardSubject({ type: cabinet, id: g.id, name: g.name })}
+                    >
+                      Карточка
+                    </Button>
+                  )}
                   <Badge variant="light" color={riskColor(worstRank(g.list.filter((c) => c.status !== 'closed')))}>
                     открытых {g.list.filter((c) => c.status !== 'closed').length}
                   </Badge>
@@ -249,6 +260,12 @@ function PsychologistCabinet() {
 
       {/* Анкета выбранного ученика */}
       <StudentPsyCard studentId={cardStudentId} onClose={() => setCardStudentId(null)} onChanged={load} />
+      <SubjectPsyCard
+        subjectType={cardSubject?.type ?? null}
+        subjectId={cardSubject?.id ?? null}
+        subjectName={cardSubject?.name ?? ''}
+        onClose={() => setCardSubject(null)}
+      />
 
       <NewPsyCaseModal
         opened={open}
