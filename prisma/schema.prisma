@@ -223,6 +223,7 @@ model Student {
   attendance  Attendance[]
   parentLinks ParentStudent[]
   incidents   BehaviorIncident[]
+  incidentParticipations IncidentParticipant[] @relation("IncidentParticipations")
   feeInvoices FeeInvoice[]
 
   medicalData   Json?
@@ -576,13 +577,15 @@ model BehaviorIncident {
   reporterId     String
   type           String
   description    String
+  level          BehaviorLevel  @default(low)
   status         IncidentStatus @default(pending)
   moderatedBy    String?
   moderatedAt    DateTime?
   parentNotified Boolean        @default(false)
   createdAt      DateTime       @default(now())
 
-  student Student @relation(fields: [studentId], references: [id])
+  student      Student               @relation(fields: [studentId], references: [id])
+  participants IncidentParticipant[]
 
   @@index([studentId, createdAt])
 }
@@ -591,6 +594,32 @@ enum IncidentStatus {
   pending
   moderated
   resolved
+}
+
+enum IncidentRole {
+  initiator
+  victim
+  accomplice
+  witness
+}
+
+enum BehaviorLevel {
+  low
+  medium
+  high
+}
+
+model IncidentParticipant {
+  id                 String           @id @default(cuid())
+  behaviorIncidentId String
+  incident           BehaviorIncident @relation(fields: [behaviorIncidentId], references: [id], onDelete: Cascade)
+  studentId          String
+  student            Student          @relation("IncidentParticipations", fields: [studentId], references: [id], onDelete: Cascade)
+  role               IncidentRole
+  createdAt          DateTime         @default(now())
+
+  @@unique([behaviorIncidentId, studentId])
+  @@index([studentId])
 }
 
 // ============ NEWS ============

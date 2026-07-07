@@ -50,6 +50,7 @@ const NEW_STAFF: Role[] = ['accountant', 'chief_accountant', 'finance_manager', 
 // Психологическая служба (eSPSMS): кто ведёт кейсы
 const PSY_STAFF: Role[] = ['psychologist', 'senior_psychologist', 'specialist', 'super_admin']
 const CC_TIER: Role[] = ['college_counselor', 'super_admin']
+const ZVR_TIER: Role[] = ['safeguarding_lead', 'zavuch', 'super_admin']
 
 /** Раздел-обёртка: роли = объединение ролей детей (иначе раздел скрылся бы целиком). */
 function grp(href: string, label: string, children: NavRoute[]): NavRoute {
@@ -142,6 +143,10 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/workspace/psychologist', label: 'Психолог (приёмы)', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator', 'psychologist'] },
     { href: '/workspace/speech', label: 'Логопед', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
     { href: '/workspace/medical', label: 'Медкабинет', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'secretary', 'doctor'] },
+  ]),
+
+  grp('/g/zvr', 'Кабинет ЗВР', [
+    { href: '/zvr/incidents', label: 'Инциденты и Сессии', roles: ZVR_TIER },
   ]),
 
   // ── Кадры ──

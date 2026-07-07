@@ -1,7 +1,24 @@
 import { type NextRequest } from 'next/server'
+import type { Role } from '@prisma/client'
 import { prisma } from '@/shared/lib/prisma'
 import { successResponse, errorResponse } from '@/shared/lib/api-response'
 import { withAuth } from '@/shared/lib/api-auth'
+import { canAccessStudent } from '@/shared/lib/student-access'
+import { getBranchScope } from '@/shared/lib/branch-scope'
+
+const VALID_LEVELS = ['low', 'medium', 'high'] as const
+const VALID_PARTICIPANT_ROLES = ['initiator', 'victim', 'accomplice', 'witness'] as const
+
+type BehaviorLevelValue = (typeof VALID_LEVELS)[number]
+type IncidentRoleValue = (typeof VALID_PARTICIPANT_ROLES)[number]
+
+function isBehaviorLevel(value: unknown): value is BehaviorLevelValue {
+  return typeof value === 'string' && VALID_LEVELS.includes(value as BehaviorLevelValue)
+}
+
+function isIncidentRole(value: unknown): value is IncidentRoleValue {
+  return typeof value === 'string' && VALID_PARTICIPANT_ROLES.includes(value as IncidentRoleValue)
+}
 
 export async function GET(
   request: NextRequest,
@@ -55,14 +72,17 @@ export async function POST(
 ) {
   try {
     const auth = await withAuth(request, {
-      roles: ['super_admin', 'zavuch', 'teacher', 'curator'],
+      roles: ['super_admin', 'zavuch', 'teacher', 'curator', 'safeguarding_lead'],
     })
     if (auth.response) return auth.response
 
     const { id } = await params
     const body = await request.json()
 
-    const student = await prisma.student.findUnique({ where: { id } })
+    const student = await prisma.student.findUnique({
+      where: { id },
+      select: { id: true, branchId: true },
+    })
     if (!student) {
       return errorResponse('NOT_FOUND', 'Ученик не найден', 404)
     }
@@ -71,13 +91,78 @@ export async function POST(
       return errorResponse('BAD_REQUEST', 'Необходимо указать тип и описание инцидента', 400)
     }
 
-    const incident = await prisma.behaviorIncident.create({
-      data: {
-        studentId: id,
-        reporterId: auth.session.user.id,
-        type: body.type,
-        description: body.description,
-      },
+    const canAccessMainStudent = await canAccessStudent(auth.session.user.role, auth.session.user.id, id)
+    if (!canAccessMainStudent) {
+      return errorResponse('FORBIDDEN', 'Доступ запрещён', 403)
+    }
+
+    const level = body.level === undefined ? 'low' : body.level
+    if (!isBehaviorLevel(level)) {
+      return errorResponse('BAD_REQUEST', 'Недопустимый уровень инцидента', 400)
+    }
+
+    if (body.participants !== undefined && !Array.isArray(body.participants)) {
+      return errorResponse('BAD_REQUEST', 'participants должен быть массивом', 400)
+    }
+
+    const participantsInput = Array.isArray(body.participants) ? body.participants : []
+    const participants = new Map<string, IncidentRoleValue>()
+    for (const participant of participantsInput) {
+      if (!participant || typeof participant.studentId !== 'string' || !isIncidentRole(participant.role)) {
+        return errorResponse('BAD_REQUEST', 'Неверный формат участника инцидента', 400)
+      }
+      if (participant.studentId === id || participants.has(participant.studentId)) {
+        return errorResponse('BAD_REQUEST', 'Ученик не может быть в списке участников дважды', 400)
+      }
+      participants.set(participant.studentId, participant.role)
+    }
+
+    if (participants.size > 0) {
+      const participantIds = [...participants.keys()]
+      const accessible = await Promise.all(
+        participantIds.map((studentId) => canAccessStudent(auth.session.user.role, auth.session.user.id, studentId)),
+      )
+      if (accessible.some((ok) => !ok)) {
+        return errorResponse('FORBIDDEN', 'Доступ к участнику запрещён', 403)
+      }
+
+      const participantStudents = await prisma.student.findMany({
+        where: { id: { in: participantIds } },
+        select: { id: true, branchId: true },
+      })
+      if (participantStudents.length !== participantIds.length) {
+        return errorResponse('BAD_REQUEST', 'Один из участников не найден', 400)
+      }
+      if (participantStudents.some((participantStudent) => participantStudent.branchId !== student.branchId)) {
+        return errorResponse('FORBIDDEN', 'Участник другого филиала', 403)
+      }
+    }
+
+    const incident = await prisma.$transaction(async (tx) => {
+      const created = await tx.behaviorIncident.create({
+        data: {
+          studentId: id,
+          reporterId: auth.session.user.id,
+          type: body.type,
+          description: body.description,
+          level,
+        },
+      })
+
+      if (participants.size > 0) {
+        await tx.incidentParticipant.createMany({
+          data: [...participants.entries()].map(([studentId, role]) => ({
+            behaviorIncidentId: created.id,
+            studentId,
+            role,
+          })),
+        })
+      }
+
+      return tx.behaviorIncident.findUnique({
+        where: { id: created.id },
+        include: { participants: true },
+      })
     })
 
     return successResponse(incident, 201)
@@ -111,10 +196,21 @@ export async function PATCH(
 
     const incident = await prisma.behaviorIncident.findUnique({
       where: { id: body.incidentId },
+      select: {
+        parentNotified: true,
+        student: { select: { branchId: true } },
+      },
     })
 
     if (!incident) {
       return errorResponse('NOT_FOUND', 'Инцидент не найден', 404)
+    }
+
+    if (auth.session.user.role !== 'super_admin') {
+      const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId)
+      if (scope.closed || !scope.branchId || scope.branchId !== incident.student.branchId) {
+        return errorResponse('FORBIDDEN', 'Forbidden', 403)
+      }
     }
 
     const updated = await prisma.behaviorIncident.update({
