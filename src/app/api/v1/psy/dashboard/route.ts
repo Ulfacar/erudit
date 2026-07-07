@@ -1,21 +1,36 @@
 import { NextRequest } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getPsyScope } from '@/shared/lib/psy-scope';
 
 /**
  * GET /api/v1/psy/dashboard — АНОНИМНАЯ сводка для руководства (UC, блок 1.2).
  * Только агрегаты: «в 7-х классах N кейсов в зоне риска», динамика в %.
  * НИКАКИХ ФИО и текстов заключений.
  */
-const VIEW_ROLES = ['super_admin', 'analyst', 'zavuch', 'senior_psychologist', 'safeguarding_lead'] as const;
+const VIEW_ROLES = ['super_admin', 'analyst', 'zavuch', 'senior_psychologist', 'safeguarding_lead', 'psychologist', 'specialist', 'psy_coordinator'] as const;
+const OWN_ROLES = ['psychologist', 'specialist'] as const;
 
 export async function GET(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...VIEW_ROLES] });
   if (auth.response) return auth.response;
 
   try {
-    const cases = await prisma.psyCase.findMany({ select: { id: true, studentId: true, status: true, riskLevel: true } });
+    const user = auth.session.user;
+    const scope = getPsyScope(user.id, user.role);
+    const level = OWN_ROLES.includes(user.role as (typeof OWN_ROLES)[number])
+      ? 'own'
+      : user.role === 'psy_coordinator'
+        ? 'coordinator'
+        : 'admin';
+    const caseWhere: Prisma.PsyCaseWhereInput = level === 'own' ? { ownerId: scope.userId } : {};
+
+    const cases = await prisma.psyCase.findMany({
+      where: caseWhere,
+      select: { id: true, studentId: true, ownerId: true, status: true, riskLevel: true },
+    });
     const byStatus: Record<string, number> = {};
     const byRisk: Record<string, number> = {};
     for (const c of cases) {
@@ -39,7 +54,13 @@ export async function GET(request: NextRequest) {
     // динамика: доля кейсов, где последний замер ниже первого (улучшение для шкал тревожности).
     // ВАЖНО: значения нормализуем через mappingRule версии методики (склейка версий),
     // иначе смена шкалы исказит динамику (патч аналитического коллапса).
-    const measurements = await prisma.psyMeasurement.findMany({ orderBy: { date: 'asc' }, select: { caseId: true, value: true, templateId: true } });
+    const caseIds = cases.map((c) => c.id);
+    const measurementWhere: Prisma.PsyMeasurementWhereInput | undefined = level === 'own' ? { caseId: { in: caseIds } } : undefined;
+    const measurements = await prisma.psyMeasurement.findMany({
+      ...(measurementWhere ? { where: measurementWhere } : {}),
+      orderBy: { date: 'asc' },
+      select: { caseId: true, value: true, templateId: true },
+    });
     const tplIds = [...new Set(measurements.map((m) => m.templateId).filter(Boolean) as string[])];
     const tpls = tplIds.length
       ? await prisma.psyDiagnosticTemplate.findMany({ where: { id: { in: tplIds } }, select: { id: true, mappingRule: true } })
@@ -57,13 +78,57 @@ export async function GET(request: NextRequest) {
     const improved = withDynamics.filter((v) => v[v.length - 1] < v[0]).length;
     const improvedPct = withDynamics.length ? Math.round((improved / withDynamics.length) * 100) : 0;
 
-    return successResponse({
+    const response: {
+      level: typeof level;
+      total: number;
+      byStatus: Record<string, number>;
+      byRisk: Record<string, number>;
+      riskByGrade: { grade: number; count: number }[];
+      dynamics: { casesWithDynamics: number; improved: number; improvedPct: number };
+      byPsychologist?: { userId: string; login: string; cases: number; atRisk: number }[];
+      ai?: { avg: number | null; count: number };
+    } = {
+      level,
       total: cases.length,
       byStatus,
       byRisk,
       riskByGrade: Object.entries(riskByGrade).map(([grade, count]) => ({ grade: Number(grade), count })).sort((a, b) => a.grade - b.grade),
       dynamics: { casesWithDynamics: withDynamics.length, improved, improvedPct },
-    });
+    };
+
+    if (level === 'coordinator') {
+      const grouped = new Map<string, { cases: number; atRisk: number }>();
+      for (const c of cases) {
+        const current = grouped.get(c.ownerId) ?? { cases: 0, atRisk: 0 };
+        current.cases += 1;
+        if (c.riskLevel !== 'green') current.atRisk += 1;
+        grouped.set(c.ownerId, current);
+      }
+      const ownerIds = [...grouped.keys()];
+      const owners = ownerIds.length
+        ? await prisma.user.findMany({
+            where: { id: { in: ownerIds } },
+            select: { id: true, login: true },
+          })
+        : [];
+      const loginById = new Map(owners.map((owner) => [owner.id, owner.login]));
+      const ai = await prisma.psyAiFeedback.aggregate({
+        _avg: { rating: true },
+        _count: true,
+      });
+
+      response.byPsychologist = ownerIds
+        .map((userId) => ({
+          userId,
+          login: loginById.get(userId) ?? userId,
+          cases: grouped.get(userId)?.cases ?? 0,
+          atRisk: grouped.get(userId)?.atRisk ?? 0,
+        }))
+        .sort((a, b) => a.login.localeCompare(b.login));
+      response.ai = { avg: ai._avg.rating ?? null, count: ai._count };
+    }
+
+    return successResponse(response);
   } catch (e) {
     console.error('GET psy/dashboard error:', e);
     return errorResponse('INTERNAL_ERROR', 'Не удалось загрузить сводку', 500);

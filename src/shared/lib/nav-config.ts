@@ -141,7 +141,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/psychologist/intake', label: 'Приём', roles: ['psychologist', 'senior_psychologist', 'specialist', 'super_admin'] },
     { href: '/psychologist/calendar', label: 'Календарь психолога', roles: PSY_STAFF },
     { href: '/psychologist/methods', label: 'Конструктор методик', roles: ['senior_psychologist', 'super_admin'] },
-    { href: '/psychologist/overview', label: 'Психология: сводка', roles: ['super_admin', 'analyst', 'zavuch', 'senior_psychologist', 'safeguarding_lead'] },
+    { href: '/psychologist/overview', label: 'Психология: сводка', roles: ['psychologist', 'senior_psychologist', 'psy_coordinator', 'specialist', 'super_admin', 'analyst', 'zavuch', 'safeguarding_lead'] },
     { href: '/safeguarding', label: 'Воспитательная работа', roles: ['safeguarding_lead', 'zavuch', 'super_admin'] },
     { href: '/workspace/psychologist', label: 'Психолог (приёмы)', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator', 'psychologist'] },
     { href: '/workspace/speech', label: 'Логопед', roles: ['super_admin', 'analyst', 'zavuch', 'specialist', 'curator'] },
