@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { prisma } from '@/shared/lib/prisma';
 import { getPsyScope, canAccessCase, CASE_OWNER_ROLES } from '@/shared/lib/psy-scope';
 import { deidentifyForCase, reidentify, residualPiiRisk, strictPrivacyEnabled } from '@/shared/lib/ai/psy/deidentify';
 import { structureDap } from '@/shared/lib/ai/psy/dap';
@@ -22,13 +23,17 @@ export async function POST(request: NextRequest) {
   if (!(await canAccessCase(scope, caseId))) return errorResponse('FORBIDDEN', 'Нет доступа к этому кейсу', 403);
 
   try {
+    const c = await prisma.psyCase.findUnique({ where: { id: caseId }, select: { riskLevel: true } });
+    const redBlocked = c?.riskLevel === 'red';
+
     // 1) обезличиваем (ФИО → маркеры) — карта остаётся ТОЛЬКО на сервере
     const deid = await deidentifyForCase(caseId, rawNote);
     // 2) FAIL-CLOSED: если строгий режим и в тексте остался возможный PII —
     //    НЕ отправляем в облако, структурируем локально. «Не уверены → не шлём.»
     const strict = strictPrivacyEnabled();
     const risk = residualPiiRisk(deid.masked);
-    const allowCloud = !(strict && risk.risky);
+    const allowCloud = !redBlocked && !(strict && risk.risky);
+    const signals = redBlocked ? ['красный кейс — облако запрещено (fail-closed)'] : risk.signals;
     // 3) структурируем обезличенный текст (облако или локальный сплиттер)
     const { dap, source } = await structureDap(deid.masked, { allowCloud });
     // 4) ре-идентификация ответа для показа психологу
@@ -43,8 +48,9 @@ export async function POST(request: NextRequest) {
       privacy: {
         maskedEntities: deid.count,
         strict,
+        redBlocked,
         mode: allowCloud ? 'cloud' : 'local-only', // ушло в облако или осталось на месте
-        residualSignals: risk.signals, // что заставило придержать (если придержали)
+        residualSignals: signals, // что заставило придержать (если придержали)
         sentToCloud: allowCloud ? deid.masked : null, // прозрачность: что реально ушло (null = ничего)
       },
     });
