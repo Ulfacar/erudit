@@ -17,6 +17,9 @@ async function main() {
     { login: 'media1', role: 'media', email: 'media@erudit.kg', star: 4 },
     { login: 'chief_accountant1', role: 'chief_accountant', email: 'chief.accountant@erudit.kg', star: 4 },
     { login: 'finance_manager1', role: 'finance_manager', email: 'finance.manager@erudit.kg', star: 4 },
+    { login: 'psychologist1', role: 'psychologist', email: 'psychologist@erudit.kg', star: 4 },
+    { login: 'senior_psy', role: 'senior_psychologist', email: 'senior.psy@erudit.kg', star: 4 },
+    { login: 'psy_coord', role: 'psy_coordinator', email: 'psy.coord@erudit.kg', star: 4 },
   ]
   for (const u of defs) {
     await prisma.user.upsert({
