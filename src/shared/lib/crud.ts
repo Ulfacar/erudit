@@ -29,6 +29,7 @@ export interface CrudConfig {
   /** query-параметры, по которым можно фильтровать список (точное совпадение) */
   filterableParams?: string[];
   branchScope?: 'own' | string;
+  branchParent?: { model: string; fk: string };
 }
 
 function buildData(body: Record<string, any>, cfg: CrudConfig, userId: string) {
@@ -85,6 +86,19 @@ export function createCrud(cfg: CrudConfig) {
       if (cfg.branchScope === 'own' && data.branchId === undefined) {
         const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
         if (scope.branchId) data.branchId = scope.branchId;
+      }
+      if (cfg.branchScope && cfg.branchScope !== 'own' && cfg.branchParent) {
+        const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
+        if (scope.closed) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
+        if (scope.branchId) {
+          const parentId = data[cfg.branchParent.fk];
+          const parent = parentId
+            ? await (prisma as any)[cfg.branchParent.model].findUnique({ where: { id: String(parentId) }, select: { branchId: true } })
+            : null;
+          if (!parent || parent.branchId !== scope.branchId) {
+            return errorResponse('FORBIDDEN', 'Нет доступа к этому филиалу', 403);
+          }
+        }
       }
       const created = await model().create({ data });
       return successResponse(created, 201);

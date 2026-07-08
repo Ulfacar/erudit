@@ -48,7 +48,7 @@ import {
   CC_DOC_TYPE_LABELS,
   CC_EXAM_TYPE_LABELS,
 } from '@/modules/cc/labels';
-import { currentAcademicYearBounds, validateDeadline } from '@/modules/cc/deadline';
+import { validateDeadline } from '@/modules/cc/deadline';
 import { CcPipelineKanban, type CcKanbanApplication } from '../CcPipelineKanban';
 
 const CC_ROLES = ['college_counselor', 'super_admin'] as const;
@@ -71,6 +71,7 @@ type CcProfile = {
   studentMotivation?: string | null;
   parentCountries: string[];
   parentBudgetUsd?: number | null;
+  budgetThresholdUsd?: number | null;
   parentMajor?: string | null;
   parentSafety: boolean;
   parentExpectations?: string | null;
@@ -88,8 +89,8 @@ type CcProfile = {
     photo?: string | null;
     parents: { id: string; fio: string; phone?: string | null; relation: string }[];
   };
-  exams: { id: string; examType: string; testDate?: string | null; scoreCurrent?: number | null; scoreTarget?: number | null; isMock: boolean; verified: boolean; certificateUrl?: string | null; comment?: string | null }[];
-  applications: CcKanbanApplication[];
+  exams: { id: string; examType: string; customExamName?: string | null; testDate?: string | null; scoreCurrent?: number | null; scoreTarget?: number | null; isMock: boolean; verified: boolean; certificateUrl?: string | null; comment?: string | null }[];
+  applications: (CcKanbanApplication & { requiredGpa?: number | null; requiredDocuments?: string | null; requirementsNote?: string | null })[];
   documents: { id: string; docType: string; status: string; fileUrl?: string | null; teacherId?: string | null; requestedDeadline?: string | null; requiredCount?: number | null; comment?: string | null }[];
   meetings: { id: string; meetingDate: string; topic?: string | null; notes?: string | null; actionItems?: string | null; format?: string | null }[];
   deadlines: { id: string; date: string; title: string; type: string; status: string; daysLeft: number }[];
@@ -129,6 +130,11 @@ function deadlineCategory(deadline: CcProfile['deadlines'][number]) {
     : CC_DEADLINE_TYPE_LABELS.application;
 }
 
+function examTypeLabel(exam: { examType: string; customExamName?: string | null }) {
+  if (exam.examType === 'other' && exam.customExamName) return exam.customExamName;
+  return CC_EXAM_TYPE_LABELS[exam.examType as keyof typeof CC_EXAM_TYPE_LABELS] ?? exam.examType;
+}
+
 function dateToPayload(value: Date | null) {
   return value ? value.toISOString() : null;
 }
@@ -154,6 +160,7 @@ function ProfileEditModal({ profile, opened, onClose }: { profile: CcProfile; op
   const [studentMotivation, setStudentMotivation] = useState(profile.studentMotivation ?? '');
   const [parentCountries, setParentCountries] = useState(profile.parentCountries);
   const [parentBudgetUsd, setParentBudgetUsd] = useState<number | ''>(profile.parentBudgetUsd ?? '');
+  const [budgetThresholdUsd, setBudgetThresholdUsd] = useState<number | ''>(profile.budgetThresholdUsd ?? '');
   const [parentMajor, setParentMajor] = useState(profile.parentMajor ?? '');
   const [parentSafety, setParentSafety] = useState(profile.parentSafety);
   const [parentExpectations, setParentExpectations] = useState(profile.parentExpectations ?? '');
@@ -171,6 +178,7 @@ function ProfileEditModal({ profile, opened, onClose }: { profile: CcProfile; op
           studentMotivation: studentMotivation || null,
           parentCountries,
           parentBudgetUsd: parentBudgetUsd === '' ? null : parentBudgetUsd,
+          budgetThresholdUsd: budgetThresholdUsd === '' ? null : budgetThresholdUsd,
           parentMajor: parentMajor || null,
           parentSafety,
           parentExpectations: parentExpectations || null,
@@ -198,6 +206,7 @@ function ProfileEditModal({ profile, opened, onClose }: { profile: CcProfile; op
         <Textarea label="Мотивация" value={studentMotivation} onChange={(e) => setStudentMotivation(e.currentTarget.value)} minRows={3} />
         <TagsInput label="Страны родителей" data={parentCountries} value={parentCountries} onChange={setParentCountries} clearable />
         <NumberInput label="Бюджет, USD" value={parentBudgetUsd} onChange={(v) => setParentBudgetUsd(typeof v === 'number' ? v : '')} min={0} />
+        <NumberInput label="Порог «на грани», $/год" value={budgetThresholdUsd} onChange={(v) => setBudgetThresholdUsd(typeof v === 'number' ? v : '')} min={0} />
         <TextInput label="Специальность родителей" value={parentMajor} onChange={(e) => setParentMajor(e.currentTarget.value)} />
         <Switch label="Безопасность локации критична" checked={parentSafety} onChange={(e) => setParentSafety(e.currentTarget.checked)} />
         <Textarea label="Ожидания родителей" value={parentExpectations} onChange={(e) => setParentExpectations(e.currentTarget.value)} minRows={3} />
@@ -218,6 +227,9 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
   const [country, setCountry] = useState('');
   const [program, setProgram] = useState('');
   const [deadlineDate, setDeadlineDate] = useState('');
+  const [requiredGpa, setRequiredGpa] = useState<number | ''>('');
+  const [requiredDocuments, setRequiredDocuments] = useState('');
+  const [requirementsNote, setRequirementsNote] = useState('');
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -226,7 +238,16 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
       const res = await fetch('/api/v1/cc/applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profileId, universityName, country: country || null, program: program || null, deadlineDate: deadlineDate || null }),
+        body: JSON.stringify({
+          profileId,
+          universityName,
+          country: country || null,
+          program: program || null,
+          deadlineDate: deadlineDate || null,
+          requiredGpa: requiredGpa === '' ? null : requiredGpa,
+          requiredDocuments: requiredDocuments || null,
+          requirementsNote: requirementsNote || null,
+        }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message ?? 'Не удалось добавить вуз');
@@ -239,6 +260,9 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
       setCountry('');
       setProgram('');
       setDeadlineDate('');
+      setRequiredGpa('');
+      setRequiredDocuments('');
+      setRequirementsNote('');
     },
     onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось добавить вуз' }),
   });
@@ -250,6 +274,9 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
         <TextInput label="Страна" value={country} onChange={(e) => setCountry(e.currentTarget.value)} />
         <TextInput label="Программа" value={program} onChange={(e) => setProgram(e.currentTarget.value)} />
         <TextInput label="Дедлайн" type="date" value={deadlineDate} onChange={(e) => setDeadlineDate(e.currentTarget.value)} />
+        <NumberInput label="Требуемый GPA (по 5-балльной)" value={requiredGpa} onChange={(v) => setRequiredGpa(typeof v === 'number' ? v : '')} min={0} />
+        <Textarea label="Перечень документов" value={requiredDocuments} onChange={(e) => setRequiredDocuments(e.currentTarget.value)} minRows={2} />
+        <Textarea label="Требования/заметки" value={requirementsNote} onChange={(e) => setRequirementsNote(e.currentTarget.value)} minRows={2} />
         <Group justify="flex-end">
           <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
           <Button loading={mutation.isPending} disabled={!universityName.trim()} onClick={() => mutation.mutate()}>Добавить</Button>
@@ -307,6 +334,7 @@ function AddMeetingModal({ profileId, opened, onClose }: { profileId: string; op
 function AddExamModal({ profileId, opened, onClose }: { profileId: string; opened: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [examType, setExamType] = useState<string | null>(examTypeOptions[0]?.value ?? null);
+  const [customExamName, setCustomExamName] = useState('');
   const [testDate, setTestDate] = useState<Date | null>(null);
   const [scoreCurrent, setScoreCurrent] = useState<number | ''>('');
   const [scoreTarget, setScoreTarget] = useState<number | ''>('');
@@ -323,6 +351,7 @@ function AddExamModal({ profileId, opened, onClose }: { profileId: string; opene
         body: JSON.stringify({
           profileId,
           examType,
+          customExamName: examType === 'other' ? customExamName.trim() || null : null,
           testDate: dateToPayload(testDate),
           scoreCurrent: scoreCurrent === '' ? null : scoreCurrent,
           scoreTarget: scoreTarget === '' ? null : scoreTarget,
@@ -340,6 +369,7 @@ function AddExamModal({ profileId, opened, onClose }: { profileId: string; opene
       queryClient.invalidateQueries({ queryKey: ['cc-profile', profileId] });
       onClose();
       setExamType(examTypeOptions[0]?.value ?? null);
+      setCustomExamName('');
       setTestDate(null);
       setScoreCurrent('');
       setScoreTarget('');
@@ -354,6 +384,9 @@ function AddExamModal({ profileId, opened, onClose }: { profileId: string; opene
     <Modal opened={opened} onClose={onClose} title="Добавить экзамен" centered>
       <Stack gap="sm">
         <Select label="Тип экзамена" data={examTypeOptions} value={examType} onChange={setExamType} required />
+        {examType === 'other' && (
+          <TextInput label="Название экзамена" value={customExamName} onChange={(e) => setCustomExamName(e.currentTarget.value)} />
+        )}
         <DateInput label="Дата теста" value={testDate} onChange={setTestDate} clearable />
         <NumberInput label="Текущий балл" value={scoreCurrent} onChange={(v) => setScoreCurrent(typeof v === 'number' ? v : '')} min={0} />
         <NumberInput label="Целевой балл" value={scoreTarget} onChange={(v) => setScoreTarget(typeof v === 'number' ? v : '')} min={0} />
@@ -602,6 +635,7 @@ function CcProfileCard() {
                 <Table.Tr><Table.Td>GPA</Table.Td><Table.Td>{gpaText}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>SAT</Table.Td><Table.Td>{profile.bestScores.sat ?? '—'}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>IELTS</Table.Td><Table.Td>{profile.bestScores.ielts ?? '—'}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>Экзамены</Table.Td><Table.Td>{profile.exams.map(examTypeLabel).join(', ') || '—'}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>Пробные тесты</Table.Td><Table.Td>{bestMockScore ?? '—'}</Table.Td></Table.Tr>
                 <Table.Tr><Table.Td>Школьные оценки</Table.Td><Table.Td>{gpaText}</Table.Td></Table.Tr>
               </Table.Tbody>
@@ -626,7 +660,16 @@ function CcProfileCard() {
                     <Table.Tr key={app.id}>
                       <Table.Td>{app.universityName}</Table.Td>
                       <Table.Td>{app.country || '—'}</Table.Td>
-                      <Table.Td>{app.program || '—'}</Table.Td>
+                      <Table.Td>
+                        <Stack gap={4}>
+                          <Text size="sm">{app.program || '—'}</Text>
+                          {profile.gpa != null && app.requiredGpa != null && profile.gpa < app.requiredGpa && (
+                            <Badge color="yellow" radius="sm" variant="light" w="fit-content">
+                              GPA ниже требований ({profile.gpa} &lt; {app.requiredGpa})
+                            </Badge>
+                          )}
+                        </Stack>
+                      </Table.Td>
                       <Table.Td><Badge radius="sm" variant="light" style={{ whiteSpace: 'nowrap' }}>{CC_ADMISSION_STATUS_LABELS[app.admissionStatus] ?? app.admissionStatus}</Badge></Table.Td>
                     </Table.Tr>
                   ))}
@@ -641,6 +684,7 @@ function CcProfileCard() {
             <Group gap="xs" mb="sm"><IconFlag size={18} /><Text fw={700}>2. Ожидания родителей</Text></Group>
             <Text size="sm"><b>Страны:</b> {profile.parentCountries.join(', ') || '—'}</Text>
             <Text size="sm"><b>Бюджет:</b> {profile.parentBudgetUsd == null ? '—' : `$${profile.parentBudgetUsd}`}</Text>
+            <Text size="sm"><b>Порог «на грани»:</b> {profile.budgetThresholdUsd == null ? '—' : `$${profile.budgetThresholdUsd}`}</Text>
             <Text size="sm"><b>Major:</b> {profile.parentMajor || '—'}</Text>
             <Text size="sm"><b>Безопасность:</b> {profile.parentSafety ? 'критична' : 'обычно'}</Text>
             <Text size="sm" mt="xs">{profile.parentExpectations || 'Ожидания не заполнены'}</Text>

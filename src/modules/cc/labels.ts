@@ -44,6 +44,8 @@ export const CC_EXAM_TYPE_LABELS: Record<CcExamType, string> = {
   ort: 'ОРТ',
   csca: 'CSCA',
   opt: 'OPT',
+  hsk: 'HSK',
+  other: 'Другой',
 };
 
 export const CC_APPLICATION_TYPE_LABELS: Record<CcApplicationType, string> = {

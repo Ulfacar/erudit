@@ -34,6 +34,9 @@ function pickUpdate(body: Record<string, unknown>): Prisma.CcApplicationUpdateIn
     'scholarshipAmount',
     'scholarshipType',
     'comment',
+    'requiredGpa',
+    'requiredDocuments',
+    'requirementsNote',
   ] as const;
   const data: Record<string, unknown> = {};
   for (const field of fields) {

@@ -2305,6 +2305,8 @@ enum CcExamType {
   ort
   csca
   opt
+  hsk
+  other
 }
 
 enum CcApplicationType {
@@ -2354,6 +2356,7 @@ model CcProfile {
   studentMotivation  String?          @db.Text
   parentCountries    String[]
   parentBudgetUsd    Int?
+  budgetThresholdUsd Int?
   parentMajor        String?
   parentSafety       Boolean          @default(false)
   parentExpectations String?          @db.Text
@@ -2387,6 +2390,7 @@ model CcExam {
   verified       Boolean    @default(false)
   certificateUrl String?
   comment        String?
+  customExamName String?
   createdAt      DateTime   @default(now())
 
   @@index([profileId])
@@ -2408,6 +2412,9 @@ model CcApplication {
   scholarshipAmount String?
   scholarshipType   String?
   comment           String?
+  requiredGpa       Float?
+  requiredDocuments String?            @db.Text
+  requirementsNote  String?            @db.Text
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 

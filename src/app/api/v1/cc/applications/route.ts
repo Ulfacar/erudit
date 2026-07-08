@@ -8,10 +8,11 @@ const crud = createCrud({
   model: 'ccApplication',
   listRoles: [...CC_ROLES],
   writeRoles: [...CC_ROLES],
-  createFields: ['universityName', 'country', 'program', 'applicationType', 'deadlineDate', 'comment', 'profileId'],
+  createFields: ['universityName', 'country', 'program', 'applicationType', 'deadlineDate', 'comment', 'requiredGpa', 'requiredDocuments', 'requirementsNote', 'profileId'],
   dateFields: ['deadlineDate'],
   filterableParams: ['profileId', 'admissionStatus'],
   branchScope: 'profile',
+  branchParent: { model: 'ccProfile', fk: 'profileId' },
   orderBy: { deadlineDate: 'asc' },
 });
 

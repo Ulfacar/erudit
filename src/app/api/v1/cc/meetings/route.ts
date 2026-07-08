@@ -10,5 +10,6 @@ export const { GET, POST, DELETE } = createCrud({
   injectUserId: 'counselorId',
   filterableParams: ['profileId'],
   branchScope: 'profile',
+  branchParent: { model: 'ccProfile', fk: 'profileId' },
   orderBy: { meetingDate: 'desc' },
 });

@@ -5,10 +5,9 @@ export interface CcConflictProfileInput {
   studentMajor: string | null;
   parentCountries: string[];
   parentBudgetUsd: number | null;
+  budgetThresholdUsd: number | null;
   parentMajor: string | null;
 }
-
-const EDGE_BUDGET_USD = 10000;
 
 function norm(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? '';
@@ -38,7 +37,8 @@ export function computeConflict(profile: CcConflictProfileInput): CcConflictStat
   const hasStudentGoals = studentCountries.length > 0 || Boolean(studentMajor);
   const budget = profile.parentBudgetUsd;
   const budgetOk = budget == null || budget > 0;
-  const budgetEdge = budget != null && budget > 0 && budget <= EDGE_BUDGET_USD;
+  const threshold = profile.budgetThresholdUsd;
+  const budgetEdge = budget != null && budget > 0 && threshold != null && budget <= threshold;
   const hasComparableSignal = countriesComparable || majorsComparable || budget != null;
 
   if (!hasComparableSignal) {

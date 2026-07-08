@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
       studentMajor: body.studentMajor || null,
       parentCountries: Array.isArray(body.parentCountries) ? body.parentCountries : [],
       parentBudgetUsd: body.parentBudgetUsd == null || body.parentBudgetUsd === '' ? null : Number(body.parentBudgetUsd),
+      budgetThresholdUsd: body.budgetThresholdUsd == null || body.budgetThresholdUsd === '' ? null : Number(body.budgetThresholdUsd),
       parentMajor: body.parentMajor || null,
     };
     const conflictStatus = computeConflict(input);

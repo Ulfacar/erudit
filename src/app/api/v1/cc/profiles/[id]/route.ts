@@ -16,6 +16,7 @@ const PROFILE_FIELDS = [
   'studentMotivation',
   'parentCountries',
   'parentBudgetUsd',
+  'budgetThresholdUsd',
   'parentMajor',
   'parentSafety',
   'parentExpectations',
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
         .map((exam) => ({
           id: exam.id,
           date: exam.testDate!.toISOString(),
-          title: CC_EXAM_TYPE_LABELS[exam.examType],
+          title: exam.examType === 'other' && exam.customExamName ? exam.customExamName : CC_EXAM_TYPE_LABELS[exam.examType],
           type: 'exam',
           status: exam.verified ? 'verified' : 'planned',
           daysLeft: Math.ceil((Number(exam.testDate) - now) / 86400000),
@@ -138,17 +139,23 @@ export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: str
     const data: Prisma.CcProfileUpdateInput = {};
     for (const field of PROFILE_FIELDS) {
       if (body[field] !== undefined) {
-        (data as Record<string, unknown>)[field] = field === 'parentBudgetUsd' && body[field] !== null && body[field] !== ''
+        (data as Record<string, unknown>)[field] = (field === 'parentBudgetUsd' || field === 'budgetThresholdUsd') && body[field] !== null && body[field] !== ''
           ? Number(body[field])
           : body[field];
       }
     }
 
+    const dataRecord = data as Record<string, unknown>;
     const next = {
       studentCountries: (data.studentCountries as string[] | undefined) ?? existing.studentCountries,
       studentMajor: (data.studentMajor as string | null | undefined) ?? existing.studentMajor,
       parentCountries: (data.parentCountries as string[] | undefined) ?? existing.parentCountries,
-      parentBudgetUsd: (data.parentBudgetUsd as number | null | undefined) ?? existing.parentBudgetUsd,
+      parentBudgetUsd: Object.prototype.hasOwnProperty.call(dataRecord, 'parentBudgetUsd')
+        ? data.parentBudgetUsd as number | null
+        : existing.parentBudgetUsd,
+      budgetThresholdUsd: Object.prototype.hasOwnProperty.call(dataRecord, 'budgetThresholdUsd')
+        ? data.budgetThresholdUsd as number | null
+        : existing.budgetThresholdUsd,
       parentMajor: (data.parentMajor as string | null | undefined) ?? existing.parentMajor,
     };
     data.conflictStatus = computeConflict(next);
