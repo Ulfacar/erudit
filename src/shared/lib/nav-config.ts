@@ -179,6 +179,10 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/lost-found', label: 'Бюро находок', roles: [...NON_TEACHING_NO_SEC, 'zavhoz'] },
   ]),
 
+  grp('/g/olympiad', 'Олимпиадный центр', [
+    { href: '/olympiad-center/olympiads', label: 'Каталог олимпиад', roles: ['olympiad_coach', 'super_admin', 'analyst', 'zavuch'] },
+  ]),
+
   grp('/g/college-consulting', 'Поступление за рубеж', [
     { href: '/cc', label: 'Колледж-консалтинг', roles: CC_TIER },
     { href: '/cc/reports', label: 'CC: отчёт', roles: ['founder', 'super_admin', 'college_counselor'] },

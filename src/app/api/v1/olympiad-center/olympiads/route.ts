@@ -1,0 +1,30 @@
+import { createCrud } from '@/shared/lib/crud';
+
+export const { GET, POST, DELETE } = createCrud({
+  model: 'olympiad',
+  listRoles: ['olympiad_coach', 'super_admin', 'analyst', 'zavuch'],
+  writeRoles: ['olympiad_coach', 'super_admin', 'zavuch'],
+  createFields: [
+    'name',
+    'subjectId',
+    'level',
+    'stage',
+    'date',
+    'organizer',
+    'registrationUrl',
+    'regDeadline',
+    'resultsDate',
+    'placeType',
+    'place',
+    'participationFormat',
+    'cost',
+    'status',
+    'coachNotes',
+    'awardSchemeId',
+  ],
+  dateFields: ['date', 'regDeadline', 'resultsDate'],
+  intFields: ['cost'],
+  injectUserId: 'authorId',
+  orderBy: { date: 'desc' },
+  filterableParams: ['level', 'status'],
+});
