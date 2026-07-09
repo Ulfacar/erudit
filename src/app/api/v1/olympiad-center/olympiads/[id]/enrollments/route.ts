@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getBranchScope, type BranchScope } from '@/shared/lib/branch-scope';
 import { notifyUser } from '@/shared/lib/agent/notify';
+import { syncOlympiadAchievement } from '@/modules/olympiad/portfolio';
 
 const READ_ROLES = ['olympiad_coach', 'super_admin', 'analyst', 'zavuch'] as const;
 const WRITE_ROLES = ['olympiad_coach', 'super_admin', 'zavuch'] as const;
@@ -202,6 +203,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (!student || !canAccessBranch(student.branchId, scope)) return errorResponse('NOT_FOUND', 'Not found', 404);
 
     await prisma.olympiadParticipation.delete({ where: { id: enrollment.id } });
+    void syncOlympiadAchievement({
+      studentId: enrollment.studentId,
+      olympiadId: id,
+      olympiadName: '',
+      level: 'school',
+      status: '',
+      awardValue: null,
+      awardLabel: null,
+      authorId: auth.session.user.id,
+    });
 
     const payload = await enrollmentPayload(id, scope);
     return successResponse(payload);

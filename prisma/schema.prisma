@@ -839,10 +839,12 @@ model Achievement {
   date        DateTime
   authorId    String
   eventId     String?  // источник — школьное мероприятие (SchoolEvent), если достижение из ивента
+  olympiadId  String?
   createdAt   DateTime @default(now())
 
   @@index([studentId])
   @@index([eventId])
+  @@index([olympiadId])
 }
 
 model PhysNorm {

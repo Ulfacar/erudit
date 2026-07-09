@@ -4,6 +4,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getBranchScope, type BranchScope } from '@/shared/lib/branch-scope';
+import { awardLabelFromScheme, syncOlympiadAchievement } from '@/modules/olympiad/portfolio';
 
 const WRITE_ROLES = ['olympiad_coach', 'super_admin', 'zavuch'] as const;
 const STATUSES = new Set(['enrolled', 'participated', 'no_show']);
@@ -38,7 +39,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         id: true,
         studentId: true,
         status: true,
-        olympiad: { select: { awardScheme: { select: { values: true } } } },
+        olympiad: { select: { id: true, name: true, level: true, awardScheme: { select: { values: true } } } },
       },
     });
     if (!enrollment) return errorResponse('NOT_FOUND', 'Not found', 404);
@@ -95,6 +96,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await prisma.olympiadParticipation.update({ where: { id: eid }, data });
+    void syncOlympiadAchievement({
+      studentId: updated.studentId,
+      olympiadId: enrollment.olympiad.id,
+      olympiadName: enrollment.olympiad.name,
+      level: enrollment.olympiad.level,
+      status: updated.status ?? 'enrolled',
+      awardValue: updated.awardValue,
+      awardLabel: awardLabelFromScheme(enrollment.olympiad.awardScheme?.values, updated.awardValue),
+      authorId: auth.session.user.id,
+    });
     return successResponse(updated);
   } catch (error) {
     console.error('PATCH /api/v1/olympiad-center/enrollments/[eid] error:', error);
