@@ -172,6 +172,7 @@ function DetailContent() {
               </Group>
             </div>
           </Group>
+          <Button component={Link} href={`/olympiad-center/intensives/${id}/attendance`} variant="light">Журнал посещаемости</Button>
           <Select
             label="Статус"
             data={STATUSES}
