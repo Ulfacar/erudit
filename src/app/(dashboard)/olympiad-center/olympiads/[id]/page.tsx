@@ -24,8 +24,9 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconAward, IconDeviceFloppy, IconTrash, IconUserPlus } from '@tabler/icons-react';
+import { IconArrowLeft, IconAward, IconDeviceFloppy, IconFileSpreadsheet, IconTrash, IconUserPlus } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { EXCEL_EXPORT_RESULTS_LABEL, exportOlympiadResultsExcel } from '@/modules/olympiad/excel';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 const ROLES = ['olympiad_coach', 'super_admin', 'analyst', 'zavuch'] as const;
@@ -254,6 +255,7 @@ function OlympiadEnrollmentsContent() {
   if (detailQuery.isError || !data) return <Text c="red">Не удалось загрузить олимпиаду</Text>;
 
   const olympiad = data.olympiad;
+  const handleResultsExport = () => exportOlympiadResultsExcel(data);
 
   return (
     <Stack gap="md">
@@ -340,6 +342,11 @@ function OlympiadEnrollmentsContent() {
 
       <Paper withBorder radius="sm" p="md">
         <Group gap="xs" mb="sm"><IconAward size={18} /><Text fw={700}>Результаты</Text></Group>
+        {data.enrollments.length > 0 && (
+          <Button variant="light" mb="sm" leftSection={<IconFileSpreadsheet size={16} />} onClick={handleResultsExport}>
+            {EXCEL_EXPORT_RESULTS_LABEL}
+          </Button>
+        )}
         <ScrollArea>
           <Table striped highlightOnHover verticalSpacing="sm" miw={980}>
             <Table.Thead>

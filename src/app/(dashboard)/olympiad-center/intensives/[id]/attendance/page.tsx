@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Badge, Button, Group, Loader, Paper, ScrollArea, Stack, Table, Text, ThemeIcon, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconCalendarCheck, IconCircleCheck } from '@tabler/icons-react';
+import { IconArrowLeft, IconCalendarCheck, IconCircleCheck, IconFileSpreadsheet } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { EXCEL_EXPORT_LABEL, exportOlympiadAttendanceExcel } from '@/modules/olympiad/excel';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 const ROLES = ['olympiad_coach', 'super_admin', 'analyst', 'zavuch'] as const;
@@ -105,6 +106,7 @@ function AttendanceContent() {
   const days = grid.days.map((day) => ({ ...day, key: isoDay(day.date) }));
   const marks = new Map(grid.marks.map((mark) => [markKey(mark.studentId, mark.date), mark.status]));
   const empty = grid.days.length === 0 || grid.participants.length === 0;
+  const handleExport = () => exportOlympiadAttendanceExcel(grid, id);
 
   return (
     <Stack gap="md">
@@ -116,6 +118,11 @@ function AttendanceContent() {
             <Text size="sm" c="dimmed">Отметки по дням интенсива</Text>
           </div>
         </Group>
+        {!empty && (
+          <Button variant="light" leftSection={<IconFileSpreadsheet size={16} />} onClick={handleExport}>
+            {EXCEL_EXPORT_LABEL}
+          </Button>
+        )}
         <Button component={Link} href={`/olympiad-center/intensives/${id}`} variant="subtle" leftSection={<IconArrowLeft size={16} />}>
           Назад к интенсиву
         </Button>
