@@ -231,7 +231,7 @@ function DetailContent() {
             <Table.Tbody>
               {intensive.participants.map((participant) => (
                 <Table.Tr key={participant.id}>
-                  <Table.Td><Text fw={600}>{participant.student?.fio ?? participant.studentId}</Text></Table.Td>
+                  <Table.Td><Anchor component={Link} href={`/olympiad-center/students/${participant.studentId}`} fw={600}>{participant.student?.fio ?? participant.studentId}</Anchor></Table.Td>
                   <Table.Td>{participant.student?.className || '—'}</Table.Td>
                   <Table.Td>{fmtDate(participant.addedAt)}</Table.Td>
                   <Table.Td>

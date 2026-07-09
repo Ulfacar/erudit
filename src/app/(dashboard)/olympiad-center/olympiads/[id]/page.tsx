@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDebouncedValue } from '@mantine/hooks';
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Button,
   Group,
@@ -319,7 +320,7 @@ function OlympiadEnrollmentsContent() {
             <Table.Tbody>
               {data.enrollments.map((row) => (
                 <Table.Tr key={row.id}>
-                  <Table.Td><Text fw={600}>{row.fio}</Text></Table.Td>
+                  <Table.Td><Anchor component={Link} href={`/olympiad-center/students/${row.studentId}`} fw={600}>{row.fio}</Anchor></Table.Td>
                   <Table.Td>{row.className || '—'}</Table.Td>
                   <Table.Td>{row.tour || '—'}</Table.Td>
                   <Table.Td>{STATUS_OPTIONS.find((item) => item.value === row.status)?.label ?? row.status ?? '—'}</Table.Td>
@@ -366,7 +367,7 @@ function OlympiadEnrollmentsContent() {
                 return (
                   <Table.Tr key={row.id}>
                     <Table.Td>
-                      <Text fw={600}>{row.fio}</Text>
+                      <Anchor component={Link} href={`/olympiad-center/students/${row.studentId}`} fw={600}>{row.fio}</Anchor>
                       <Text size="xs" c="dimmed">{[row.className, row.tour].filter(Boolean).join(' · ') || '—'}</Text>
                     </Table.Td>
                     <Table.Td>

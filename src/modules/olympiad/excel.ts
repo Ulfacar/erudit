@@ -143,3 +143,69 @@ export function exportOlympiadResultsExcel(data: OlympiadResultsSource) {
     `Результаты-${data.olympiad.name}`,
   );
 }
+
+type StudentSummarySource = {
+  student: { fio: string };
+  intensives: {
+    name: string;
+    olympiadId?: string | null;
+    kpi: number | null;
+    attendedDays: number;
+    totalDays: number;
+    tasksSolved: number;
+    tasksTotal: number;
+    date: string | null;
+  }[];
+  awards: {
+    title: string;
+    place: string | null;
+    date: string | null;
+    olympiadId?: string | null;
+  }[];
+};
+
+export function buildStudentSummaryColumns(): ExcelColumn[] {
+  return [
+    { key: 'activity', header: 'Активность' },
+    { key: 'date', header: 'Дата' },
+    { key: 'kpi', header: 'KPI' },
+    { key: 'attendance', header: 'Посещаемость' },
+    { key: 'tasks', header: 'Задачи' },
+    { key: 'award', header: 'Награда' },
+  ];
+}
+
+export function buildStudentSummaryRows(summary: StudentSummarySource) {
+  const awardsByOlympiad = new Map<string, string>();
+  for (const award of summary.awards) {
+    if (award.olympiadId) awardsByOlympiad.set(award.olympiadId, award.place || award.title);
+  }
+
+  const intensiveRows = summary.intensives.map((row) => ({
+    activity: row.name,
+    date: row.date ? row.date.slice(0, 10) : EMPTY_LABEL,
+    kpi: row.kpi ?? EMPTY_LABEL,
+    attendance: `${row.attendedDays}/${row.totalDays}`,
+    tasks: `${row.tasksSolved}/${row.tasksTotal}`,
+    award: row.olympiadId ? awardsByOlympiad.get(row.olympiadId) ?? EMPTY_LABEL : EMPTY_LABEL,
+  }));
+
+  const awardRows = summary.awards.map((award) => ({
+    activity: award.title,
+    date: award.date ? award.date.slice(0, 10) : EMPTY_LABEL,
+    kpi: EMPTY_LABEL,
+    attendance: EMPTY_LABEL,
+    tasks: EMPTY_LABEL,
+    award: award.place || award.title,
+  }));
+
+  return [...intensiveRows, ...awardRows];
+}
+
+export function exportOlympiadStudentSummaryExcel(summary: StudentSummarySource) {
+  exportToExcel(
+    buildStudentSummaryRows(summary),
+    buildStudentSummaryColumns(),
+    `Сводка-${summary.student.fio}`,
+  );
+}
