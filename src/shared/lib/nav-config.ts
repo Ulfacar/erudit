@@ -182,6 +182,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   grp('/g/olympiad', 'Олимпиадный центр', [
     { href: '/olympiad-center/olympiads', label: 'Каталог олимпиад', roles: ['olympiad_coach', 'super_admin', 'analyst', 'zavuch'] },
     { href: '/olympiad-center/intensives', label: 'Интенсивы', roles: ['olympiad_coach', 'super_admin', 'analyst', 'zavuch'] },
+    { href: '/olympiad-center/settings', label: 'Настройки KPI', roles: ['olympiad_coach', 'super_admin', 'zavuch'] },
   ]),
 
   grp('/g/college-consulting', 'Поступление за рубеж', [
