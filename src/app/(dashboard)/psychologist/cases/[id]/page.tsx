@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ActionIcon, Anchor, Badge, Button, Card, Checkbox, Group, Loader, Modal, Paper, Rating, Select,
-  Stack, TagsInput, Text, Textarea, Title, Divider, Tooltip,
+  Stack, TagsInput, Text, Textarea, Title, Divider, Tooltip, NumberInput,
 } from '@mantine/core';
 import { IconArrowLeft, IconBrain, IconCheck, IconPlus, IconMicrophone, IconWand, IconShieldLock } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
@@ -101,6 +101,7 @@ function CaseDetail() {
   const [goalSaving, setGoalSaving] = useState<Record<string, boolean>>({});
   const [interventions, setInterventions] = useState<PsyIntervention[]>([]);
   const [plannedMeetings, setPlannedMeetings] = useState('5');
+  const [plannedMeetingsPreset, setPlannedMeetingsPreset] = useState('5');
   const [interventionDoneOpen, setInterventionDoneOpen] = useState(false);
   const [outcome, setOutcome] = useState('improved');
   const [interventionSummary, setInterventionSummary] = useState('');
@@ -352,7 +353,7 @@ function CaseDetail() {
 
   async function addSession() {
     setErr('');
-    if (verify && !dapData.trim() && !dapAssessment.trim() && !dapPlan.trim()) { setErr('Нельзя завершить сессию без заполненного DAP'); return; }
+    if (!dapData.trim()) { setErr('Поле D (Data) обязательно'); return; }
     setSaving(true);
     const res = await fetch('/api/v1/psy/sessions', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -547,8 +548,11 @@ function CaseDetail() {
               </Group>
             ) : latestApprovedIps ? (
               <Group align="flex-end" gap="xs" wrap="wrap">
-                <Select label="План встреч" w={140} value={plannedMeetings} onChange={(v) => setPlannedMeetings(v ?? '5')}
-                  data={[{ value: '3', label: '3' }, { value: '5', label: '5' }, { value: '7', label: '7' }]} />
+                <Select label="План встреч" w={140} value={plannedMeetingsPreset} onChange={(v) => { const next = v ?? '5'; setPlannedMeetingsPreset(next); if (next !== 'custom') setPlannedMeetings(next); }}
+                  data={[{ value: '3', label: '3' }, { value: '5', label: '5' }, { value: '7', label: '7' }, { value: 'custom', label: 'Другое' }]} />
+                {plannedMeetingsPreset === 'custom' && (
+                  <NumberInput label="Количество" w={140} min={1} value={Number(plannedMeetings)} onChange={(v) => setPlannedMeetings(String(v || 1))} />
+                )}
                 <Button onClick={startIntervention}>Начать</Button>
               </Group>
             ) : (

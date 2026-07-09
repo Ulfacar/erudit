@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
   const method = methodology?.trim() || 'Проективный рисунок';
 
   try {
+    const c = await prisma.psyCase.findUnique({ where: { id: caseId }, select: { riskLevel: true } });
+    const allowCloud = c?.riskLevel !== 'red';
+
     // 1) Цифровой сейф: ОРИГИНАЛ (до блюра) навсегда в приватное хранилище школы.
     //    В облако (vision) уходит только заблюренная версия.
     let imageKey: string | null = null;
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
       }
     }
     // 2) AI-черновик заключения — по ЗАБЛЮРЕННОМУ изображению
-    const { text, source } = await visionInterpret(imageBase64, method);
+    const { text, source } = await visionInterpret(imageBase64, method, allowCloud);
     // 3) запись результата (не верифицирован)
     const result = await prisma.psyTestResult.create({
       data: {
@@ -48,7 +51,7 @@ export async function POST(request: NextRequest) {
         rawScores: { methodology: method },
       },
     });
-    return successResponse({ id: result.id, draft: text, source, imageKey, stored: Boolean(imageKey) }, 201);
+    return successResponse({ id: result.id, draft: text, source, imageKey, stored: Boolean(imageKey), redBlocked: !allowCloud }, 201);
   } catch (e) {
     console.error('POST psy/vision error:', e);
     return errorResponse('INTERNAL_ERROR', 'Не удалось обработать рисунок', 500);

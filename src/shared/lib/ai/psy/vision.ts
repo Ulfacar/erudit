@@ -21,9 +21,9 @@ function stubInterpret(methodology: string): string {
  * вопросам. Через vision-модель (JSON-ответ); без ключа — детерминированный stub
  * (середина шкалы), который психолог проверяет и правит.
  */
-export async function omrExtract(imageDataUrl: string, questionCount: number, scaleMax: number): Promise<{ scores: number[]; source: 'llm' | 'stub' }> {
+export async function omrExtract(imageDataUrl: string, questionCount: number, scaleMax: number, allowCloud = true): Promise<{ scores: number[]; source: 'llm' | 'stub' }> {
   const n = Math.max(1, questionCount);
-  if (isLlmConfigured()) {
+  if (allowCloud && isLlmConfigured()) {
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -56,8 +56,8 @@ export async function omrExtract(imageDataUrl: string, questionCount: number, sc
   return { scores: Array.from({ length: n }, () => mid), source: 'stub' };
 }
 
-export async function visionInterpret(imageDataUrl: string, methodology: string): Promise<{ text: string; source: 'llm' | 'stub' }> {
-  if (isLlmConfigured()) {
+export async function visionInterpret(imageDataUrl: string, methodology: string, allowCloud = true): Promise<{ text: string; source: 'llm' | 'stub' }> {
+  if (allowCloud && isLlmConfigured()) {
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',

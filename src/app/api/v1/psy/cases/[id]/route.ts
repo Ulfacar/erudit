@@ -21,7 +21,6 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
       where: { id },
       include: {
         sessions: { orderBy: { date: 'asc' } },
-        collaborators: true,
         measurements: { orderBy: { date: 'asc' } },
         tests: { orderBy: { date: 'asc' } },
         referrals: { orderBy: { createdAt: 'desc' } },

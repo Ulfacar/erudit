@@ -76,9 +76,10 @@ export async function POST(request: NextRequest) {
   try {
     const template = await prisma.psyDiagnosticTemplate.findUnique({
       where: { id: templateId },
-      select: { id: true },
+      select: { id: true, gradeBand: true },
     });
     if (!template) return errorResponse('VALIDATION_ERROR', 'Template not found');
+    if (template.gradeBand && template.gradeBand !== gradeBand) return errorResponse('VALIDATION_ERROR', 'Методика не соответствует выбранной ступени');
 
     const created = await prisma.psyScreeningCampaign.create({
       data: {

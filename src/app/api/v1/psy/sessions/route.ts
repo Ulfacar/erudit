@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const { caseId, type, date, templateId, rawNote, dapData, dapAssessment, dapPlan, qualNote, interventionId } = body as Record<string, string>;
   if (!caseId) return errorResponse('VALIDATION_ERROR', 'Параметр caseId обязателен');
+  if (!dapData?.trim()) return errorResponse('VALIDATION_ERROR', 'Поле D (Data) обязательно');
 
   const scope = getPsyScope(auth.session.user.id, auth.session.user.role);
   if (!(await canAccessCase(scope, caseId))) {

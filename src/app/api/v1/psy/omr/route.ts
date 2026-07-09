@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
   const count = scaleQuestions.length || (schema.questions?.length ?? 5);
 
   try {
-    const { scores, source } = await omrExtract(imageBase64, count, Number(schema.scaleMax ?? 10));
+    const c = await prisma.psyCase.findUnique({ where: { id: caseId }, select: { riskLevel: true } });
+    const allowCloud = c?.riskLevel !== 'red';
+
+    const { scores, source } = await omrExtract(imageBase64, count, Number(schema.scaleMax ?? 10), allowCloud);
     return successResponse({ scores, source, total: scores.reduce((s, v) => s + v, 0) });
   } catch (e) {
     console.error('POST psy/omr error:', e);
