@@ -59,6 +59,7 @@ export const CLUSTERS = [
       { role: 'teacher', emoji: '👩‍🏫', color: '#7048e8', demoLogin: 'matematik' },
       { role: 'curator', emoji: '🧑‍🏫', color: '#9775fa' },
       { role: 'specialist', emoji: '🎯', color: '#0ca678' },
+      { role: 'olympiad_coach', emoji: '🏅', color: '#f08c00', demoLogin: 'olympcoach1' },
     ],
   },
   {

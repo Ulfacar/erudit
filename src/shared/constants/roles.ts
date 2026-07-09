@@ -38,6 +38,7 @@ export const ALL_ROLES: AppRole[] = [
   'zavuch_senior',
   'zavuch_academic',
   'cambridge_coord',
+  'olympiad_coach',
 ]
 
 export const ROLE_LABELS: Record<AppRole, string> = {
@@ -71,6 +72,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   zavuch_academic: 'Завуч по учебной части',
   cambridge_coord: 'Кэмбридж-координатор',
   college_counselor: 'Колледж-консультант',
+  olympiad_coach: 'Тренер (олимпиадный)',
 }
 
 export const ADMIN_ROLES: AppRole[] = ['super_admin', 'analyst']

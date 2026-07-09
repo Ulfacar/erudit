@@ -10,6 +10,7 @@ export const ROLE_INHERITS: Partial<Record<Role, Role>> = {
   zavuch_senior: 'zavuch',
   zavuch_academic: 'zavuch',
   cambridge_coord: 'zavuch',
+  olympiad_coach: 'teacher',
 }
 
 /** Эффективные роли пользователя: он сам + та, что он наследует. */

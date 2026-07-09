@@ -63,6 +63,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   zavuch_academic: 'Завуч по учебной части',
   cambridge_coord: 'Кэмбридж-координатор',
   college_counselor: 'Колледж-консультант',
+  olympiad_coach: 'Тренер (олимпиадный)',
 };
 
 interface SessionUser {
@@ -145,7 +146,8 @@ export async function resolveScope(user: SessionUser): Promise<AssistantScope> {
       return { ...base, allowedClassIds: [], allowedStudentIds: [], canSeeFinance: false, canSeePsych: false, allowedSpecialistKinds: [], canSeeSchoolStats: false };
 
     case 'teacher':
-    case 'curator': {
+    case 'curator':
+    case 'olympiad_coach': {
       const teacher = await prisma.teacher.findUnique({
         where: { userId: user.id },
         select: {

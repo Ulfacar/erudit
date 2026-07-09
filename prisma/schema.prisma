@@ -92,6 +92,7 @@ enum Role {
   zavuch_academic // завуч по учебной части
   cambridge_coord // Кэмбридж-координатор
   college_counselor
+  olympiad_coach // тренер олимпиадного центра
 }
 
 // ============ SCHOOL STRUCTURE ============
@@ -218,6 +219,7 @@ model Student {
   enrolledAt  DateTime      @default(now())
   branchId    String? // филиал ученика (multi-branch)
   psyCode     String? // персональный номер участника психослужбы (У-####); уникальность гарантирует последовательный backfill (без DB-констрейнта — db push на @unique падал на проде)
+  isOlympian  Boolean @default(false)
 
   groups      ClassGroup[]    @relation("StudentGroups")
   grades      Grade[]
@@ -1431,17 +1433,35 @@ model DocumentRecord {
 // ============ OLYMPIADS & PROJECTS ============
 
 model Olympiad {
-  id        String   @id @default(cuid())
-  name      String
-  subjectId String?
-  level     String   @default("school") // school | district | city | republic | international
-  stage     String?  // отборочный | финал
-  date      DateTime
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  name                 String
+  subjectId            String?
+  level                String   @default("school") // school | district | city | republic | international
+  stage                String?  // отборочный | финал
+  date                 DateTime
+  authorId             String
+  organizer            String?
+  registrationUrl      String?
+  regDeadline          DateTime?
+  resultsDate          DateTime?
+  placeType            String?  // офлайн | онлайн
+  place                String?
+  participationFormat  String?  // individual | team
+  cost                 Int?
+  status               String?  @default("announced") // announced | registration | ongoing | finished
+  coachNotes           String?  @db.Text
+  subjects             String[] @default([]) // мульти-предмет (subjectId оставить для совместимости)
+  allowedClasses       String[] @default([]) // допустимые классы/категории
+  tours                Json?    // [{name, datetime}] массив туров
+  attachments          Json?    // [{url, name}] вложения
+  branchId             String?
+  awardSchemeId        String?
+  awardScheme          AwardScheme? @relation(fields: [awardSchemeId], references: [id])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   participations OlympiadParticipation[]
+  intensives     Intensive[]
 }
 
 model OlympiadParticipation {
@@ -1450,10 +1470,118 @@ model OlympiadParticipation {
   olympiad   Olympiad @relation(fields: [olympiadId], references: [id], onDelete: Cascade)
   studentId  String
   result     String?  // балл / место / диплом
+  tour       String?
+  status     String?  @default("enrolled") // enrolled | participated | no_show
+  enrolledById String?
+  enrolledAt DateTime?
+  awardValue String?  // значение награды из схемы
+  score      Float?   // балл/процент опц.
+  comment    String?
   createdAt  DateTime @default(now())
 
   @@index([olympiadId])
   @@index([studentId])
+}
+
+model AwardScheme {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // places | medals | degrees | custom
+  values    Json     // упорядоченный [{value, label, weight}]
+  isPreset  Boolean  @default(false) // системные пресеты нередактируемы
+  branchId  String?
+  authorId  String?
+  createdAt DateTime @default(now())
+  olympiads Olympiad[]
+}
+
+model Intensive {
+  id          String    @id @default(cuid())
+  name        String
+  subjectId   String?
+  olympiadId  String?
+  olympiad    Olympiad? @relation(fields: [olympiadId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  status      String    @default("planned") // planned | ongoing | finished
+  coachId     String    // автор/тренер
+  branchId    String?
+  attachments Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  days         IntensiveDay[]
+  participants IntensiveParticipant[]
+  attendance   IntensiveAttendance[]
+  metrics      StudentMetrics[]
+
+  @@index([olympiadId])
+}
+
+model IntensiveDay {
+  id          String    @id @default(cuid())
+  intensiveId String
+  intensive   Intensive @relation(fields: [intensiveId], references: [id], onDelete: Cascade)
+  date        DateTime
+  createdAt   DateTime  @default(now())
+
+  @@unique([intensiveId, date])
+  @@index([intensiveId])
+}
+
+model IntensiveParticipant {
+  id          String    @id @default(cuid())
+  intensiveId String
+  intensive   Intensive @relation(fields: [intensiveId], references: [id], onDelete: Cascade)
+  studentId   String
+  addedAt     DateTime  @default(now())
+
+  @@unique([intensiveId, studentId])
+  @@index([intensiveId])
+  @@index([studentId])
+}
+
+model IntensiveAttendance {
+  id          String    @id @default(cuid())
+  intensiveId String
+  intensive   Intensive @relation(fields: [intensiveId], references: [id], onDelete: Cascade)
+  studentId   String
+  date        DateTime
+  status      String    // present | absent | excused
+  markedById  String?
+  markedAt    DateTime  @default(now())
+
+  @@unique([intensiveId, studentId, date])
+  @@index([intensiveId])
+  @@index([studentId])
+}
+
+model StudentMetrics {
+  id               String    @id @default(cuid())
+  intensiveId      String
+  intensive        Intensive @relation(fields: [intensiveId], references: [id], onDelete: Cascade)
+  studentId        String
+  tasksTotal       Int?
+  tasksSolved      Int?
+  attendedDays     Int?
+  totalDays        Int?
+  kpi              Float?
+  kpiConfigVersion Int?
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([intensiveId, studentId])
+  @@index([intensiveId])
+  @@index([studentId])
+}
+
+model KpiConfig {
+  id          String   @id @default(cuid())
+  branchId    String?  @unique // одна конфигурация на филиал (null = школьный дефолт)
+  w1          Float    @default(0.5)
+  w2          Float    @default(0.3)
+  w3          Float    @default(0.2)
+  version     Int      @default(1)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }
 
 // ============ SCHOOL EVENTS ============
