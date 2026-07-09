@@ -1,7 +1,8 @@
 'use client';
 
-import { Badge } from '@mantine/core';
-import { IconAward } from '@tabler/icons-react';
+import Link from 'next/link';
+import { Badge, Button } from '@mantine/core';
+import { IconAward, IconListDetails } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage } from '@/shared/components/ui/ResourcePage';
 import { fmtDate, subjectField, subjectLookup } from '@/shared/components/ui/resource-helpers';
@@ -126,6 +127,17 @@ export default function OlympiadCenterOlympiadsPage() {
             optionsMap: (row) => ({ value: String(row.id), label: String(row.name) }),
           },
         ]}
+        rowActions={(row) => (
+          <Button
+            component={Link}
+            href={`/olympiad-center/olympiads/${row.id}`}
+            size="compact-xs"
+            variant="light"
+            leftSection={<IconListDetails size={14} />}
+          >
+            Записи и результаты
+          </Button>
+        )}
       />
     </RoleGate>
   );
