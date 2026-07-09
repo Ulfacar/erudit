@@ -8,6 +8,7 @@ const STAFF_ROLES: ReadonlySet<Role> = new Set([
   'zavuch',
   'secretary',
   'teacher',
+  'olympiad_coach',
   'curator',
   'specialist',
   'accountant',
