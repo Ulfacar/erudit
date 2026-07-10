@@ -9,6 +9,7 @@ async function main() {
   const pw = await hash('erudit2025', 10)
   const defs: Array<{ login: string; role: Role; email: string; star?: number }> = [
     { login: 'event1', role: 'event_manager', email: 'event@erudit.kg', star: 4 },
+    { login: 'sport1', role: 'sport_coordinator', email: 'sport@erudit.kg', star: 4 },
     { login: 'zavuch_primary1', role: 'zavuch_primary', email: 'zavuch.primary@erudit.kg', star: 4 },
     { login: 'zavuch_senior1', role: 'zavuch_senior', email: 'zavuch.senior@erudit.kg', star: 4 },
     { login: 'zavuch_academic1', role: 'zavuch_academic', email: 'zavuch.academic@erudit.kg', star: 4 },
@@ -26,7 +27,7 @@ async function main() {
   ]
   const branch = await prisma.branch.findFirst({ orderBy: { createdAt: 'asc' } })
   for (const u of defs) {
-    const extraBranch = ['club1', 'uniform1'].includes(u.login) && branch ? { branchId: branch.id } : {}
+    const extraBranch = ['club1', 'uniform1', 'sport1'].includes(u.login) && branch ? { branchId: branch.id } : {}
     await prisma.user.upsert({
       where: { login: u.login },
       update: { role: u.role, isActive: true, ...extraBranch },

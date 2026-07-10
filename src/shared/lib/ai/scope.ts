@@ -57,6 +57,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   safeguarding_lead: 'Завуч по воспитательной работе',
   call_center: 'Колл-центр',
   event_manager: 'Ивент-менеджер',
+  sport_coordinator: 'Спорт-координатор',
   media: 'Медиа-центр',
   zavuch_primary: 'Завуч по младшим классам',
   zavuch_senior: 'Завуч по старшим классам',

@@ -127,6 +127,7 @@ export const CLUSTERS = [
     azimuthDeg: 135,
     roles: [
       { role: 'event_manager', emoji: '🎉', color: '#e64980', demoLogin: 'event1' },
+      { role: 'sport_coordinator', emoji: '⚽', color: '#2f9e44', demoLogin: 'sport1' },
       { role: 'media', emoji: '🎬', color: '#c2255c', demoLogin: 'media1' },
       { role: 'college_counselor', emoji: '🗺️', color: '#1971c2', demoLogin: 'counselor' },
     ],

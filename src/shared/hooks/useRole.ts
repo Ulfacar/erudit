@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import type { Role } from '@prisma/client'
+import { roleMatches } from '@/shared/lib/role-access'
 
 interface UseRoleResult {
   role: Role | null
@@ -23,7 +24,7 @@ export function useRole(): UseRoleResult {
     starLevel,
     login,
     isLoading: status === 'loading',
-    has: (...allowed: Role[]) => (role ? allowed.includes(role) : false),
+    has: (...allowed: Role[]) => roleMatches(allowed, role),
     hasStar: (min: number) => starLevel >= min,
   }
 }

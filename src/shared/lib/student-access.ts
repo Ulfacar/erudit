@@ -26,6 +26,7 @@ const STAFF_ROLES: ReadonlySet<Role> = new Set([
   'safeguarding_lead',
   'call_center',
   'event_manager',
+  'sport_coordinator',
   'zavuch_primary',
   'zavuch_senior',
   'zavuch_academic',
