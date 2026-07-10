@@ -185,6 +185,10 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/olympiad-center/settings', label: 'Настройки KPI', roles: ['olympiad_coach', 'super_admin', 'zavuch'] },
   ]),
 
+  grp('/g/clubs', 'Кружки', [
+    { href: '/clubs', label: 'Мои кружки', roles: ['club_coach', 'super_admin', 'zavuch'] },
+  ]),
+
   grp('/g/uniform', 'Форма и мерч', [
     { href: '/uniform/catalog', label: 'Школьная форма', roles: ['parent', 'student'] },
     { href: '/uniform/items', label: 'Каталог и приход', roles: ['uniform_manager', 'super_admin'] },

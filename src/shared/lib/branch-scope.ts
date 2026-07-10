@@ -41,6 +41,12 @@ export function branchWhere(scope: BranchScope): Record<string, unknown> {
   return scope.branchId ? { branchId: scope.branchId } : {};
 }
 
+export function canAccessBranch(scope: BranchScope, branchId: string | null): boolean {
+  if (scope.closed) return false;
+  if (scope.branchId) return branchId === scope.branchId;
+  return scope.canSeeAll;
+}
+
 /** Prisma-where fragment for models scoped through a relation with branchId. */
 export function branchWhereVia(scope: BranchScope, relation: string): Record<string, unknown> {
   if (scope.closed) return { [relation]: { branchId: '__none__' } };

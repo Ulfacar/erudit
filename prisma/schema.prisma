@@ -93,6 +93,7 @@ enum Role {
   cambridge_coord // Кэмбридж-координатор
   college_counselor
   olympiad_coach // тренер олимпиадного центра
+  club_coach // руководитель кружка
   uniform_manager // кладовщик формы и мерча
 }
 
@@ -1555,6 +1556,58 @@ model IntensiveAttendance {
 
   @@unique([intensiveId, studentId, date])
   @@index([intensiveId])
+  @@index([studentId])
+}
+
+// ===== CLUBS (кружки / доп. секции) =====
+
+model Club {
+  id           String   @id @default(cuid())
+  name         String
+  subjectId    String?
+  coachId      String
+  branchId     String?
+  status       String?  @default("active") // active | archived
+  createdAt    DateTime @default(now())
+  sessions     ClubSession[]
+  participants ClubParticipant[]
+  attendance   ClubAttendance[]
+}
+
+model ClubSession {
+  id     String   @id @default(cuid())
+  clubId String
+  club   Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  date   DateTime
+
+  @@unique([clubId, date])
+  @@index([clubId])
+}
+
+model ClubParticipant {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  studentId String
+  addedAt   DateTime @default(now())
+
+  @@unique([clubId, studentId])
+  @@index([clubId])
+  @@index([studentId])
+}
+
+model ClubAttendance {
+  id         String   @id @default(cuid())
+  clubId     String
+  club       Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  studentId  String
+  date       DateTime
+  status     String
+  markedById String?
+  markedAt   DateTime @default(now())
+
+  @@unique([clubId, studentId, date])
+  @@index([clubId])
   @@index([studentId])
 }
 

@@ -64,6 +64,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   cambridge_coord: 'Кэмбридж-координатор',
   college_counselor: 'Колледж-консультант',
   olympiad_coach: 'Тренер (олимпиадный)',
+  club_coach: 'Кружки',
   uniform_manager: 'Форма и мерч',
 };
 
