@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
+  Anchor,
   Avatar,
   Badge,
   Button,
@@ -103,6 +104,8 @@ type TeacherOption = {
   middleName?: string | null;
 };
 
+type CcExam = CcProfile['exams'][number];
+
 function fmtDate(value?: string | null) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('ru-RU').format(new Date(value));
@@ -133,6 +136,10 @@ function deadlineCategory(deadline: CcProfile['deadlines'][number]) {
 function examTypeLabel(exam: { examType: string; customExamName?: string | null }) {
   if (exam.examType === 'other' && exam.customExamName) return exam.customExamName;
   return CC_EXAM_TYPE_LABELS[exam.examType as keyof typeof CC_EXAM_TYPE_LABELS] ?? exam.examType;
+}
+
+function examScoreText(value?: number | null) {
+  return value == null ? '—' : String(value);
 }
 
 function dateToPayload(value: Date | null) {
@@ -212,6 +219,128 @@ function ProfileEditModal({ profile, opened, onClose }: { profile: CcProfile; op
         <Textarea label="Ожидания родителей" value={parentExpectations} onChange={(e) => setParentExpectations(e.currentTarget.value)} minRows={3} />
         <Textarea label="Комментарий консультанта" value={counselorComment} onChange={(e) => setCounselorComment(e.currentTarget.value)} minRows={3} />
         <Switch label="Стратегия назначена" checked={strategyAssigned} onChange={(e) => setStrategyAssigned(e.currentTarget.checked)} />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button loading={mutation.isPending} onClick={() => mutation.mutate()}>Сохранить</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function GoalEditModal({ profile, opened, onClose }: { profile: CcProfile; opened: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [studentCountries, setStudentCountries] = useState(profile.studentCountries);
+  const [studentMajor, setStudentMajor] = useState(profile.studentMajor ?? '');
+  const [studentMotivation, setStudentMotivation] = useState(profile.studentMotivation ?? '');
+
+  useEffect(() => {
+    if (!opened) return;
+    setStudentCountries(profile.studentCountries);
+    setStudentMajor(profile.studentMajor ?? '');
+    setStudentMotivation(profile.studentMotivation ?? '');
+  }, [opened, profile.studentCountries, profile.studentMajor, profile.studentMotivation]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/v1/cc/profiles/${profile.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentCountries,
+          studentMajor: studentMajor || null,
+          studentMotivation: studentMotivation || null,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось сохранить цель ученика');
+      return json.data;
+    },
+    onSuccess: () => {
+      notifications.show({ color: 'green', title: 'Сохранено', message: 'Цель ученика обновлена' });
+      queryClient.invalidateQueries({ queryKey: ['cc-profile', profile.id] });
+      onClose();
+    },
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось сохранить цель ученика' }),
+  });
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Редактировать цель ученика" centered>
+      <Stack gap="sm">
+        <TagsInput label="Страны ученика" data={studentCountries} value={studentCountries} onChange={setStudentCountries} clearable />
+        <TextInput label="Специальность ученика" value={studentMajor} onChange={(e) => setStudentMajor(e.currentTarget.value)} />
+        <Textarea label="Мотивация" value={studentMotivation} onChange={(e) => setStudentMotivation(e.currentTarget.value)} minRows={3} />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button loading={mutation.isPending} onClick={() => mutation.mutate()}>Сохранить</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function ParentExpectationsEditModal({ profile, opened, onClose }: { profile: CcProfile; opened: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [parentCountries, setParentCountries] = useState(profile.parentCountries);
+  const [parentBudgetUsd, setParentBudgetUsd] = useState<number | ''>(profile.parentBudgetUsd ?? '');
+  const [budgetThresholdUsd, setBudgetThresholdUsd] = useState<number | ''>(profile.budgetThresholdUsd ?? '');
+  const [parentMajor, setParentMajor] = useState(profile.parentMajor ?? '');
+  const [parentSafety, setParentSafety] = useState(profile.parentSafety);
+  const [parentExpectations, setParentExpectations] = useState(profile.parentExpectations ?? '');
+
+  useEffect(() => {
+    if (!opened) return;
+    setParentCountries(profile.parentCountries);
+    setParentBudgetUsd(profile.parentBudgetUsd ?? '');
+    setBudgetThresholdUsd(profile.budgetThresholdUsd ?? '');
+    setParentMajor(profile.parentMajor ?? '');
+    setParentSafety(profile.parentSafety);
+    setParentExpectations(profile.parentExpectations ?? '');
+  }, [
+    opened,
+    profile.parentCountries,
+    profile.parentBudgetUsd,
+    profile.budgetThresholdUsd,
+    profile.parentMajor,
+    profile.parentSafety,
+    profile.parentExpectations,
+  ]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/v1/cc/profiles/${profile.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parentCountries,
+          parentBudgetUsd: parentBudgetUsd === '' ? null : parentBudgetUsd,
+          budgetThresholdUsd: budgetThresholdUsd === '' ? null : budgetThresholdUsd,
+          parentMajor: parentMajor || null,
+          parentSafety,
+          parentExpectations: parentExpectations || null,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось сохранить ожидания родителей');
+      return json.data;
+    },
+    onSuccess: () => {
+      notifications.show({ color: 'green', title: 'Сохранено', message: 'Ожидания родителей обновлены' });
+      queryClient.invalidateQueries({ queryKey: ['cc-profile', profile.id] });
+      onClose();
+    },
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось сохранить ожидания родителей' }),
+  });
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Редактировать ожидания родителей" centered>
+      <Stack gap="sm">
+        <TagsInput label="Страны родителей" data={parentCountries} value={parentCountries} onChange={setParentCountries} clearable />
+        <NumberInput label="Бюджет, USD" value={parentBudgetUsd} onChange={(v) => setParentBudgetUsd(typeof v === 'number' ? v : '')} min={0} />
+        <NumberInput label="Порог «на грани», $/год" value={budgetThresholdUsd} onChange={(v) => setBudgetThresholdUsd(typeof v === 'number' ? v : '')} min={0} />
+        <TextInput label="Специальность родителей" value={parentMajor} onChange={(e) => setParentMajor(e.currentTarget.value)} />
+        <Switch label="Безопасность локации критична" checked={parentSafety} onChange={(e) => setParentSafety(e.currentTarget.checked)} />
+        <Textarea label="Ожидания родителей" value={parentExpectations} onChange={(e) => setParentExpectations(e.currentTarget.value)} minRows={3} />
         <Group justify="flex-end">
           <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
           <Button loading={mutation.isPending} onClick={() => mutation.mutate()}>Сохранить</Button>
@@ -402,6 +531,68 @@ function AddExamModal({ profileId, opened, onClose }: { profileId: string; opene
   );
 }
 
+function EditExamModal({ exam, profileId, opened, onClose }: { exam: CcExam; profileId: string; opened: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [examType, setExamType] = useState<string | null>(exam.examType);
+  const [customExamName, setCustomExamName] = useState(exam.customExamName ?? '');
+  const [testDate, setTestDate] = useState<Date | null>(exam.testDate ? new Date(exam.testDate) : null);
+  const [scoreCurrent, setScoreCurrent] = useState<number | ''>(exam.scoreCurrent ?? '');
+  const [scoreTarget, setScoreTarget] = useState<number | ''>(exam.scoreTarget ?? '');
+  const [isMock, setIsMock] = useState(exam.isMock);
+  const [certificateUrl, setCertificateUrl] = useState(exam.certificateUrl ?? '');
+  const [comment, setComment] = useState(exam.comment ?? '');
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!examType) throw new Error('Укажите тип экзамена');
+      const res = await fetch(`/api/v1/cc/exams/${exam.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          examType,
+          customExamName: examType === 'other' ? customExamName.trim() || null : null,
+          testDate: dateToPayload(testDate),
+          scoreCurrent: scoreCurrent === '' ? null : scoreCurrent,
+          scoreTarget: scoreTarget === '' ? null : scoreTarget,
+          isMock,
+          certificateUrl: certificateUrl || null,
+          comment: comment || null,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось сохранить экзамен');
+      return json.data;
+    },
+    onSuccess: () => {
+      notifications.show({ color: 'green', title: 'Сохранено', message: 'Экзамен обновлён' });
+      queryClient.invalidateQueries({ queryKey: ['cc-profile', profileId] });
+      onClose();
+    },
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось сохранить экзамен' }),
+  });
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Редактировать экзамен" centered>
+      <Stack gap="sm">
+        <Select label="Тип экзамена" data={examTypeOptions} value={examType} onChange={setExamType} required />
+        {examType === 'other' && (
+          <TextInput label="Название экзамена" value={customExamName} onChange={(e) => setCustomExamName(e.currentTarget.value)} />
+        )}
+        <DateInput label="Дата теста" value={testDate} onChange={setTestDate} clearable />
+        <NumberInput label="Текущий балл" value={scoreCurrent} onChange={(v) => setScoreCurrent(typeof v === 'number' ? v : '')} min={0} />
+        <NumberInput label="Целевой балл" value={scoreTarget} onChange={(v) => setScoreTarget(typeof v === 'number' ? v : '')} min={0} />
+        <Checkbox label="пробный" checked={isMock} onChange={(e) => setIsMock(e.currentTarget.checked)} />
+        <TextInput label="Ссылка на сертификат" value={certificateUrl} onChange={(e) => setCertificateUrl(e.currentTarget.value)} />
+        <Textarea label="Комментарий" value={comment} onChange={(e) => setComment(e.currentTarget.value)} minRows={2} />
+        <Group justify="flex-end">
+          <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
+          <Button loading={mutation.isPending} disabled={!examType} onClick={() => mutation.mutate()}>Сохранить</Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
 function AddDocumentModal({ profileId, opened, onClose }: { profileId: string; opened: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [docType, setDocType] = useState<string | null>('recommendation');
@@ -531,6 +722,9 @@ function CcProfileCard() {
   const [appOpen, setAppOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [examOpen, setExamOpen] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
+  const [parentOpen, setParentOpen] = useState(false);
+  const [editingExam, setEditingExam] = useState<CcExam | null>(null);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [view, setView] = useState<'table' | 'kanban'>('table');
 
@@ -619,7 +813,10 @@ function CcProfileCard() {
       <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">
         <Stack gap="md">
           <Paper withBorder radius="sm" p="md">
-            <Group gap="xs" mb="sm"><IconTargetArrow size={18} /><Text fw={700}>1. Цель ученика</Text></Group>
+            <Group justify="space-between" mb="sm">
+              <Group gap="xs"><IconTargetArrow size={18} /><Text fw={700}>1. Цель ученика</Text></Group>
+              <Button size="xs" variant="subtle" leftSection={<IconPencil size={14} />} onClick={() => setGoalOpen(true)}>Редактировать</Button>
+            </Group>
             <Text size="sm"><b>Страны:</b> {profile.studentCountries.join(', ') || '—'}</Text>
             <Text size="sm"><b>Major:</b> {profile.studentMajor || '—'}</Text>
             <Text size="sm" mt="xs">{profile.studentMotivation || 'Мотивация не заполнена'}</Text>
@@ -631,13 +828,49 @@ function CcProfileCard() {
               <Button size="xs" variant="light" onClick={() => setExamOpen(true)}>+ экзамен</Button>
             </Group>
             <Table verticalSpacing="xs">
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Показатель</Table.Th>
+                  <Table.Th>Дата</Table.Th>
+                  <Table.Th>Текущий</Table.Th>
+                  <Table.Th>Цель</Table.Th>
+                  <Table.Th>Статус</Table.Th>
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Thead>
               <Table.Tbody>
-                <Table.Tr><Table.Td>GPA</Table.Td><Table.Td>{gpaText}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>SAT</Table.Td><Table.Td>{profile.bestScores.sat ?? '—'}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>IELTS</Table.Td><Table.Td>{profile.bestScores.ielts ?? '—'}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>Экзамены</Table.Td><Table.Td>{profile.exams.map(examTypeLabel).join(', ') || '—'}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>Пробные тесты</Table.Td><Table.Td>{bestMockScore ?? '—'}</Table.Td></Table.Tr>
-                <Table.Tr><Table.Td>Школьные оценки</Table.Td><Table.Td>{gpaText}</Table.Td></Table.Tr>
+                <Table.Tr><Table.Td>GPA</Table.Td><Table.Td>—</Table.Td><Table.Td>{gpaText}</Table.Td><Table.Td>—</Table.Td><Table.Td>—</Table.Td><Table.Td /></Table.Tr>
+                <Table.Tr><Table.Td>Лучший SAT</Table.Td><Table.Td>—</Table.Td><Table.Td>{profile.bestScores.sat ?? '—'}</Table.Td><Table.Td>—</Table.Td><Table.Td>—</Table.Td><Table.Td /></Table.Tr>
+                <Table.Tr><Table.Td>Лучший IELTS</Table.Td><Table.Td>—</Table.Td><Table.Td>{profile.bestScores.ielts ?? '—'}</Table.Td><Table.Td>—</Table.Td><Table.Td>—</Table.Td><Table.Td /></Table.Tr>
+                <Table.Tr><Table.Td>Пробные тесты</Table.Td><Table.Td>—</Table.Td><Table.Td>{bestMockScore ?? '—'}</Table.Td><Table.Td>—</Table.Td><Table.Td>—</Table.Td><Table.Td /></Table.Tr>
+                {profile.exams.map((exam) => (
+                  <Table.Tr key={exam.id}>
+                    <Table.Td>
+                      <Stack gap={2}>
+                        <Text size="sm" fw={600}>{examTypeLabel(exam)}</Text>
+                        {exam.certificateUrl && (
+                          <Anchor size="xs" href={exam.certificateUrl} target="_blank" rel="noreferrer">Сертификат</Anchor>
+                        )}
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td>{fmtDate(exam.testDate)}</Table.Td>
+                    <Table.Td>{examScoreText(exam.scoreCurrent)}</Table.Td>
+                    <Table.Td>{examScoreText(exam.scoreTarget)}</Table.Td>
+                    <Table.Td>
+                      <Group gap={4}>
+                        {exam.isMock && <Badge size="xs" color="blue" variant="light" radius="sm">mock</Badge>}
+                        {exam.verified && <Badge size="xs" color="green" variant="light" radius="sm">verified</Badge>}
+                        {!exam.isMock && !exam.verified && '—'}
+                      </Group>
+                    </Table.Td>
+                    <Table.Td>
+                      <Button size="compact-xs" variant="subtle" leftSection={<IconPencil size={14} />} onClick={() => setEditingExam(exam)}>Редактировать</Button>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {profile.exams.length === 0 && (
+                  <Table.Tr><Table.Td colSpan={6}><Text size="sm" c="dimmed">Экзамены ещё не заведены</Text></Table.Td></Table.Tr>
+                )}
               </Table.Tbody>
             </Table>
           </Paper>
@@ -681,7 +914,10 @@ function CcProfileCard() {
 
         <Stack gap="md">
           <Paper withBorder radius="sm" p="md">
-            <Group gap="xs" mb="sm"><IconFlag size={18} /><Text fw={700}>2. Ожидания родителей</Text></Group>
+            <Group justify="space-between" mb="sm">
+              <Group gap="xs"><IconFlag size={18} /><Text fw={700}>2. Ожидания родителей</Text></Group>
+              <Button size="xs" variant="subtle" leftSection={<IconPencil size={14} />} onClick={() => setParentOpen(true)}>Редактировать</Button>
+            </Group>
             <Text size="sm"><b>Страны:</b> {profile.parentCountries.join(', ') || '—'}</Text>
             <Text size="sm"><b>Бюджет:</b> {profile.parentBudgetUsd == null ? '—' : `$${profile.parentBudgetUsd}`}</Text>
             <Text size="sm"><b>Порог «на грани»:</b> {profile.budgetThresholdUsd == null ? '—' : `$${profile.budgetThresholdUsd}`}</Text>
@@ -766,9 +1002,19 @@ function CcProfileCard() {
       </SimpleGrid>
 
       <ProfileEditModal profile={profile} opened={editOpen} onClose={() => setEditOpen(false)} />
+      <GoalEditModal profile={profile} opened={goalOpen} onClose={() => setGoalOpen(false)} />
+      <ParentExpectationsEditModal profile={profile} opened={parentOpen} onClose={() => setParentOpen(false)} />
       <AddApplicationModal profileId={profile.id} opened={appOpen} onClose={() => setAppOpen(false)} />
       <AddMeetingModal profileId={profile.id} opened={meetingOpen} onClose={() => setMeetingOpen(false)} />
       <AddExamModal profileId={profile.id} opened={examOpen} onClose={() => setExamOpen(false)} />
+      {editingExam && (
+        <EditExamModal
+          exam={editingExam}
+          profileId={profile.id}
+          opened={Boolean(editingExam)}
+          onClose={() => setEditingExam(null)}
+        />
+      )}
       <AddDocumentModal profileId={profile.id} opened={documentOpen} onClose={() => setDocumentOpen(false)} />
     </Stack>
   );
