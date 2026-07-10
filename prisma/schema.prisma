@@ -403,6 +403,7 @@ model TimeOffRequest {
   status              String    @default("pending")
   substituteTeacherId String?
   reviewedById        String?
+  signedRole          String?
   reviewedAt          DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -2076,8 +2077,10 @@ model PurchaseRequest {
   authorId       String?
   authorName     String?
   reviewedById   String?
+  signedRole     String?
   reviewedAt     DateTime?
   forwardedById  String?
+  forwardedRole  String?
   forwardedAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

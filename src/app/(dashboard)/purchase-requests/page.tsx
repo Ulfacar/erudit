@@ -7,6 +7,7 @@ import { IconCheck, IconShoppingCart, IconX, IconAdjustments, IconSend } from '@
 import type { Role } from '@prisma/client';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { ResourcePage, type ResourceRow } from '@/shared/components/ui/ResourcePage';
+import { SignatureBadge } from '@/shared/components/ui/SignatureBadge';
 import { fmtDate, fmtMoney } from '@/shared/components/ui/resource-helpers';
 import { useRole } from '@/shared/hooks/useRole';
 import { roleMatches } from '@/shared/lib/role-access';
@@ -195,6 +196,30 @@ export default function PurchaseRequestsPage() {
             },
             { key: 'authorName', label: 'Автор', render: (r) => String(r.authorName ?? '—') },
             { key: 'createdAt', label: 'Дата', render: (r) => (r.createdAt ? fmtDate(r.createdAt) : '—') },
+            {
+              key: 'forwardedByName',
+              label: 'Передал',
+              render: (r) => (
+                <SignatureBadge
+                  label="Передал"
+                  name={typeof r.forwardedByName === 'string' ? r.forwardedByName : null}
+                  role={typeof r.forwardedRole === 'string' ? r.forwardedRole : null}
+                  date={typeof r.forwardedAt === 'string' || r.forwardedAt instanceof Date ? r.forwardedAt : null}
+                />
+              ),
+            },
+            {
+              key: 'reviewedByName',
+              label: 'Подписал',
+              render: (r) => (
+                <SignatureBadge
+                  label="Подписал (решение)"
+                  name={typeof r.reviewedByName === 'string' ? r.reviewedByName : null}
+                  role={typeof r.reviewedRole === 'string' ? r.reviewedRole : null}
+                  date={typeof r.reviewedAt === 'string' || r.reviewedAt instanceof Date ? r.reviewedAt : null}
+                />
+              ),
+            },
             { key: 'decisionNote', label: 'Комментарий', render: (r) => String(r.decisionNote ?? '—') },
           ]}
           fields={[

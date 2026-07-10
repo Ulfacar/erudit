@@ -24,6 +24,7 @@ import { IconCheck, IconCalendarOff, IconX } from '@tabler/icons-react';
 import type { Role } from '@prisma/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { SignatureBadge } from '@/shared/components/ui/SignatureBadge';
 import { useRole } from '@/shared/hooks/useRole';
 import { roleMatches } from '@/shared/lib/role-access';
 
@@ -63,6 +64,8 @@ interface TimeOffRequest {
   substituteTeacherId: string | null;
   substituteTeacher: TeacherShort | null;
   reviewedById: string | null;
+  reviewedByName: string | null;
+  reviewedRole: string | null;
   reviewedAt: string | null;
   createdAt: string;
 }
@@ -316,6 +319,7 @@ export default function TimeOffPage() {
                   <Table.Th>Статус</Table.Th>
                   <Table.Th>Замещающий</Table.Th>
                   <Table.Th>Причина</Table.Th>
+                  <Table.Th>Подписал</Table.Th>
                   {canDecide && <Table.Th>Действия</Table.Th>}
                 </Table.Tr>
               </Table.Thead>
@@ -332,6 +336,13 @@ export default function TimeOffPage() {
                     </Table.Td>
                     <Table.Td>{formatTeacherName(request.substituteTeacher)}</Table.Td>
                     <Table.Td>{request.reason || '—'}</Table.Td>
+                    <Table.Td>
+                      <SignatureBadge
+                        name={request.reviewedByName}
+                        role={request.reviewedRole}
+                        date={request.reviewedAt}
+                      />
+                    </Table.Td>
                     {canDecide && (
                       <Table.Td>
                         {request.status === 'pending' ? (
@@ -366,7 +377,7 @@ export default function TimeOffPage() {
                 ))}
                 {requests.length === 0 && (
                   <Table.Tr>
-                    <Table.Td colSpan={canDecide ? 7 : 6}>
+                    <Table.Td colSpan={canDecide ? 8 : 7}>
                       <Text ta="center" c="dimmed" py="lg">
                         Заявок нет
                       </Text>

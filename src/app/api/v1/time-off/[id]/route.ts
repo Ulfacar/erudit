@@ -31,6 +31,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         status,
         substituteTeacherId: substituteTeacherId || null,
         reviewedById: auth.session.user.id,
+        signedRole: auth.session.user.role,
         reviewedAt: new Date(),
       },
     });

@@ -17,17 +17,38 @@ const handlers = createCrud({
   filterableParams: ['status'],
 });
 
-async function enrichPurchaseRequests<T extends { authorId: string | null; authorName: string | null; reviewedById?: string | null }>(requests: T[]) {
-  const authorIds = Array.from(new Set(requests.map((request) => request.authorId).filter((id): id is string => Boolean(id))));
+function formatTeacherName(teacher: { firstName: string; lastName: string; middleName: string | null } | undefined) {
+  return teacher ? [teacher.lastName, teacher.firstName, teacher.middleName].filter(Boolean).join(' ') : null;
+}
 
-  const [users, teachers] = authorIds.length
+async function enrichPurchaseRequests<
+  T extends {
+    authorId: string | null;
+    authorName: string | null;
+    reviewedById?: string | null;
+    signedRole?: string | null;
+    reviewedAt?: Date | null;
+    forwardedById?: string | null;
+    forwardedRole?: string | null;
+    forwardedAt?: Date | null;
+  },
+>(requests: T[]) {
+  const userIds = Array.from(
+    new Set(
+      requests
+        .flatMap((request) => [request.authorId, request.reviewedById, request.forwardedById])
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+
+  const [users, teachers] = userIds.length
     ? await Promise.all([
         prisma.user.findMany({
-          where: { id: { in: authorIds } },
+          where: { id: { in: userIds } },
           select: { id: true, login: true },
         }),
         prisma.teacher.findMany({
-          where: { userId: { in: authorIds } },
+          where: { userId: { in: userIds } },
           select: { userId: true, firstName: true, lastName: true, middleName: true },
         }),
       ])
@@ -37,16 +58,25 @@ async function enrichPurchaseRequests<T extends { authorId: string | null; autho
   const userById = new Map(users.map((user) => [user.id, user]));
 
   return requests.map((request) => {
-    const { authorId, reviewedById: _reviewedById, ...safeRequest } = request;
-    const teacher = authorId ? teacherByUserId.get(authorId) : null;
-    const teacherName = teacher
-      ? [teacher.lastName, teacher.firstName, teacher.middleName].filter(Boolean).join(' ')
-      : null;
+    const { authorId, reviewedById: _reviewedById, forwardedById: _forwardedById, ...safeRequest } = request;
+    const teacherName = authorId ? formatTeacherName(teacherByUserId.get(authorId)) : null;
     const login = authorId ? userById.get(authorId)?.login : null;
+    const reviewedByName = request.reviewedById
+      ? formatTeacherName(teacherByUserId.get(request.reviewedById)) || userById.get(request.reviewedById)?.login || null
+      : null;
+    const forwardedByName = request.forwardedById
+      ? formatTeacherName(teacherByUserId.get(request.forwardedById)) || userById.get(request.forwardedById)?.login || null
+      : null;
 
     return {
       ...safeRequest,
       authorName: request.authorName || teacherName || login || null,
+      reviewedByName,
+      reviewedRole: request.signedRole ?? null,
+      reviewedAt: request.reviewedAt ?? null,
+      forwardedByName,
+      forwardedRole: request.forwardedRole ?? null,
+      forwardedAt: request.forwardedAt ?? null,
     };
   });
 }

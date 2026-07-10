@@ -38,6 +38,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         data: {
           status: 'forwarded',
           forwardedById: auth.session.user.id,
+          forwardedRole: auth.session.user.role,
           forwardedAt: new Date(),
         },
       });
@@ -60,6 +61,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
         status,
         decisionNote,
         reviewedById: auth.session.user.id,
+        signedRole: auth.session.user.role,
         reviewedAt: new Date(),
       },
     });

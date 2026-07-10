@@ -17,7 +17,19 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-async function enrichTimeOffRequests<T extends { teacherId: string; substituteTeacherId: string | null }>(
+function formatUserTeacherName(teacher: { firstName: string; lastName: string; middleName: string | null } | undefined) {
+  return teacher ? [teacher.lastName, teacher.firstName, teacher.middleName].filter(Boolean).join(' ') : null;
+}
+
+async function enrichTimeOffRequests<
+  T extends {
+    teacherId: string;
+    substituteTeacherId: string | null;
+    reviewedById?: string | null;
+    signedRole?: string | null;
+    reviewedAt?: Date | null;
+  },
+>(
   requests: T[],
 ) {
   const teacherIds = Array.from(
@@ -27,15 +39,34 @@ async function enrichTimeOffRequests<T extends { teacherId: string; substituteTe
         .filter((id): id is string => Boolean(id)),
     ),
   );
+  const reviewerIds = Array.from(
+    new Set(requests.map((request) => request.reviewedById).filter((id): id is string => Boolean(id))),
+  );
 
-  const teachers = teacherIds.length
-    ? await prisma.teacher.findMany({
-        where: { id: { in: teacherIds } },
-        select: { id: true, firstName: true, lastName: true, middleName: true, position: true },
-      })
-    : [];
+  const [teachers, reviewers, reviewerTeachers] = await Promise.all([
+    teacherIds.length
+      ? prisma.teacher.findMany({
+          where: { id: { in: teacherIds } },
+          select: { id: true, firstName: true, lastName: true, middleName: true, position: true },
+        })
+      : [],
+    reviewerIds.length
+      ? prisma.user.findMany({
+          where: { id: { in: reviewerIds } },
+          select: { id: true, login: true },
+        })
+      : [],
+    reviewerIds.length
+      ? prisma.teacher.findMany({
+          where: { userId: { in: reviewerIds } },
+          select: { userId: true, firstName: true, lastName: true, middleName: true },
+        })
+      : [],
+  ]);
 
   const teacherMap = new Map(teachers.map((teacher) => [teacher.id, teacher]));
+  const reviewerMap = new Map(reviewers.map((reviewer) => [reviewer.id, reviewer]));
+  const reviewerTeacherMap = new Map(reviewerTeachers.map((teacher) => [teacher.userId, teacher]));
 
   return requests.map((request) => ({
     ...request,
@@ -43,6 +74,11 @@ async function enrichTimeOffRequests<T extends { teacherId: string; substituteTe
     substituteTeacher: request.substituteTeacherId
       ? teacherMap.get(request.substituteTeacherId) ?? null
       : null,
+    reviewedByName: request.reviewedById
+      ? formatUserTeacherName(reviewerTeacherMap.get(request.reviewedById)) || reviewerMap.get(request.reviewedById)?.login || null
+      : null,
+    reviewedRole: request.signedRole ?? null,
+    reviewedAt: request.reviewedAt ?? null,
   }));
 }
 
