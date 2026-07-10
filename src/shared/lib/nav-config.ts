@@ -1,4 +1,5 @@
 import type { Role } from '@prisma/client'
+import { ALL_ROLES } from '@/shared/constants/roles'
 import { roleMatches } from '@/shared/lib/role-access'
 
 /**
@@ -47,6 +48,7 @@ const ALL_AUTH_NO_SEC: Role[] = ALL_AUTH.filter((r) => r !== 'secretary')
 const NON_TEACHING_NO_SEC: Role[] = NON_TEACHING_AUTH.filter((r) => r !== 'secretary')
 // Узкие роли сотрудников: у каждого свой кабинет + общие коммуникации
 const NEW_STAFF: Role[] = ['accountant', 'chief_accountant', 'finance_manager', 'psychologist', 'doctor', 'hr', 'librarian', 'cook', 'zavhoz', 'senior_psychologist', 'safeguarding_lead', 'call_center', 'media']
+const MEDIA_ROLES: Role[] = ALL_ROLES.filter((r) => r !== 'student' && r !== 'parent')
 // Психологическая служба (eSPSMS): кто ведёт кейсы
 const PSY_STAFF: Role[] = ['psychologist', 'senior_psychologist', 'specialist', 'super_admin']
 const CC_TIER: Role[] = ['college_counselor', 'super_admin']
@@ -174,7 +176,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
     { href: '/meals', label: 'Столовая', roles: ['student', 'parent', 'super_admin', 'analyst', 'zavuch', 'cook'] },
     { href: '/workspace/kitchen', label: 'Кухня', roles: ['super_admin', 'analyst', 'zavuch', 'cook'] },
     { href: '/workspace/maintenance', label: 'АХЧ', roles: ['super_admin', 'analyst', 'zavuch', 'zavhoz'] },
-    { href: '/media', label: 'Медиа-центр', roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'event_manager', 'media'] },
+    { href: '/media', label: 'Медиа-центр', roles: MEDIA_ROLES },
     { href: '/purchase-requests', label: 'Заявки на закупку', roles: ['super_admin', 'analyst', 'finance_manager', 'accountant', 'chief_accountant', 'zavhoz'] },
     { href: '/lost-found', label: 'Бюро находок', roles: [...NON_TEACHING_NO_SEC, 'zavhoz'] },
   ]),

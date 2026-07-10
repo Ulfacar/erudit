@@ -1,6 +1,8 @@
 import { createCrud } from '@/shared/lib/crud';
+import { ALL_ROLES } from '@/shared/constants/roles';
+import type { Role } from '@prisma/client';
 
-const MEDIA_ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'event_manager', 'media'] as const;
+const MEDIA_ROLES: Role[] = ALL_ROLES.filter((r) => r !== 'student' && r !== 'parent');
 
 export const { GET, POST, DELETE } = createCrud({
   model: 'mediaRequest',
