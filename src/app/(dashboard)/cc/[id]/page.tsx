@@ -827,6 +827,7 @@ function CcProfileCard() {
               <Text fw={700}>3. Академические результаты</Text>
               <Button size="xs" variant="light" onClick={() => setExamOpen(true)}>+ экзамен</Button>
             </Group>
+            <Table.ScrollContainer minWidth={560}>
             <Table verticalSpacing="xs">
               <Table.Thead>
                 <Table.Tr>
@@ -873,6 +874,7 @@ function CcProfileCard() {
                 )}
               </Table.Tbody>
             </Table>
+            </Table.ScrollContainer>
           </Paper>
 
           {view === 'table' && (
@@ -884,6 +886,7 @@ function CcProfileCard() {
                 <Button size="xs" variant="light" onClick={() => setAppOpen(true)}>+ Вуз</Button>
               </Group>
             </Group>
+            <Table.ScrollContainer minWidth={480}>
             <Table verticalSpacing="xs">
                 <Table.Thead>
                   <Table.Tr><Table.Th>Университет</Table.Th><Table.Th>Страна</Table.Th><Table.Th>Программа</Table.Th><Table.Th>Статус</Table.Th></Table.Tr>
@@ -908,6 +911,7 @@ function CcProfileCard() {
                   ))}
                 </Table.Tbody>
             </Table>
+            </Table.ScrollContainer>
           </Paper>
           )}
         </Stack>
