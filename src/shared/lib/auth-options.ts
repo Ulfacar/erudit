@@ -51,6 +51,15 @@ export const authOptions: AuthOptions = {
         token.starLevel = user.starLevel
         token.login = user.login
         token.branchId = user.branchId
+        try {
+          const grants = await prisma.moduleGrant.findMany({
+            where: { userId: user.id, canRead: true },
+            select: { module: true },
+          })
+          token.grantedModules = grants.map((g) => g.module)
+        } catch {
+          token.grantedModules = []
+        }
       }
       return token
     },
@@ -62,6 +71,7 @@ export const authOptions: AuthOptions = {
         session.user.login = token.login as string
         // JWT maxAge is 8h: staff branch changes are applied after re-login.
         session.user.branchId = token.branchId as string | null | undefined
+        session.user.grantedModules = (token.grantedModules as string[]) ?? []
       }
       return session
     },

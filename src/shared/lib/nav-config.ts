@@ -243,13 +243,21 @@ export const TOP_TABS: TopTab[] = [
  * Фильтр по роли. Рекурсивно фильтрует детей; `group`-раздел без видимых детей —
  * отбрасывается (нет пустых разделов в меню).
  */
-export function filterNavByRole<T extends NavRoute>(items: T[], role: Role | null): T[] {
+export function filterNavByRole<T extends NavRoute>(items: T[], role: Role | null, grantedModules: string[] = []): T[] {
   if (!role) return []
+
   const out: T[] = []
   for (const item of items) {
-    if (!roleMatches(item.roles, role)) continue
+    if (item.group && item.children) {
+      const children = filterNavByRole(item.children as T[], role, grantedModules)
+      if (children.length === 0) continue
+      out.push({ ...item, children } as T)
+      continue
+    }
+
+    if (!roleMatches(item.roles, role) && !grantedModules.includes(item.href)) continue
     if (item.children) {
-      const children = filterNavByRole(item.children as T[], role)
+      const children = filterNavByRole(item.children as T[], role, grantedModules)
       if (item.group && children.length === 0) continue
       out.push({ ...item, children } as T)
     } else {

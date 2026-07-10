@@ -16,14 +16,14 @@ import { SIDEBAR_ICONS } from '@/shared/lib/sidebar-icons';
 const SKIP = new Set(['/home', '/diary', '/today']);
 
 export default function HomePage() {
-  const { role } = useRole();
+  const { role, grantedModules } = useRole();
 
   // Разворачиваем сворачиваемые разделы в плоские листья — хаб остаётся гранулярным.
   // Под-страницы (напр. /schedule/bells) скрываем, если их родитель-лист уже показан.
   const items = useMemo(() => {
-    const leaves = flattenNavLeaves(filterNavByRole(SIDEBAR_NAV, role)).filter((r) => !SKIP.has(r.href));
+    const leaves = flattenNavLeaves(filterNavByRole(SIDEBAR_NAV, role, grantedModules)).filter((r) => !SKIP.has(r.href));
     return leaves.filter((l) => !leaves.some((p) => p !== l && l.href.startsWith(p.href + '/')));
-  }, [role]);
+  }, [role, grantedModules]);
 
   return (
     <Stack gap="lg" p="md">

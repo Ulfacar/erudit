@@ -71,7 +71,7 @@ function getInitials(login: string | null): string {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { role, login } = useRole();
+  const { role, login, grantedModules } = useRole();
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] = useDisclosure();
   const [agentCount, setAgentCount] = useState(0);
 
@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [role, pathname, router]);
 
-  const visibleSidebar = useMemo(() => filterNavByRole(SIDEBAR_NAV, role), [role]);
+  const visibleSidebar = useMemo(() => filterNavByRole(SIDEBAR_NAV, role, grantedModules), [role, grantedModules]);
 
   // Заголовок страницы в шапке — ищем активный лист (в т.ч. внутри сворачиваемых разделов).
   const pageTitle = useMemo(() => {

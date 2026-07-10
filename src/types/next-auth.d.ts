@@ -9,6 +9,7 @@ declare module 'next-auth' {
       role: string
       starLevel: number
       branchId?: string | null
+      grantedModules?: string[]
       name?: string | null
       email?: string | null
       image?: string | null
@@ -20,6 +21,7 @@ declare module 'next-auth' {
     role: string
     starLevel: number
     branchId?: string | null
+    grantedModules?: string[]
   }
 }
 
@@ -30,5 +32,6 @@ declare module 'next-auth/jwt' {
     role: string
     starLevel: number
     branchId?: string | null
+    grantedModules?: string[]
   }
 }
