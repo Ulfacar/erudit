@@ -152,7 +152,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     if (access.status === 'not_found') return errorResponse('NOT_FOUND', 'Not found', 404);
     if (access.status === 'forbidden') return errorResponse('FORBIDDEN', 'Forbidden', 403);
 
-    await prisma.club.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.achievement.deleteMany({ where: { clubId: id } });
+      await tx.club.delete({ where: { id } });
+    });
     return successResponse({ id });
   } catch (error) {
     console.error('DELETE /api/v1/clubs/[id] error:', error);

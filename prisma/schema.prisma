@@ -843,11 +843,13 @@ model Achievement {
   authorId    String
   eventId     String?  // источник — школьное мероприятие (SchoolEvent), если достижение из ивента
   olympiadId  String?
+  clubId      String?
   createdAt   DateTime @default(now())
 
   @@index([studentId])
   @@index([eventId])
   @@index([olympiadId])
+  @@index([clubId])
 }
 
 model PhysNorm {
@@ -1591,6 +1593,7 @@ model ClubParticipant {
   club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
   studentId String
   addedAt   DateTime @default(now())
+  distinguished Boolean @default(false)
 
   @@unique([clubId, studentId])
   @@index([clubId])

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ActionIcon, Anchor, Badge, Button, Checkbox, Group, Loader, Paper, ScrollArea, SegmentedControl, Select, Stack, Table, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Checkbox, Group, Loader, Paper, ScrollArea, SegmentedControl, Select, Stack, Switch, Table, Text, ThemeIcon, Title, Tooltip } from '@mantine/core';
 import { DateInput, DatePicker } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import { IconCalendar, IconTrash, IconUsers } from '@tabler/icons-react';
@@ -39,6 +39,7 @@ type Participant = {
   id: string;
   studentId: string;
   addedAt: string;
+  distinguished: boolean;
   student: { id: string; fio: string; className: string } | null;
 };
 type Student = {
@@ -204,6 +205,40 @@ function DetailContent() {
     onError: (error) => notifications.show({ color: 'red', title: 'Ошибка', message: error instanceof Error ? error.message : 'Не удалось удалить участника' }),
   });
 
+  const toggleDistinguished = useMutation({
+    mutationFn: async ({ studentId: nextStudentId, distinguished }: { studentId: string; distinguished: boolean }) => {
+      const res = await fetch(`/api/v1/clubs/${id}/participants`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: nextStudentId, distinguished }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось обновить отметку');
+      return json.data;
+    },
+    onMutate: async ({ studentId: nextStudentId, distinguished }) => {
+      await queryClient.cancelQueries({ queryKey: ['club', id] });
+      const previous = queryClient.getQueryData<ClubDetail>(['club', id]);
+      queryClient.setQueryData<ClubDetail>(['club', id], (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          participants: current.participants.map((participant) => (
+            participant.studentId === nextStudentId ? { ...participant, distinguished } : participant
+          )),
+        };
+      });
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(['club', id], context.previous);
+      notifications.show({ color: 'red', title: 'Ошибка', message: error instanceof Error ? error.message : 'Не удалось обновить отметку' });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', id] });
+    },
+  });
+
   if (clubQuery.isLoading) return <Group justify="center" py="xl"><Loader /></Group>;
   if (clubQuery.isError || !clubQuery.data) return <Text c="red">Не удалось загрузить кружок</Text>;
 
@@ -309,6 +344,7 @@ function DetailContent() {
                 <Table.Th>ФИО</Table.Th>
                 <Table.Th>Класс</Table.Th>
                 <Table.Th>Добавлен</Table.Th>
+                <Table.Th>Отличился</Table.Th>
                 <Table.Th w={60}></Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -319,6 +355,14 @@ function DetailContent() {
                   <Table.Td>{participant.student?.className || '—'}</Table.Td>
                   <Table.Td>{fmtDate(participant.addedAt)}</Table.Td>
                   <Table.Td>
+                    <Switch
+                      checked={participant.distinguished}
+                      onChange={(event) => toggleDistinguished.mutate({ studentId: participant.studentId, distinguished: event.currentTarget.checked })}
+                      disabled={toggleDistinguished.isPending}
+                      label={participant.distinguished ? 'Да' : 'Нет'}
+                    />
+                  </Table.Td>
+                  <Table.Td>
                     <Tooltip label="Удалить">
                       <ActionIcon color="red" variant="subtle" onClick={() => removeParticipant.mutate(participant.studentId)} loading={removeParticipant.isPending}>
                         <IconTrash size={16} />
@@ -328,7 +372,7 @@ function DetailContent() {
                 </Table.Tr>
               ))}
               {club.participants.length === 0 && (
-                <Table.Tr><Table.Td colSpan={4}><Text c="dimmed" ta="center" py="lg">Участники ещё не добавлены</Text></Table.Td></Table.Tr>
+                <Table.Tr><Table.Td colSpan={5}><Text c="dimmed" ta="center" py="lg">Участники ещё не добавлены</Text></Table.Td></Table.Tr>
               )}
             </Table.Tbody>
           </Table>

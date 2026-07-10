@@ -18,6 +18,7 @@ const CATS = [
   { value: 'sport', label: 'Спорт' },
   { value: 'art', label: 'Творчество' },
   { value: 'social', label: 'Общественное' },
+  { value: 'club', label: 'Кружок' },
   { value: 'other', label: 'Другое' },
 ];
 

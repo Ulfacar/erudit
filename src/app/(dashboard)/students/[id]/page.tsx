@@ -219,6 +219,7 @@ const ACHIEVEMENT_CATEGORY_LABELS: Record<string, string> = {
   sport: 'Спорт',
   art: 'Творчество',
   social: 'Социальное',
+  club: 'Кружок',
   other: 'Другое',
 };
 

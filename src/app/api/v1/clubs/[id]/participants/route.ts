@@ -20,7 +20,7 @@ function fio(student: { lastName: string; firstName: string; middleName?: string
 }
 
 async function findClubForUser(id: string, role: Role, userId: string, sessionBranchId?: string | null) {
-  const club = await prisma.club.findUnique({ where: { id }, select: { id: true, coachId: true, branchId: true } });
+  const club = await prisma.club.findUnique({ where: { id }, select: { id: true, name: true, coachId: true, branchId: true } });
   if (!club) return { status: 'not_found' as const };
   if (role === 'club_coach' && club.coachId !== userId) return { status: 'forbidden' as const };
   if (role !== 'club_coach') {
@@ -107,6 +107,74 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const auth = await withAuth(request, { roles: [...WRITE_ROLES] });
+    if (auth.response) return auth.response;
+
+    const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const studentId = String(body.studentId || '').trim();
+    if (!studentId) return errorResponse('VALIDATION_ERROR', 'studentId обязателен');
+    if (typeof body.distinguished !== 'boolean') return errorResponse('VALIDATION_ERROR', 'distinguished должен быть boolean');
+
+    const access = await findClubForUser(id, auth.session.user.role, auth.session.user.id, auth.session.user.branchId);
+    if (access.status === 'not_found') return errorResponse('NOT_FOUND', 'Кружок не найден', 404);
+    if (access.status === 'forbidden') return errorResponse('FORBIDDEN', 'Forbidden', 403);
+
+    const participant = await prisma.clubParticipant.findUnique({
+      where: { clubId_studentId: { clubId: id, studentId } },
+    });
+    if (!participant) return errorResponse('VALIDATION_ERROR', 'Ученик не является участником кружка', 400);
+
+    const student = await prisma.student.findUnique({ where: { id: studentId }, select: { id: true, branchId: true } });
+    if (!student) return errorResponse('NOT_FOUND', 'Not found', 404);
+    if (access.club.branchId && access.club.branchId !== student.branchId) return errorResponse('NOT_FOUND', 'Not found', 404);
+
+    const allowed = await canAccessStudent(auth.session.user.role, auth.session.user.id, studentId, auth.session.user.branchId);
+    if (!allowed) return errorResponse('FORBIDDEN', 'Forbidden', 403);
+
+    const now = new Date();
+    const updated = await prisma.$transaction(async (tx) => {
+      const nextParticipant = await tx.clubParticipant.update({
+        where: { clubId_studentId: { clubId: id, studentId } },
+        data: { distinguished: body.distinguished },
+      });
+
+      const existingAchievement = await tx.achievement.findFirst({
+        where: { studentId, clubId: id },
+        select: { id: true },
+      });
+
+      if (body.distinguished) {
+        const data = {
+          studentId,
+          title: `Кружок: ${access.club.name}`,
+          category: 'club',
+          level: 'school',
+          date: now,
+          authorId: auth.session.user.id,
+          clubId: id,
+        };
+        if (existingAchievement) {
+          await tx.achievement.update({ where: { id: existingAchievement.id }, data });
+        } else {
+          await tx.achievement.create({ data });
+        }
+      } else if (existingAchievement) {
+        await tx.achievement.deleteMany({ where: { studentId, clubId: id } });
+      }
+
+      return nextParticipant;
+    });
+
+    return successResponse(updated);
+  } catch (error) {
+    console.error('PATCH /api/v1/clubs/[id]/participants error:', error);
+    return errorResponse('INTERNAL_ERROR', 'Не удалось обновить участника', 500);
+  }
+}
+
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await withAuth(request, { roles: [...WRITE_ROLES] });
@@ -124,7 +192,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const allowed = await canAccessStudent(auth.session.user.role, auth.session.user.id, studentId, auth.session.user.branchId);
     if (!allowed) return errorResponse('FORBIDDEN', 'Forbidden', 403);
 
-    await prisma.clubParticipant.deleteMany({ where: { clubId: id, studentId } });
+    await prisma.$transaction([
+      prisma.clubParticipant.deleteMany({ where: { clubId: id, studentId } }),
+      prisma.achievement.deleteMany({ where: { clubId: id, studentId } }),
+    ]);
     return successResponse({ clubId: id, studentId });
   } catch (error) {
     console.error('DELETE /api/v1/clubs/[id]/participants error:', error);
