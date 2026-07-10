@@ -21,12 +21,15 @@ async function main() {
     { login: 'senior_psy', role: 'senior_psychologist', email: 'senior.psy@erudit.kg', star: 4 },
     { login: 'psy_coord', role: 'psy_coordinator', email: 'psy.coord@erudit.kg', star: 4 },
     { login: 'olympcoach1', role: 'olympiad_coach', email: 'olympcoach@erudit.kg', star: 4 },
+    { login: 'uniform1', role: 'uniform_manager', email: 'uniform@erudit.kg', star: 4 },
   ]
+  const branch = await prisma.branch.findFirst({ orderBy: { createdAt: 'asc' } })
   for (const u of defs) {
+    const extraBranch = u.login === 'uniform1' && branch ? { branchId: branch.id } : {}
     await prisma.user.upsert({
       where: { login: u.login },
-      update: { role: u.role, isActive: true },
-      create: { login: u.login, email: u.email, password: pw, role: u.role, starLevel: u.star ?? 1, isActive: true },
+      update: { role: u.role, isActive: true, ...extraBranch },
+      create: { login: u.login, email: u.email, password: pw, role: u.role, starLevel: u.star ?? 1, isActive: true, ...extraBranch },
     })
   }
 

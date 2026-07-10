@@ -114,6 +114,7 @@ export const CLUSTERS = [
       { role: 'librarian', emoji: '📚', color: '#1971c2', demoLogin: 'librarian1' },
       { role: 'cook', emoji: '🍲', color: '#f08c00', demoLogin: 'cook1' },
       { role: 'zavhoz', emoji: '🔧', color: '#495057', demoLogin: 'zavhoz1' },
+      { role: 'uniform_manager', emoji: '🧥', color: '#e8590c', demoLogin: 'uniform1' },
     ],
   },
   {

@@ -64,6 +64,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   cambridge_coord: 'Кэмбридж-координатор',
   college_counselor: 'Колледж-консультант',
   olympiad_coach: 'Тренер (олимпиадный)',
+  uniform_manager: 'Форма и мерч',
 };
 
 interface SessionUser {
@@ -140,6 +141,9 @@ export async function resolveScope(user: SessionUser): Promise<AssistantScope> {
       return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: false, canSeePsych: false, allowedSpecialistKinds: [], canSeeSchoolStats: true };
 
     case 'librarian':
+    case 'uniform_manager':
+      return { ...base, allowedClassIds: 'all', allowedStudentIds: 'all', canSeeFinance: false, canSeePsych: false, allowedSpecialistKinds: [], canSeeSchoolStats: false };
+
     case 'cook':
     case 'zavhoz':
       // хозблок: профили учеников не нужны — ассистент отвечает по базе знаний и своим модулям

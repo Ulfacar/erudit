@@ -93,6 +93,7 @@ enum Role {
   cambridge_coord // Кэмбридж-координатор
   college_counselor
   olympiad_coach // тренер олимпиадного центра
+  uniform_manager // кладовщик формы и мерча
 }
 
 // ============ SCHOOL STRUCTURE ============
@@ -1584,6 +1585,50 @@ model KpiConfig {
   version     Int      @default(1)
   updatedById String?
   updatedAt   DateTime @updatedAt
+}
+
+// ===== UNIFORM / MERCH (форма и мерч) =====
+
+model UniformItem {
+  id        String   @id @default(cuid())
+  name      String                        // Батник, Штаны, Бомбер, Футболка
+  category  String?  @default("uniform")  // uniform | merch
+  basic     Boolean  @default(false)      // входит в базовый набор (бесплатно по контракту)
+  price     Int?     @default(0)          // цена доп/платной покупки, сом
+  branchId  String?
+  createdAt DateTime @default(now())
+  variants  UniformVariant[]
+  issues    UniformIssue[]
+}
+
+model UniformVariant {
+  id        String   @id @default(cuid())
+  itemId    String
+  item      UniformItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  size      String                        // S | M | L | XL | 2XL ...
+  total     Int      @default(0)          // всего пришло
+  available Int      @default(0)          // осталось на складе
+
+  @@unique([itemId, size])
+  @@index([itemId])
+}
+
+model UniformIssue {
+  id         String   @id @default(cuid())
+  itemId     String
+  item       UniformItem @relation(fields: [itemId], references: [id])
+  size       String
+  studentId  String
+  className  String?                      // класс на момент выдачи (текст)
+  paid       Boolean  @default(false)     // платная (доп/замена) vs базовая
+  amount     Int?     @default(0)         // сумма, если платная
+  status     String?  @default("issued")  // issued | reserved
+  note       String?
+  issuedById String?
+  issuedAt   DateTime @default(now())
+
+  @@index([itemId])
+  @@index([studentId])
 }
 
 // ============ SCHOOL EVENTS ============
