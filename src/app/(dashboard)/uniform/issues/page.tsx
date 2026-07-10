@@ -17,7 +17,7 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconHanger2, IconSend } from '@tabler/icons-react';
+import { IconCheck, IconHanger2, IconSend, IconX } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 
 const ROLES = ['uniform_manager', 'super_admin'] as const;
@@ -35,6 +35,7 @@ type Issue = {
   className: string | null;
   paid: boolean;
   amount: number | null;
+  status: string | null;
   note: string | null;
   issuedAt: string;
 };
@@ -172,6 +173,35 @@ function UniformIssuesContent() {
     }
   }
 
+  async function processReservation(id: string, action: 'confirm' | 'cancel') {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/v1/uniform/issues/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось обработать бронь');
+
+      notifications.show({
+        color: 'green',
+        title: 'Готово',
+        message: action === 'confirm' ? 'Бронь подтверждена' : 'Бронь отменена',
+      });
+      await Promise.all([
+        loadIssues(),
+        itemId
+          ? fetch(`/api/v1/uniform/items/${itemId}/variants`).then((r) => r.json()).then((v) => { if (v.success) setVariants(v.data ?? []); })
+          : Promise.resolve(),
+      ]);
+    } catch (error) {
+      notifications.show({ color: 'red', title: 'Ошибка', message: error instanceof Error ? error.message : 'Не удалось обработать бронь' });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <Stack gap="md">
       <Group gap="xs">
@@ -217,8 +247,10 @@ function UniformIssuesContent() {
                 <Table.Th>Класс</Table.Th>
                 <Table.Th>Товар</Table.Th>
                 <Table.Th>Размер</Table.Th>
+                <Table.Th>Статус</Table.Th>
                 <Table.Th>Оплата</Table.Th>
                 <Table.Th>Примечание</Table.Th>
+                <Table.Th>Действия</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -230,11 +262,44 @@ function UniformIssuesContent() {
                   <Table.Td>{issue.item?.name ?? '—'}</Table.Td>
                   <Table.Td>{issue.size}</Table.Td>
                   <Table.Td>
+                    <Badge variant="light" color={issue.status === 'reserved' ? 'yellow' : issue.status === 'cancelled' ? 'red' : 'green'} radius="sm">
+                      {issue.status === 'reserved' ? 'Бронь' : issue.status === 'cancelled' ? 'Отменена' : 'Выдано'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
                     <Badge variant="light" color={issue.paid ? 'orange' : 'green'} radius="sm">
                       {issue.paid ? `${issue.amount ?? 0} сом` : 'Бесплатно'}
                     </Badge>
                   </Table.Td>
                   <Table.Td>{issue.note || '—'}</Table.Td>
+                  <Table.Td>
+                    {issue.status === 'reserved' ? (
+                      <Group gap="xs" wrap="nowrap">
+                        <Button
+                          size="compact-xs"
+                          variant="light"
+                          color="green"
+                          leftSection={<IconCheck size={14} />}
+                          loading={submitting}
+                          onClick={() => processReservation(issue.id, 'confirm')}
+                        >
+                          Подтвердить
+                        </Button>
+                        <Button
+                          size="compact-xs"
+                          variant="light"
+                          color="red"
+                          leftSection={<IconX size={14} />}
+                          loading={submitting}
+                          onClick={() => processReservation(issue.id, 'cancel')}
+                        >
+                          Отменить
+                        </Button>
+                      </Group>
+                    ) : (
+                      '—'
+                    )}
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

@@ -1626,6 +1626,8 @@ model UniformIssue {
   note       String?
   issuedById String?
   issuedAt   DateTime @default(now())
+  invoiceId  String?   // ссылка на FeeInvoice при платной выдаче
+  paymentId  String?   // ссылка на Payment
 
   @@index([itemId])
   @@index([studentId])

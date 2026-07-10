@@ -186,6 +186,7 @@ export const SIDEBAR_NAV: NavRoute[] = [
   ]),
 
   grp('/g/uniform', 'Форма и мерч', [
+    { href: '/uniform/catalog', label: 'Школьная форма', roles: ['parent', 'student'] },
     { href: '/uniform/items', label: 'Каталог и приход', roles: ['uniform_manager', 'super_admin'] },
     { href: '/uniform/issues', label: 'Выдача формы', roles: ['uniform_manager', 'super_admin'] },
     { href: '/uniform/stock', label: 'Остатки', roles: ['uniform_manager', 'super_admin'] },

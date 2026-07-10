@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { canAccessStudent } from '@/shared/lib/student-access';
+import { recordUniformPayment } from '@/shared/lib/uniform/record-payment';
 
 const ROLES = ['uniform_manager', 'super_admin'] as const;
 
@@ -54,14 +55,10 @@ export async function POST(request: NextRequest) {
     const studentId = String(body.studentId ?? '').trim();
     const className = body.className ? String(body.className).trim() : null;
     const paid = Boolean(body.paid);
-    const amount = paid ? Number(body.amount ?? 0) : 0;
     const note = body.note ? String(body.note).trim() : null;
 
     if (!itemId || !size || !studentId) {
       return errorResponse('VALIDATION_ERROR', 'Поля itemId, size и studentId обязательны');
-    }
-    if (!Number.isInteger(amount) || amount < 0) {
-      return errorResponse('VALIDATION_ERROR', 'Сумма должна быть неотрицательным целым числом');
     }
 
     const allowed = await canAccessStudent(
@@ -71,6 +68,14 @@ export async function POST(request: NextRequest) {
       auth.session.user.branchId,
     );
     if (!allowed) return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
+
+    const item = await prisma.uniformItem.findUnique({
+      where: { id: itemId },
+      select: { id: true, name: true, category: true, basic: true, price: true },
+    });
+    if (!item) return errorResponse('NOT_FOUND', 'Товар не найден', 404);
+
+    const amount = paid ? (item.price ?? 0) : 0;
 
     const issue = await prisma.$transaction(async (tx) => {
       const updated = await tx.uniformVariant.updateMany({
@@ -82,17 +87,36 @@ export async function POST(request: NextRequest) {
         throw new Error('NO_STOCK');
       }
 
-      return tx.uniformIssue.create({
+      const issue = await tx.uniformIssue.create({
         data: {
           itemId,
           size,
           studentId,
           className,
           paid,
-          amount: paid ? amount : 0,
+          amount,
           note,
           issuedById: auth.session.user.id,
         },
+        include: {
+          item: { select: { id: true, name: true, category: true, basic: true, price: true } },
+        },
+      });
+
+      if (paid && amount > 0) {
+        await recordUniformPayment(tx, {
+          issueId: issue.id,
+          studentId: issue.studentId,
+          itemName: issue.item.name,
+          size: issue.size,
+          amount,
+          recordedBy: auth.session.user.id,
+          method: body.method ? String(body.method) : undefined,
+        });
+      }
+
+      return tx.uniformIssue.findUniqueOrThrow({
+        where: { id: issue.id },
         include: {
           item: { select: { id: true, name: true, category: true, basic: true, price: true } },
         },
