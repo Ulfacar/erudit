@@ -31,9 +31,10 @@ const EXP_CATS = [
 ];
 
 const PAY_METHODS = [
-  { value: 'cash', label: 'Наличные' },
-  { value: 'card', label: 'Карта' },
-  { value: 'bank', label: 'Банковский перевод' },
+  { value: 'нал', label: 'Наличные' },
+  { value: 'карта', label: 'Карта' },
+  { value: 'мбанк', label: 'МБанк' },
+  { value: 'банк', label: 'Банк' },
 ];
 
 interface InvoiceOption {
@@ -48,7 +49,7 @@ function AcceptPaymentModal({ opened, onClose, onSuccess }: { opened: boolean; o
   const [students, setStudents] = useState<Record<string, string>>({});
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | string>('');
-  const [method, setMethod] = useState<string | null>('cash');
+  const [method, setMethod] = useState<string | null>('нал');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 

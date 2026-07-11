@@ -27,7 +27,7 @@ async function main() {
   ]
   const branch = await prisma.branch.findFirst({ orderBy: { createdAt: 'asc' } })
   for (const u of defs) {
-    const extraBranch = ['club1', 'uniform1', 'sport1'].includes(u.login) && branch ? { branchId: branch.id } : {}
+    const extraBranch = branch ? { branchId: branch.id } : {}
     await prisma.user.upsert({
       where: { login: u.login },
       update: { role: u.role, isActive: true, ...extraBranch },
