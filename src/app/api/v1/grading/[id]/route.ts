@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server'
 import { prisma } from '@/shared/lib/prisma'
 import { successResponse, errorResponse } from '@/shared/lib/api-response'
 import { withAuth } from '@/shared/lib/api-auth'
+import { roleMatches } from '@/shared/lib/role-access'
 
 export async function GET(
   request: NextRequest,
@@ -99,8 +100,7 @@ export async function PUT(
     }
 
     const userRole = auth.session.user.role
-    const isPrivileged =
-      userRole === 'zavuch' || userRole === 'super_admin' || userRole === 'analyst'
+    const isPrivileged = roleMatches(['zavuch', 'super_admin', 'analyst'], userRole)
 
     if (!isPrivileged) {
       const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { roleMatches } from '@/shared/lib/role-access';
 
 /**
  * GET /api/v1/grading/moderation
@@ -127,7 +128,7 @@ export async function PUT(request: NextRequest) {
       } else {
         // approve — роль определяет какой переход разрешён
         if (grade.status === 'submitted') {
-          if (userRole === 'zavuch' || userRole === 'super_admin') {
+          if (roleMatches(['zavuch', 'super_admin'], userRole)) {
             newStatus = 'moderated';
           } else {
             denyReason = 'Первичная модерация — только завуч или суперадмин';

@@ -3,6 +3,8 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getTeacherScope } from '@/shared/lib/teacher-scope';
+import { roleMatches } from '@/shared/lib/role-access';
+import type { Role } from '@prisma/client';
 
 const ROLES = ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator'] as const;
 
@@ -16,7 +18,7 @@ export async function GET(request: NextRequest) {
     if (auth.response) return auth.response;
     const role = auth.session.user.role;
     const scope = await getTeacherScope(auth.session.user.id);
-    const isAdmin = role === 'super_admin' || role === 'analyst' || role === 'zavuch';
+    const isAdmin = roleMatches(['super_admin', 'analyst', 'zavuch'], role as Role);
 
     const ts = await prisma.teacherSubject.findMany({
       where: isAdmin ? {} : scope ? { teacherId: scope.teacherId } : { teacherId: '__none__' },

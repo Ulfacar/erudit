@@ -3,11 +3,13 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getTeacherScope } from '@/shared/lib/teacher-scope';
+import { roleMatches } from '@/shared/lib/role-access';
+import type { Role } from '@prisma/client';
 
 const ROLES = ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator'] as const;
 
 function isAdmin(role: string) {
-  return role === 'super_admin' || role === 'analyst' || role === 'zavuch';
+  return roleMatches(['super_admin', 'analyst', 'zavuch'], role as Role);
 }
 
 /**

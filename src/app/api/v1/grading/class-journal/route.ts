@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { effectiveRoles } from '@/shared/lib/role-access';
 
 /**
  * GET /api/v1/grading/class-journal?classId=X&periodId=Y
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     // a parent only their children's classes. Without this, anyone could read any
     // class roster + grades by passing an arbitrary classId.
     const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
-    if (!STAFF.includes(role)) {
+    if (!effectiveRoles(role).some((r) => STAFF.includes(r))) {
       let owns = false;
       if (role === 'student') {
         const self = await prisma.student.findFirst({ where: { userId }, select: { classId: true } });

@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { emitEvent } from '@/shared/lib/agent/engine';
 import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
+import { getTeacherScope } from '@/shared/lib/teacher-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -124,6 +125,14 @@ export async function POST(request: NextRequest) {
       return errorResponse('NOT_FOUND', 'Ученик не найден', 404);
     }
 
+    const role = auth.session.user.role;
+    if (role === 'teacher' || role === 'curator') {
+      const scope = await getTeacherScope(auth.session.user.id);
+      if (!scope || !scope.classIds.includes(student.classId)) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к этому ученику', 403);
+      }
+    }
+
     const record = await prisma.attendance.upsert({
       where: {
         studentId_date: {
@@ -172,6 +181,15 @@ export async function PUT(request: NextRequest) {
     const existing = await prisma.attendance.findUnique({ where: { id } });
     if (!existing) {
       return errorResponse('NOT_FOUND', 'Запись не найдена', 404);
+    }
+
+    const role = auth.session.user.role;
+    if (role === 'teacher' || role === 'curator') {
+      const st = await prisma.student.findUnique({ where: { id: existing.studentId }, select: { classId: true } });
+      const scope = await getTeacherScope(auth.session.user.id);
+      if (!st || !scope || !scope.classIds.includes(st.classId)) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к этой записи', 403);
+      }
     }
 
     const updated = await prisma.attendance.update({

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
-import { PSY_CABINET_ROLES } from '@/shared/lib/psy-scope';
+import { PSY_CABINET_ROLES, getPsyScope, canSeeFio } from '@/shared/lib/psy-scope';
 
 /**
  * GET /api/v1/psy/student-card/[id] — анкета ученика для кабинета психолога.
@@ -60,8 +60,17 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
     const cases = await prisma.psyCase.findMany({
       where: { studentId: id },
       orderBy: { openedAt: 'desc' },
-      select: { id: true, title: true, riskLevel: true, status: true, openedAt: true, closedAt: true },
+      select: { id: true, title: true, riskLevel: true, status: true, openedAt: true, closedAt: true, ownerId: true },
     });
+    const role = auth.session.user.role;
+    const scope = getPsyScope(auth.session.user.id, role);
+    const ownsAny = scope.full || cases.some((c) => c.ownerId === auth.session.user.id);
+    if (!scope.full && !ownsAny) {
+      return errorResponse('FORBIDDEN', 'Нет доступа к карточке этого ученика', 403);
+    }
+    const showFio = scope.role === 'psy_coordinator' || scope.role === 'super_admin' ? true
+                  : scope.role === 'senior_psychologist' ? false
+                  : cases.some((c) => canSeeFio(scope, c.ownerId));
     const supportStart = cases.length ? cases.reduce((m, c) => (c.openedAt < m ? c.openedAt : m), cases[0].openedAt) : null;
     const allClosed = cases.length > 0 && cases.every((c) => c.status === 'closed' && c.closedAt);
     const supportEnd = allClosed
@@ -83,28 +92,30 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
       select: { id: true, kind: true, title: true, fileName: true, fileUrl: true, createdAt: true },
     });
 
+    const responseCases = cases.map(({ ownerId, ...c }) => c);
+
     return successResponse({
       profile: {
         id: student.id,
-        name: `${student.lastName} ${student.firstName}${student.middleName ? ' ' + student.middleName : ''}`,
+        name: showFio ? `${student.lastName} ${student.firstName}${student.middleName ? ' ' + student.middleName : ''}` : student.psyCode ?? 'код скрыт',
         className: student.class ? `${student.class.grade}${student.class.letter}` : '—',
-        photo: student.photo,
+        photo: showFio ? student.photo : null,
         psyCode: student.psyCode,
-        dateOfBirth: student.dateOfBirth,
+        dateOfBirth: showFio ? student.dateOfBirth : null,
         enrolledAt: student.enrolledAt,
         supportStart,
         supportEnd,
       },
-      parents: student.parentLinks.map((pl) => ({
+      parents: showFio ? student.parentLinks.map((pl) => ({
         id: pl.parent.id,
         name: `${pl.parent.lastName} ${pl.parent.firstName}`,
         phone: pl.parent.phone,
         relation: pl.relation,
-      })),
-      siblings: [...siblingMap.values()],
-      cases,
+      })) : [],
+      siblings: showFio ? [...siblingMap.values()] : [],
+      cases: responseCases,
       parentMeetings,
-      documents,
+      documents: showFio ? documents : [],
     });
   } catch (e) {
     console.error('GET psy/student-card/[id] error:', e);

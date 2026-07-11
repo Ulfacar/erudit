@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { roleMatches } from '@/shared/lib/role-access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const role = auth.session.user.role;
-    const isAdminish = role === 'super_admin' || role === 'zavuch' || role === 'analyst';
+    const isAdminish = roleMatches(['super_admin', 'zavuch', 'analyst'], role);
 
     if (!isAdminish) {
       // Учителю — только если админ глобально разрешил создавать собственные категории.
