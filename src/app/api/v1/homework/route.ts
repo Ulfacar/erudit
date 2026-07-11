@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
+import { getTeacherScope } from '@/shared/lib/teacher-scope';
 
 /**
  * GET /api/v1/homework
@@ -126,11 +127,22 @@ export async function POST(request: NextRequest) {
       return errorResponse('NOT_FOUND', 'Класс не найден', 404);
     }
 
+    // Учитель/куратор задаёт ДЗ ТОЛЬКО своим классам, teacherId — из сессии (не из тела).
+    const role = auth.session.user.role;
+    let effectiveTeacherId = teacherId;
+    if (role === 'teacher' || role === 'curator') {
+      const scope = await getTeacherScope(auth.session.user.id);
+      if (!scope || !scope.classIds.includes(classId)) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к этому классу', 403);
+      }
+      effectiveTeacherId = scope.teacherId;
+    }
+
     const homework = await prisma.homework.create({
       data: {
         classId,
         subjectId,
-        teacherId,
+        teacherId: effectiveTeacherId,
         description,
         dueDate: new Date(dueDate),
       },

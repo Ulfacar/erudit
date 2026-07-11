@@ -7,7 +7,7 @@ import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
 export async function GET(request: NextRequest) {
   try {
     const auth = await withAuth(request, {
-      roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'psychologist', 'senior_psychologist', 'specialist', 'college_counselor'],
+      roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'psychologist', 'senior_psychologist', 'specialist', 'college_counselor', 'hr'],
     });
     if (auth.response) return auth.response;
 

@@ -5,6 +5,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { checkRateLimit, getClientIp } from '@/shared/lib/rate-limit';
 import { emitEvent } from '@/shared/lib/agent/engine';
 import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
+import { getTeacherScope } from '@/shared/lib/teacher-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -165,6 +166,18 @@ export async function POST(request: NextRequest) {
       return errorResponse('NOT_FOUND', 'Ученик не найден', 404);
     }
 
+    // Учитель/куратор ставит оценку ТОЛЬКО своим ученикам, и teacherId берётся из
+    // сессии (не из тела — защита от спуфинга авторства). Завуч/админ ведут за других.
+    const role = auth.session.user.role;
+    let effectiveTeacherId = teacherId;
+    if (role === 'teacher' || role === 'curator') {
+      const scope = await getTeacherScope(auth.session.user.id);
+      if (!scope || !scope.classIds.includes(student.classId)) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к этому ученику', 403);
+      }
+      effectiveTeacherId = scope.teacherId;
+    }
+
     const category = await prisma.gradeCategory.findUnique({ where: { id: categoryId } });
     if (!category) {
       return errorResponse('NOT_FOUND', 'Категория оценки не найдена', 404);
@@ -181,7 +194,7 @@ export async function POST(request: NextRequest) {
         studentId,
         subjectId,
         categoryId,
-        teacherId,
+        teacherId: effectiveTeacherId,
         periodId,
         value,
         scale: gradeScale,
