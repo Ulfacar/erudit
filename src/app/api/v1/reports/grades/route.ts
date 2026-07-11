@@ -3,6 +3,8 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { calculateWeightedAverage } from '@/modules/grading/services/weighted-average';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, canAccessBranch } from '@/shared/lib/branch-scope';
+import { getTeacherScope } from '@/shared/lib/teacher-scope';
 
 /**
  * GET /api/v1/reports/grades
@@ -29,6 +31,16 @@ export async function GET(request: NextRequest) {
         'VALIDATION_ERROR',
         'Параметры classId, subjectId и periodId обязательны',
       );
+    }
+
+    const role = auth.session.user.role;
+    const cls = await prisma.class.findUnique({ where: { id: classId }, select: { branchId: true } });
+    if (!cls) return errorResponse('NOT_FOUND', 'Класс не найден', 404);
+    const scope = await getBranchScope(auth.session.user.id, role, auth.session.user.branchId);
+    if (!canAccessBranch(scope, cls.branchId)) return errorResponse('FORBIDDEN', 'Нет доступа к этому классу', 403);
+    if (role === 'teacher' || role === 'curator') {
+      const ts = await getTeacherScope(auth.session.user.id);
+      if (!ts || !ts.classIds.includes(classId)) return errorResponse('FORBIDDEN', 'Нет доступа к этому классу', 403);
     }
 
     // Get students in the class

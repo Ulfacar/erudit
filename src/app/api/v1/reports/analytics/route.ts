@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { calculateWeightedAverage } from '@/modules/grading/services/weighted-average';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 /**
  * GET /api/v1/reports/analytics
@@ -20,9 +21,12 @@ export async function GET(request: NextRequest) {
     });
     if (auth.response) return auth.response;
 
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const bw = branchWhere(scope);
+
     // ── 1. Average by class ──
     const allGradesWithClass = await prisma.grade.findMany({
-      where: { status: { not: 'draft' } },
+      where: { status: { not: 'draft' }, ...(Object.keys(bw).length ? { student: bw } : {}) },
       include: {
         student: {
           include: { class: true },
@@ -117,7 +121,7 @@ export async function GET(request: NextRequest) {
     >();
 
     const allGradesWithTeacher = await prisma.grade.findMany({
-      where: { status: { not: 'draft' } },
+      where: { status: { not: 'draft' }, ...(Object.keys(bw).length ? { student: bw } : {}) },
       include: {
         teacher: {
           select: { id: true, firstName: true, lastName: true, middleName: true },

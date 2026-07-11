@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { computePenalty } from '@/shared/lib/finance/penalty';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 /**
  * GET /api/v1/finance/forecast — прогноз прихода («дезографы»): ожидаемые поступления
@@ -16,8 +17,10 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const bw = branchWhere(scope);
     const invoices = await prisma.feeInvoice.findMany({
-      where: { status: { in: ['pending', 'partial'] }, dueDate: { not: null } },
+      where: { status: { in: ['pending', 'partial'] }, dueDate: { not: null }, ...(Object.keys(bw).length ? { student: bw } : {}) },
       include: { payments: { select: { amount: true, verified: true } } },
     });
 

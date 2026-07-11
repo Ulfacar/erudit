@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { computePenalty } from '@/shared/lib/finance/penalty';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 /**
  * GET /api/v1/finance/debtors — должники с телефоном родителя (для колл-центра).
@@ -15,8 +16,10 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const bw = branchWhere(scope);
     const invoices = await prisma.feeInvoice.findMany({
-      where: { status: { in: ['pending', 'partial'] }, dueDate: { not: null, lt: new Date() } },
+      where: { status: { in: ['pending', 'partial'] }, dueDate: { not: null, lt: new Date() }, ...(Object.keys(bw).length ? { student: bw } : {}) },
       include: { payments: { select: { amount: true, verified: true } } },
     });
     type Row = { studentId: string; remaining: number; penalty: number; overdueDays: number };

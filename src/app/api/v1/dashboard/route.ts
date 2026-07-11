@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,15 +12,20 @@ export async function GET(request: NextRequest) {
     });
     if (auth.response) return auth.response;
 
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+    const bw = branchWhere(scope);
+    const hasBw = Object.keys(bw).length > 0;
+
     // ── Basic counts ──
     const [totalStudents, totalTeachers, totalClasses] = await Promise.all([
-      prisma.student.count(),
+      prisma.student.count({ where: hasBw ? bw : undefined }),
       prisma.teacher.count(),
-      prisma.class.count(),
+      prisma.class.count({ where: hasBw ? bw : undefined }),
     ]);
 
     // ── Distinct parallels (grades) ──
     const distinctGrades = await prisma.class.findMany({
+      where: hasBw ? bw : undefined,
       select: { grade: true },
       distinct: ['grade'],
     });
@@ -35,6 +41,7 @@ export async function GET(request: NextRequest) {
       where: {
         date: { gte: today, lt: tomorrow },
         status: { in: ['absent', 'excused', 'trip', 'quarantine'] },
+        ...(hasBw ? { student: bw } : {}),
       },
     });
     const todayStudents = totalStudents - absentToday;
@@ -46,8 +53,8 @@ export async function GET(request: NextRequest) {
 
     const [studentsThisMonth, studentsLastMonth, teachersThisMonth, teachersLastMonth] =
       await Promise.all([
-        prisma.student.count({ where: { enrolledAt: { lt: firstOfThisMonth } } }),
-        prisma.student.count({ where: { enrolledAt: { lt: firstOfLastMonth } } }),
+        prisma.student.count({ where: { enrolledAt: { lt: firstOfThisMonth }, ...(hasBw ? bw : {}) } }),
+        prisma.student.count({ where: { enrolledAt: { lt: firstOfLastMonth }, ...(hasBw ? bw : {}) } }),
         prisma.teacher.count(),
         prisma.teacher.count(), // no hireDate filter easily available, use 0 diff
       ]);
@@ -79,7 +86,7 @@ export async function GET(request: NextRequest) {
     if (activePeriod) {
       // Get all grades for the active period with their categories (weights)
       const grades = await prisma.grade.findMany({
-        where: { periodId: activePeriod.id },
+        where: { periodId: activePeriod.id, ...(hasBw ? { student: bw } : {}) },
         include: {
           student: {
             include: {
@@ -150,6 +157,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: 'excused',
         date: { gte: thirtyDaysAgo },
+        ...(hasBw ? { student: bw } : {}),
       },
       include: {
         student: true,

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
 
     // Staff + specialist видят всё; parent — только инциденты своих детей; student — ничего.
-    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
+    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist', 'psychologist', 'safeguarding_lead'];
     if (!STAFF.includes(role)) {
       if (role === 'parent') {
         const parent = await prisma.parent.findFirst({
