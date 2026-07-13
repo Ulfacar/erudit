@@ -7,6 +7,8 @@ export const { GET, POST, DELETE } = createCrud({
   createFields: ['kind', 'studentId', 'date', 'startTime', 'endTime', 'groupName', 'note'],
   dateFields: ['date'],
   injectUserId: 'specialistId',
+  branchScope: 'student',
+  branchParent: { model: 'student', fk: 'studentId' },
   orderBy: { date: 'desc' },
   filterableParams: ['kind', 'studentId'],
 });

@@ -250,6 +250,9 @@ model Student {
   mediationProtocols MediationProtocol[] @relation("MediationProtocols")
   feeInvoices FeeInvoice[]
   screeningResults PsyScreeningResult[]
+  uniformIssues       UniformIssue[]
+  specialistSessions  SpecialistSession[]
+  physNorms           PhysNorm[]
 
   medicalData   Json?
   familyData    Json?
@@ -872,6 +875,7 @@ model Achievement {
 model PhysNorm {
   id        String   @id @default(cuid())
   studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
   exercise  String
   result    String
   grade     String?
@@ -946,6 +950,7 @@ model SpecialistSession {
   id           String   @id @default(cuid())
   kind         SpecialistKind
   studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
   specialistId String   // user.id специалиста
   date         DateTime
   startTime    String?  // HH:mm
@@ -1693,6 +1698,7 @@ model UniformIssue {
   item       UniformItem @relation(fields: [itemId], references: [id])
   size       String
   studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
   className  String?                      // класс на момент выдачи (текст)
   paid       Boolean  @default(false)     // платная (доп/замена) vs базовая
   amount     Int?     @default(0)         // сумма, если платная

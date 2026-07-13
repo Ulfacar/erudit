@@ -4,6 +4,8 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { canAccessStudent } from '@/shared/lib/student-access';
 import { recordUniformPayment } from '@/shared/lib/uniform/record-payment';
+import { canAccessBranch, getBranchScope } from '@/shared/lib/branch-scope';
+import type { Role } from '@prisma/client';
 
 const ROLES = ['uniform_manager', 'super_admin'] as const;
 
@@ -23,9 +25,17 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
 
     const issue = await prisma.uniformIssue.findUnique({
       where: { id },
-      include: { item: { select: { id: true, name: true } } },
+      include: {
+        item: { select: { id: true, name: true } },
+        student: { select: { branchId: true } },
+      },
     });
     if (!issue) return errorResponse('NOT_FOUND', 'Бронь не найдена', 404);
+
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
+    if (!canAccessBranch(scope, issue.student?.branchId ?? null)) {
+      return errorResponse('FORBIDDEN', 'Нет доступа к филиалу', 403);
+    }
 
     const allowed = await canAccessStudent(
       auth.session.user.role,

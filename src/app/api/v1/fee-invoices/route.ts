@@ -20,6 +20,7 @@ const handlers = createCrud({
   orderBy: { dueDate: 'asc' },
   filterableParams: ['status', 'studentId', 'contractId'],
   branchScope: 'student',
+  branchParent: { model: 'student', fk: 'studentId' },
 });
 
 export async function GET(request: NextRequest) {

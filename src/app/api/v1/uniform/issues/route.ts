@@ -4,6 +4,8 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { canAccessStudent } from '@/shared/lib/student-access';
 import { recordUniformPayment } from '@/shared/lib/uniform/record-payment';
+import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
+import type { Role } from '@prisma/client';
 
 const ROLES = ['uniform_manager', 'super_admin'] as const;
 
@@ -26,10 +28,13 @@ export async function GET(request: NextRequest) {
       if (!allowed) return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
     }
 
+    const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
+
     const rows = await prisma.uniformIssue.findMany({
       where: {
         ...(studentId ? { studentId } : {}),
         ...(className ? { className } : {}),
+        ...branchWhereVia(scope, 'student'),
       },
       include: {
         item: { select: { id: true, name: true, category: true, basic: true, price: true } },

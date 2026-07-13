@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const c = await prisma.psyCase.findUnique({ where: { id: caseId }, select: { riskLevel: true } });
-    const redBlocked = c?.riskLevel === 'red';
+    const requiresManualReview = c?.riskLevel === 'red';
 
     // 1) обезличиваем (ФИО → маркеры) — карта остаётся ТОЛЬКО на сервере
     const deid = await deidentifyForCase(caseId, rawNote);
@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     //    НЕ отправляем в облако, структурируем локально. «Не уверены → не шлём.»
     const strict = strictPrivacyEnabled();
     const risk = residualPiiRisk(deid.masked);
-    const allowCloud = !redBlocked && !(strict && risk.risky);
-    const signals = redBlocked ? ['красный кейс — облако запрещено (fail-closed)'] : risk.signals;
+    const allowCloud = !(strict && risk.risky);
+    const signals = risk.signals;
     // 3) структурируем обезличенный текст (облако или локальный сплиттер)
     const { dap, source } = await structureDap(deid.masked, { allowCloud });
     // 4) ре-идентификация ответа для показа психологу
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       privacy: {
         maskedEntities: deid.count,
         strict,
-        redBlocked,
+        requiresManualReview,
         mode: allowCloud ? 'cloud' : 'local-only', // ушло в облако или осталось на месте
         residualSignals: signals, // что заставило придержать (если придержали)
         sentToCloud: allowCloud ? deid.masked : null, // прозрачность: что реально ушло (null = ничего)

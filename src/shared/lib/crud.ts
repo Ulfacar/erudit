@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
-import { getBranchScope, branchWhere, branchWhereVia } from '@/shared/lib/branch-scope';
+import { getBranchScope, branchWhere, branchWhereVia, canAccessBranch } from '@/shared/lib/branch-scope';
 import type { Role } from '@prisma/client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -115,6 +115,17 @@ export function createCrud(cfg: CrudConfig) {
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
       if (!id) return errorResponse('VALIDATION_ERROR', 'Параметр id обязателен');
+      if (cfg.branchScope) {
+        const scope = await getBranchScope(auth.session.user.id, auth.session.user.role as Role, auth.session.user.branchId);
+        const isOwn = cfg.branchScope === 'own';
+        const row = await model().findUnique({
+          where: { id },
+          select: isOwn ? { branchId: true } : { [cfg.branchScope]: { select: { branchId: true } } },
+        });
+        if (!row) return errorResponse('NOT_FOUND', 'Запись не найдена', 404);
+        const rowBranch = isOwn ? (row as any).branchId : ((row as any)[cfg.branchScope]?.branchId ?? null);
+        if (!canAccessBranch(scope, rowBranch)) return errorResponse('FORBIDDEN', 'Нет доступа к филиалу', 403);
+      }
       await model().delete({ where: { id } });
       return successResponse({ id });
     } catch (error) {

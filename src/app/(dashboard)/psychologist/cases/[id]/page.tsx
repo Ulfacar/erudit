@@ -122,7 +122,7 @@ function CaseDetail() {
   const [modelPct, setModelPct] = useState(0);
   const [hasAudio, setHasAudio] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string | null; mode?: string; signals?: string[] } | null>(null);
+  const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string | null; mode?: string; signals?: string[]; manualReview?: boolean } | null>(null);
   const [aiRating, setAiRating] = useState(0);
   const [aiComment, setAiComment] = useState('');
   const [aiRated, setAiRated] = useState(false);
@@ -282,7 +282,7 @@ function CaseDetail() {
     setAiLoading(false);
     if (!j.success) { setErr(j.error?.message ?? 'Ошибка AI'); return; }
     setDapData(j.data.dap.data); setDapAssessment(j.data.dap.assessment); setDapPlan(j.data.dap.plan);
-    setAiInfo({ source: j.data.source, masked: j.data.privacy.maskedEntities, sent: j.data.privacy.sentToCloud, mode: j.data.privacy.mode, signals: j.data.privacy.residualSignals });
+    setAiInfo({ source: j.data.source, masked: j.data.privacy.maskedEntities, sent: j.data.privacy.sentToCloud, mode: j.data.privacy.mode, signals: j.data.privacy.residualSignals, manualReview: j.data.privacy.requiresManualReview });
     setAiRating(0); setAiComment(''); setAiRated(false);
     setVerify(false); // anti-hallucination: всегда требуем повторной проверки человеком
   }
@@ -652,6 +652,17 @@ function CaseDetail() {
                   )}
                 </Group>
               </Paper>
+
+              {aiInfo.manualReview && (
+                <Paper withBorder p="xs" radius="sm" bg="red.0" mt={6}>
+                  <Group gap={8} align="flex-start" wrap="nowrap">
+                    <IconShieldLock size={14} color="#e03131" style={{ marginTop: 2 }} />
+                    <Text size="xs" c="red.9">
+                      ⚠️ <b>Красный кейс:</b> ИИ-подсказка носит вспомогательный характер и <b>требует обязательной ручной проверки психолога</b> перед использованием.
+                    </Text>
+                  </Group>
+                </Paper>
+              )}
 
               <Paper withBorder p="xs" radius="sm">
                 <Stack gap="xs">
