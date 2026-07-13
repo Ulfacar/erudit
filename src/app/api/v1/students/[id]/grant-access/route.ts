@@ -4,6 +4,7 @@ import { hash } from 'bcryptjs'
 import { prisma } from '@/shared/lib/prisma'
 import { successResponse, errorResponse } from '@/shared/lib/api-response'
 import { withAuth } from '@/shared/lib/api-auth'
+import { canAccessStudent } from '@/shared/lib/student-access'
 
 const PASSWORD_CHARS = 'abcdefghkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -58,6 +59,9 @@ export async function POST(
     if (!student) {
       return errorResponse('NOT_FOUND', 'Ученик не найден', 404)
     }
+
+    const allowed = await canAccessStudent(auth.session.user.role, auth.session.user.id, id, auth.session.user.branchId)
+    if (!allowed) return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403)
 
     const parentLogin = student.parentLinks[0]?.parent.user.login
 

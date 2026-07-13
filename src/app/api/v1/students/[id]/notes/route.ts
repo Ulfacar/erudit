@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { canAccessStudent } from '@/shared/lib/student-access';
 import { emitEvent } from '@/shared/lib/agent/engine';
 
 const STAFF_NOTE_ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'accountant', 'call_center', 'hr', 'doctor', 'safeguarding_lead'] as const;
@@ -11,6 +12,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
   const auth = await withAuth(request, { roles: [...STAFF_NOTE_ROLES] });
   if (auth.response) return auth.response;
   const { id } = await ctx.params;
+  if (!(await canAccessStudent(auth.session.user.role, auth.session.user.id, id, auth.session.user.branchId))) {
+    return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
+  }
   try {
     const notes = await prisma.studentNote.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' } });
     return successResponse(notes);
@@ -25,6 +29,9 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   const auth = await withAuth(request, { roles: [...STAFF_NOTE_ROLES] });
   if (auth.response) return auth.response;
   const { id } = await ctx.params;
+  if (!(await canAccessStudent(auth.session.user.role, auth.session.user.id, id, auth.session.user.branchId))) {
+    return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
+  }
   const body = await request.json().catch(() => ({}));
   const { type, text, meta } = body as Record<string, unknown>;
   if (!text || !String(text).trim()) return errorResponse('VALIDATION_ERROR', 'Текст заметки обязателен');

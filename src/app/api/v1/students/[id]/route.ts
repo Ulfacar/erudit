@@ -92,6 +92,9 @@ export async function PUT(
       return errorResponse('NOT_FOUND', 'Ученик не найден', 404)
     }
 
+    const allowed = await canAccessStudent(auth.session.user.role, auth.session.user.id, id, auth.session.user.branchId)
+    if (!allowed) return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403)
+
     const updateData: Record<string, unknown> = {}
 
     if (body.familyData !== undefined) updateData.familyData = body.familyData

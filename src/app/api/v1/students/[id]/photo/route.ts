@@ -26,6 +26,10 @@ export async function POST(
       return errorResponse('NOT_FOUND', 'Ученик не найден', 404);
     }
 
+    if (!(await canAccessStudent(auth.session.user.role, auth.session.user.id, id, auth.session.user.branchId))) {
+      return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
+    }
+
     const form = await request.formData();
     const file = form.get('file');
     if (!(file instanceof File)) {

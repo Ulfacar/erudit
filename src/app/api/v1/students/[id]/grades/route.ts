@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { canAccessStudent } from '@/shared/lib/student-access';
 
 export async function GET(
   request: NextRequest,
@@ -31,6 +32,10 @@ export async function GET(
     });
     if (!student) {
       return errorResponse('NOT_FOUND', 'Ученик не найден', 404);
+    }
+    if (role !== 'student' && role !== 'parent') {
+      const allowed = await canAccessStudent(role, userId, id, auth.session.user.branchId);
+      if (!allowed) return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
     }
     if (role === 'student' && student.user?.id !== userId) {
       return errorResponse('FORBIDDEN', 'Доступ запрещён', 403);
