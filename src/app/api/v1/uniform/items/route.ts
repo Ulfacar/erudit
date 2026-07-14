@@ -6,7 +6,7 @@ const handlers = createCrud({
   model: 'uniformItem',
   listRoles: ['uniform_manager', 'super_admin'],
   writeRoles: ['uniform_manager', 'super_admin'],
-  createFields: ['name', 'category', 'basic', 'price'],
+  createFields: ['name', 'category', 'categoryId', 'basic', 'price'],
   intFields: ['price'],
   orderBy: { createdAt: 'desc' },
   filterableParams: ['category'],

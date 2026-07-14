@@ -7,6 +7,7 @@ import {
   Card,
   Divider,
   Group,
+  Image,
   Loader,
   Paper,
   Select,
@@ -34,6 +35,7 @@ type CatalogItem = {
   id: string;
   name: string;
   category: string | null;
+  image: string | null;
   basic: boolean;
   price: number | null;
   variants: CatalogVariant[];
@@ -61,6 +63,31 @@ function priceLabel(item: CatalogItem) {
 
 function categoryLabel(category: string | null) {
   return category === 'merch' ? 'Мерч' : 'Форма';
+}
+
+function CatalogItemPhoto({ item, isMerch }: { item: CatalogItem; isMerch: boolean }) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [item.image]);
+
+  if (item.image && !imgError) {
+    return <Image src={item.image} alt={item.name} h={140} fit="cover" onError={() => setImgError(true)} />;
+  }
+
+  return (
+    <Group justify="center" h="100%">
+      <ThemeIcon
+        variant="white"
+        color={isMerch ? 'orange' : 'blue'}
+        size={64}
+        radius="xl"
+      >
+        {isMerch ? <IconShirt size={34} /> : <IconHanger2 size={34} />}
+      </ThemeIcon>
+    </Group>
+  );
 }
 
 function UniformCatalogContent() {
@@ -229,23 +256,15 @@ function UniformCatalogContent() {
                 style={{ display: 'flex', flexDirection: 'column' }}
               >
                 <Card.Section
-                  py="lg"
                   style={{
                     background: isMerch
                       ? 'var(--mantine-color-orange-light)'
                       : 'var(--mantine-color-blue-light)',
+                    height: 140,
+                    overflow: 'hidden',
                   }}
                 >
-                  <Group justify="center">
-                    <ThemeIcon
-                      variant="white"
-                      color={isMerch ? 'orange' : 'blue'}
-                      size={64}
-                      radius="xl"
-                    >
-                      {isMerch ? <IconShirt size={34} /> : <IconHanger2 size={34} />}
-                    </ThemeIcon>
-                  </Group>
+                  <CatalogItemPhoto item={item} isMerch={isMerch} />
                 </Card.Section>
 
                 <Stack gap="xs" mt="md" style={{ flexGrow: 1 }}>

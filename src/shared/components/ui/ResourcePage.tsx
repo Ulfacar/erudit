@@ -102,6 +102,8 @@ export interface ResourcePageProps {
   searchable?: boolean;
   /** доп. действия в конце строки (например, «изменить») */
   rowActions?: (row: ResourceRow, reload: () => void) => React.ReactNode;
+  /** доп. кнопки в шапке рядом с созданием */
+  headerActions?: React.ReactNode;
 }
 
 export function ResourcePage({
@@ -119,6 +121,7 @@ export function ResourcePage({
   transformPayload,
   searchable = false,
   rowActions,
+  headerActions,
 }: ResourcePageProps) {
   const [rows, setRows] = useState<ResourceRow[]>([]);
   const [search, setSearch] = useState('');
@@ -345,6 +348,7 @@ export function ResourcePage({
               {createLabel}
             </Button>
           )}
+          {headerActions}
         </Group>
       </Group>
 

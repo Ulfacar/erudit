@@ -1673,12 +1673,25 @@ model UniformItem {
   id        String   @id @default(cuid())
   name      String                        // Батник, Штаны, Бомбер, Футболка
   category  String?  @default("uniform")  // uniform | merch
+  categoryId String?
+  imageKey  String?
   basic     Boolean  @default(false)      // входит в базовый набор (бесплатно по контракту)
   price     Int?     @default(0)          // цена доп/платной покупки, сом
   branchId  String?
   createdAt DateTime @default(now())
   variants  UniformVariant[]
   issues    UniformIssue[]
+
+  @@index([categoryId])
+}
+
+model UniformCategory {
+  id        String   @id @default(cuid())
+  branchId  String?
+  name      String
+  createdAt DateTime @default(now())
+
+  @@index([branchId])
 }
 
 model UniformVariant {

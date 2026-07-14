@@ -22,7 +22,11 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
   }
 }
 
-export const { PUT, DELETE } = createCrudId({
+const crud = createCrudId({
   model: 'uniformItem',
   writeRoles: ['uniform_manager', 'super_admin'],
 });
+
+export const PUT = crud.PUT;
+export const PATCH = crud.PUT;
+export const DELETE = crud.DELETE;
