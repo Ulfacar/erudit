@@ -7,6 +7,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Group, Modal, Select, Stack, Text, Textarea, TextInput } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { useRouter } from 'next/navigation';
 import { IconAlertTriangle } from '@tabler/icons-react';
 
 export type SubjectType = 'student' | 'parent' | 'teacher' | 'group';
@@ -34,6 +36,7 @@ export function NewPsyCaseModal({
   /** фиксированный субъект (из анкеты) — скрывает выбор */
   preset?: { id: string; name: string } | null;
 }) {
+  const router = useRouter();
   const cfg = SUBJECT_CFG[subjectType];
   const [options, setOptions] = useState<{ value: string; label: string }[]>([]);
   const [subjectId, setSubjectId] = useState<string | null>(preset?.id ?? null);
@@ -89,12 +92,24 @@ export function NewPsyCaseModal({
     });
     const j = await res.json();
     setSaving(false);
-    if (!j.success) { setErr(j.error?.message ?? 'Ошибка'); return; }
+    if (!j.success) {
+      const message = j.error?.message ?? 'Ошибка';
+      if (res.status === 409 && j.error?.code === 'CONFLICT') {
+        notifications.show({ color: 'orange', title: 'Кейс уже открыт', message });
+        return;
+      }
+      setErr(message);
+      return;
+    }
+    if (j.data?.existing) {
+      notifications.show({ color: 'blue', message: 'У ученика уже есть активный кейс — открыт он.' });
+    }
     onCreated();
+    if (j.data?.id) router.push(`/psychologist/cases/${j.data.id}`);
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Новый кейс" centered size="lg">
+    <Modal opened={opened} onClose={onClose} title="Открыть кейс" centered size="lg">
       <Stack gap="md">
         {preset ? (
           <Text size="sm"><Text span c="dimmed">{cfg.noun}: </Text><b>{preset.name}</b></Text>
@@ -132,7 +147,7 @@ export function NewPsyCaseModal({
         {err && <Text c="red" size="sm">{err}</Text>}
         <Group justify="flex-end">
           <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
-          <Button onClick={create} loading={saving}>Создать кейс</Button>
+          <Button onClick={create} loading={saving}>Открыть кейс</Button>
         </Group>
       </Stack>
     </Modal>

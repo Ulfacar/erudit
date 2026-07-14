@@ -93,7 +93,7 @@ export function StudentPsyCard({ studentId, onClose, onChanged }: { studentId: s
               </div>
             </Group>
             <Button size="xs" variant="light" leftSection={<IconUserPlus size={14} />} onClick={() => setNewCase(true)}>
-              Новый кейс
+              Открыть кейс
             </Button>
           </Group>
 

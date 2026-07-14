@@ -95,6 +95,24 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Редизайн: 1 активный кейс на ученика (партиал — только student, не intake, статус≠closed).
+    if (subjectType === 'student' && studentId) {
+      const active = await prisma.psyCase.findFirst({
+        where: { studentId, subjectType: 'student', isIntake: false, status: { not: 'closed' } },
+        select: { id: true, ownerId: true },
+      });
+      if (active) {
+        const scope = getPsyScope(auth.session.user.id, auth.session.user.role);
+        const mine = active.ownerId === auth.session.user.id || scope.full;
+        if (mine) {
+          // Активный кейс уже есть и доступен — открываем существующий, дубль не создаём.
+          return successResponse({ id: active.id, existing: true }, 200);
+        }
+        // Активный кейс ведёт другой психолог — не создаём дубль, не палим детали.
+        return errorResponse('CONFLICT', 'У ученика уже есть активный кейс. Обратитесь к координатору или попросите добавить вас со-ведущим.', 409);
+      }
+    }
+
     const created = await prisma.psyCase.create({
       data: {
         subjectType,

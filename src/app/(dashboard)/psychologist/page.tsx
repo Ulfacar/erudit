@@ -160,7 +160,7 @@ function PsychologistCabinet() {
             Приём
           </Button>
           <Button leftSection={<IconUserPlus size={16} />} onClick={() => setOpen(true)}>
-            Новый кейс
+            Открыть кейс
           </Button>
         </Group>
       </Group>
@@ -215,9 +215,9 @@ function PsychologistCabinet() {
         {loading ? (
           <Group justify="center" p="xl"><Loader /></Group>
         ) : cabinet === 'student' ? (
-          <DrilldownByClass groups={studentGroups} emptyText="Пока нет кейсов по ученикам. Создайте первый — «Новый кейс»." />
+          <DrilldownByClass groups={studentGroups} emptyText="Пока нет кейсов по ученикам. Создайте первый — «Открыть кейс»." />
         ) : subjectGroups.length === 0 ? (
-          <Text c="dimmed" ta="center" py="md">Пока нет кейсов в этом кабинете. Создайте первый — «Новый кейс».</Text>
+          <Text c="dimmed" ta="center" py="md">Пока нет кейсов в этом кабинете. Создайте первый — «Открыть кейс».</Text>
         ) : (
           <Stack gap="md">
             {subjectGroups.map((g) => (
