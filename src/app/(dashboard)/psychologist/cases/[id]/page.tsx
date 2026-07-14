@@ -8,7 +8,7 @@ import {
   ActionIcon, Anchor, Badge, Button, Card, Checkbox, Group, Loader, Modal, Paper, Rating, Select,
   Stack, TagsInput, Text, Textarea, Title, Divider, Tooltip, NumberInput,
 } from '@mantine/core';
-import { IconArrowLeft, IconBrain, IconCheck, IconPlus, IconMicrophone, IconWand, IconShieldLock } from '@tabler/icons-react';
+import { IconArrowLeft, IconBrain, IconCheck, IconPlus, IconMicrophone, IconWand, IconShieldLock, IconPlayerPlay, IconTrash } from '@tabler/icons-react';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { fmtDate } from '@/shared/components/ui/resource-helpers';
 import { saveDraft, loadDraft, clearDraft, saveAudio, loadAudio, clearAudio } from '@/shared/lib/offline/draftStore';
@@ -50,7 +50,7 @@ const INTERVENTION_OUTCOMES = [
 
 interface Session {
   id: string; type: string; date: string; rawNote: string | null;
-  dapData: string | null; dapAssessment: string | null; dapPlan: string | null; isHumanVerified: boolean;
+  dapData: string | null; dapAssessment: string | null; dapPlan: string | null; isHumanVerified: boolean; audioKey: string | null;
 }
 interface TestResult { id: string; aiInterpretation: string | null; isHumanVerified: boolean; rawScores?: { methodology?: string } | null }
 interface PsyCase {
@@ -113,14 +113,18 @@ function CaseDetail() {
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // M2: голос + AI. Запись через MediaRecorder → blob; транскрипция ЛОКАЛЬНО (Whisper в браузере),
-  // аудио с реальными ФИО в сеть не уходит (UC-2). NER/DAP — уже над текстом.
+  // M2: голос + AI. Запись через MediaRecorder → blob; транскрипция ЛОКАЛЬНО (Whisper в браузере).
+  // CR-019: после создания сессии исходное аудио сохраняется в приватный MinIO.
   const [recording, setRecording] = useState(false);
   const mrRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [transcribing, setTranscribing] = useState(false);
   const [modelPct, setModelPct] = useState(0);
   const [hasAudio, setHasAudio] = useState(false);
+  const [recordingSessionId, setRecordingSessionId] = useState<string | null>(null);
+  const sessionMrRef = useRef<MediaRecorder | null>(null);
+  const sessionChunksRef = useRef<Blob[]>([]);
+  const [audioBusy, setAudioBusy] = useState<Record<string, boolean>>({});
   const [aiLoading, setAiLoading] = useState(false);
   const [aiInfo, setAiInfo] = useState<{ source: string; masked: number; sent: string | null; mode?: string; signals?: string[]; manualReview?: boolean } | null>(null);
   const [aiRating, setAiRating] = useState(0);
@@ -214,6 +218,12 @@ function CaseDetail() {
     setAiRating(0); setAiComment(''); setAiRated(false);
     setErr(''); setAiInfo(null); setVerify(false); setOpen(true);
   }
+
+  async function cancelComposer() {
+    await clearAudio(id);
+    setHasAudio(false);
+    setOpen(false);
+  }
   // автосейв черновика (UC-2 офлайн-патч)
   useEffect(() => {
     if (!open) return;
@@ -269,6 +279,90 @@ function CaseDetail() {
   async function retranscribeCached() {
     const blob = await loadAudio(id);
     if (blob) await transcribeBlob(blob);
+  }
+
+  function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function uploadSessionAudio(sessionId: string, blob: Blob) {
+    const audioBase64 = await blobToDataUrl(blob);
+    const res = await fetch(`/api/v1/psy/sessions/${sessionId}/audio`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioBase64 }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!j.success) throw new Error(j.error?.message ?? 'Не удалось сохранить аудио');
+  }
+
+  async function toggleSessionAudioRecord(sessionId: string) {
+    if (recordingSessionId === sessionId) { sessionMrRef.current?.stop(); return; }
+    if (recordingSessionId) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setErr('Запись с микрофона не поддерживается этим браузером.'); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = MediaRecorder.isTypeSupported('audio/webm') ? new MediaRecorder(stream, { mimeType: 'audio/webm' }) : new MediaRecorder(stream);
+      sessionChunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) sessionChunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecordingSessionId(null);
+        const blob = new Blob(sessionChunksRef.current, { type: mr.mimeType || 'audio/webm' });
+        if (blob.size === 0) return;
+        setAudioBusy((prev) => ({ ...prev, [sessionId]: true }));
+        try {
+          await uploadSessionAudio(sessionId, blob);
+          setErr('');
+          load();
+        } catch (e) {
+          setErr(e instanceof Error ? e.message : 'Не удалось сохранить аудио');
+        } finally {
+          setAudioBusy((prev) => ({ ...prev, [sessionId]: false }));
+        }
+      };
+      sessionMrRef.current = mr; mr.start(); setRecordingSessionId(sessionId); setErr('');
+    } catch {
+      setErr('Нет доступа к микрофону.');
+    }
+  }
+
+  async function playSessionAudio(sessionId: string) {
+    setAudioBusy((prev) => ({ ...prev, [sessionId]: true }));
+    try {
+      const res = await fetch(`/api/v1/psy/sessions/${sessionId}/audio`);
+      const j = await res.json().catch(() => ({}));
+      if (!j.success) throw new Error(j.error?.message ?? 'Аудио не найдено');
+      await new Audio(j.data.url).play();
+      setErr('');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Не удалось воспроизвести аудио');
+    } finally {
+      setAudioBusy((prev) => ({ ...prev, [sessionId]: false }));
+    }
+  }
+
+  async function deleteSessionAudio(sessionId: string) {
+    if (!window.confirm('Удалить аудиозапись этой сессии?')) return;
+    setAudioBusy((prev) => ({ ...prev, [sessionId]: true }));
+    try {
+      const res = await fetch(`/api/v1/psy/sessions/${sessionId}/audio`, { method: 'DELETE' });
+      const j = await res.json().catch(() => ({}));
+      if (!j.success) throw new Error(j.error?.message ?? 'Не удалось удалить аудио');
+      setErr('');
+      load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Не удалось удалить аудио');
+    } finally {
+      setAudioBusy((prev) => ({ ...prev, [sessionId]: false }));
+    }
   }
 
   async function aiStructure() {
@@ -365,6 +459,15 @@ function CaseDetail() {
     }
     setSaving(false);
     if (!j.success) { setErr(j.error?.message ?? 'Ошибка'); return; }
+    try {
+      const audio = await loadAudio(id);
+      if (audio) await uploadSessionAudio(j.data.id, audio);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Не удалось сохранить аудио');
+      setOpen(false);
+      load();
+      return;
+    }
     await clearDraft(id); await clearAudio(id);
     setOpen(false); setType('planned'); setRawNote(''); setDapData(''); setDapAssessment(''); setDapPlan(''); setQualNote(''); setVerify(false); setAiInfo(null); setHasAudio(false);
     load();
@@ -580,9 +683,34 @@ function CaseDetail() {
                   <Badge variant="light">{STYPE_LABELS[s.type] ?? s.type}</Badge>
                   <Text size="sm" c="dimmed">{fmtDate(s.date)}</Text>
                 </Group>
-                {s.isHumanVerified
-                  ? <Badge color="green" leftSection={<IconCheck size={12} />}>Проверено психологом</Badge>
-                  : <Button size="xs" variant="light" color="orange" onClick={() => verifySession(s.id)}>Подтвердить (я проверил)</Button>}
+                <Group gap="xs">
+                  <Tooltip label={recordingSessionId === s.id ? 'Остановить запись' : 'Записать аудио'}>
+                    <ActionIcon
+                      variant={recordingSessionId === s.id ? 'filled' : 'light'}
+                      color={recordingSessionId === s.id ? 'red' : 'grape'}
+                      onClick={() => toggleSessionAudioRecord(s.id)}
+                      loading={!!audioBusy[s.id]}
+                      disabled={!!recordingSessionId && recordingSessionId !== s.id}
+                    >
+                      <IconMicrophone size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                  {s.audioKey && (
+                    <>
+                      <Button size="xs" variant="light" leftSection={<IconPlayerPlay size={14} />} onClick={() => playSessionAudio(s.id)} loading={!!audioBusy[s.id]}>
+                        Прослушать
+                      </Button>
+                      <Tooltip label="Удалить аудио">
+                        <ActionIcon variant="light" color="red" onClick={() => deleteSessionAudio(s.id)} loading={!!audioBusy[s.id]}>
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </>
+                  )}
+                  {s.isHumanVerified
+                    ? <Badge color="green" leftSection={<IconCheck size={12} />}>Проверено психологом</Badge>
+                    : <Button size="xs" variant="light" color="orange" onClick={() => verifySession(s.id)}>Подтвердить (я проверил)</Button>}
+                </Group>
               </Group>
               {s.rawNote && <Text size="sm" c="dimmed" mb="xs"><b>Оригинал:</b> {s.rawNote}</Text>}
               <Group grow align="flex-start" wrap="nowrap">
@@ -607,7 +735,7 @@ function CaseDetail() {
           defaultValue={c.summary ?? ''} onBlur={(e) => e.currentTarget.value !== (c.summary ?? '') && patchCase({ summary: e.currentTarget.value })} />
       </Paper>
 
-      <Modal opened={open} onClose={() => setOpen(false)} title="Новая сессия" centered size="lg">
+      <Modal opened={open} onClose={cancelComposer} title="Новая сессия" centered size="lg">
         <Stack gap="md">
           <Select label="Тип встречи" value={type} onChange={(v) => setType(v ?? 'planned')}
             data={Object.entries(STYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
@@ -631,7 +759,7 @@ function CaseDetail() {
               <Group gap={6} mb={4}><Loader size="xs" /><Text size="xs" c="dimmed">Локальная расшифровка{modelPct > 0 && modelPct < 100 ? ` (загрузка модели ${modelPct}%)` : '…'} — аудио не покидает устройство.</Text></Group>
             )}
             {!recording && !transcribing && hasAudio && (
-              <Group gap={6} mb={4}><IconShieldLock size={14} color="#2f9e44" /><Text size="xs" c="dimmed">Аудио сохранено офлайн. <Anchor size="xs" component="button" type="button" onClick={retranscribeCached}>Расшифровать ещё раз</Anchor></Text></Group>
+              <Group gap={6} mb={4}><IconShieldLock size={14} color="#2f9e44" /><Text size="xs" c="dimmed">Аудио готово к сохранению в защищённое хранилище после создания сессии. <Anchor size="xs" component="button" type="button" onClick={retranscribeCached}>Расшифровать ещё раз</Anchor></Text></Group>
             )}
             <Textarea autosize minRows={2} placeholder="Продиктуйте (расшифровка локально) или впишите ход сессии своими словами" value={rawNote} onChange={(e) => setRawNote(e.currentTarget.value)} />
           </div>
@@ -721,7 +849,7 @@ function CaseDetail() {
           <Checkbox label="Я проверил AI-интерпретацию и подтверждаю её корректность" checked={verify} onChange={(e) => setVerify(e.currentTarget.checked)} />
           {err && <Text c="red" size="sm">{err}</Text>}
           <Group justify="flex-end">
-            <Button variant="subtle" color="gray" onClick={() => setOpen(false)}>Отмена</Button>
+            <Button variant="subtle" color="gray" onClick={cancelComposer}>Отмена</Button>
             <Button onClick={addSession} loading={saving}>Сохранить сессию</Button>
           </Group>
         </Stack>

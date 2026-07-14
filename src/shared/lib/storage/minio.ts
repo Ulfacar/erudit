@@ -43,6 +43,11 @@ export async function presignedGet(key: string, expirySeconds = 600): Promise<st
   return client().presignedGetObject(BUCKET, key, expirySeconds);
 }
 
+/** Удалить объект по ключу (для ретеншн-политики). */
+export async function removeObject(key: string): Promise<void> {
+  await client().removeObject(BUCKET, key);
+}
+
 /** Декодировать data URL (data:image/png;base64,...) в buffer + mime. */
 export function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; contentType: string } {
   const m = /^data:([^;]+);base64,([\s\S]*)$/.exec(dataUrl);

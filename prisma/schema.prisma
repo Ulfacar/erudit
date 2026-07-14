@@ -1131,6 +1131,7 @@ model PsySession {
   isHumanVerified Boolean        @default(false)
   verifiedAt      DateTime?
   audioKey        String? // ключ аудио в MinIO
+  audioSetAt      DateTime?      // когда аудио было прикреплено (для ретеншн-политики 2 года)
   createdAt       DateTime       @default(now())
 
   @@index([caseId])
