@@ -2682,6 +2682,22 @@ model CcApplication {
   @@index([deadlineDate])
 }
 
+model CcUniversity {
+  id                String   @id @default(cuid())
+  branchId          String?
+  name              String
+  country           String?
+  program           String?
+  costUsd           Int?
+  requiredGpa       Float?
+  requiredDocuments String?  @db.Text
+  requirementsNote  String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([branchId])
+}
+
 model CcDocument {
   id                String      @id @default(cuid())
   profileId         String

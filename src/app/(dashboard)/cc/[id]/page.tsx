@@ -106,6 +106,17 @@ type TeacherOption = {
 
 type CcExam = CcProfile['exams'][number];
 
+type CcUniversity = {
+  id: string;
+  name: string;
+  country?: string | null;
+  program?: string | null;
+  costUsd?: number | null;
+  requiredGpa?: number | null;
+  requiredDocuments?: string | null;
+  requirementsNote?: string | null;
+};
+
 function fmtDate(value?: string | null) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('ru-RU').format(new Date(value));
@@ -359,6 +370,12 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
   const [requiredGpa, setRequiredGpa] = useState<number | ''>('');
   const [requiredDocuments, setRequiredDocuments] = useState('');
   const [requirementsNote, setRequirementsNote] = useState('');
+  const [selectedUniId, setSelectedUniId] = useState<string | null>(null);
+
+  const universitiesQuery = useQuery<CcUniversity[]>({
+    queryKey: ['cc-universities'],
+    queryFn: () => fetch('/api/v1/cc/universities').then((r) => r.json()).then((j) => j.data ?? []),
+  });
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -392,6 +409,7 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
       setRequiredGpa('');
       setRequiredDocuments('');
       setRequirementsNote('');
+      setSelectedUniId(null);
     },
     onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось добавить вуз' }),
   });
@@ -399,6 +417,26 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
   return (
     <Modal opened={opened} onClose={onClose} title="Добавить вуз" centered>
       <Stack gap="sm">
+        <Select
+          searchable
+          clearable
+          label="Из справочника"
+          placeholder="Выбрать вуз (или ввести вручную ниже)"
+          data={(universitiesQuery.data ?? []).map((u) => ({ value: u.id, label: u.name + (u.country ? ` — ${u.country}` : '') }))}
+          value={selectedUniId}
+          onChange={(uniId) => {
+            setSelectedUniId(uniId);
+            if (!uniId) return;
+            const university = universitiesQuery.data?.find((u) => u.id === uniId);
+            if (!university) return;
+            setUniversityName(university.name);
+            setCountry(university.country ?? '');
+            setProgram(university.program ?? '');
+            setRequiredGpa(university.requiredGpa ?? '');
+            setRequiredDocuments(university.requiredDocuments ?? '');
+            setRequirementsNote(university.requirementsNote ?? '');
+          }}
+        />
         <TextInput label="Университет" value={universityName} onChange={(e) => setUniversityName(e.currentTarget.value)} required />
         <TextInput label="Страна" value={country} onChange={(e) => setCountry(e.currentTarget.value)} />
         <TextInput label="Программа" value={program} onChange={(e) => setProgram(e.currentTarget.value)} />
@@ -410,6 +448,130 @@ function AddApplicationModal({ profileId, opened, onClose }: { profileId: string
           <Button variant="subtle" color="gray" onClick={onClose}>Отмена</Button>
           <Button loading={mutation.isPending} disabled={!universityName.trim()} onClick={() => mutation.mutate()}>Добавить</Button>
         </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function ManageUniversitiesModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const [country, setCountry] = useState('');
+  const [program, setProgram] = useState('');
+  const [costUsd, setCostUsd] = useState<number | ''>('');
+  const [requiredGpa, setRequiredGpa] = useState<number | ''>('');
+  const [requiredDocuments, setRequiredDocuments] = useState('');
+  const [requirementsNote, setRequirementsNote] = useState('');
+
+  const universitiesQuery = useQuery<CcUniversity[]>({
+    queryKey: ['cc-universities'],
+    queryFn: () => fetch('/api/v1/cc/universities').then((r) => r.json()).then((j) => j.data ?? []),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/v1/cc/universities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          country: country || null,
+          program: program || null,
+          costUsd: costUsd === '' ? null : costUsd,
+          requiredGpa: requiredGpa === '' ? null : requiredGpa,
+          requiredDocuments: requiredDocuments || null,
+          requirementsNote: requirementsNote || null,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось добавить вуз');
+      return json.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cc-universities'] });
+      setName('');
+      setCountry('');
+      setProgram('');
+      setCostUsd('');
+      setRequiredGpa('');
+      setRequiredDocuments('');
+      setRequirementsNote('');
+    },
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось добавить вуз' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/v1/cc/universities?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Не удалось удалить вуз');
+      return json.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cc-universities'] }),
+    onError: (err) => notifications.show({ color: 'red', title: 'Ошибка', message: err instanceof Error ? err.message : 'Не удалось удалить вуз' }),
+  });
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Справочник вузов" size="xl" centered>
+      <Stack gap="md">
+        <Table.ScrollContainer minWidth={720}>
+          <Table verticalSpacing="xs">
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Название</Table.Th>
+                <Table.Th>Страна</Table.Th>
+                <Table.Th>Программа</Table.Th>
+                <Table.Th>Стоимость</Table.Th>
+                <Table.Th>GPA</Table.Th>
+                <Table.Th />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {(universitiesQuery.data ?? []).map((university) => (
+                <Table.Tr key={university.id}>
+                  <Table.Td>{university.name}</Table.Td>
+                  <Table.Td>{university.country || '—'}</Table.Td>
+                  <Table.Td>{university.program || '—'}</Table.Td>
+                  <Table.Td>{university.costUsd == null ? '—' : `$${university.costUsd}`}</Table.Td>
+                  <Table.Td>{university.requiredGpa ?? '—'}</Table.Td>
+                  <Table.Td>
+                    <Button
+                      size="compact-xs"
+                      color="red"
+                      variant="subtle"
+                      loading={deleteMutation.isPending}
+                      onClick={() => deleteMutation.mutate(university.id)}
+                    >
+                      Удалить
+                    </Button>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+              {(universitiesQuery.data ?? []).length === 0 && (
+                <Table.Tr>
+                  <Table.Td colSpan={6}><Text size="sm" c="dimmed">Вузы еще не добавлены</Text></Table.Td>
+                </Table.Tr>
+              )}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+
+        <Stack gap="sm">
+          <Text fw={700}>Добавить вуз</Text>
+          <TextInput label="Название" value={name} onChange={(e) => setName(e.currentTarget.value)} required />
+          <TextInput label="Страна" value={country} onChange={(e) => setCountry(e.currentTarget.value)} />
+          <TextInput label="Программа" value={program} onChange={(e) => setProgram(e.currentTarget.value)} />
+          <Group grow align="flex-start">
+            <NumberInput label="Стоимость $" value={costUsd} onChange={(v) => setCostUsd(typeof v === 'number' ? v : '')} min={0} />
+            <NumberInput label="Требуемый GPA" value={requiredGpa} onChange={(v) => setRequiredGpa(typeof v === 'number' ? v : '')} min={0} />
+          </Group>
+          <Textarea label="Перечень документов" value={requiredDocuments} onChange={(e) => setRequiredDocuments(e.currentTarget.value)} minRows={2} />
+          <Textarea label="Требования" value={requirementsNote} onChange={(e) => setRequirementsNote(e.currentTarget.value)} minRows={2} />
+          <Group justify="flex-end">
+            <Button variant="subtle" color="gray" onClick={onClose}>Закрыть</Button>
+            <Button loading={createMutation.isPending} disabled={!name.trim()} onClick={() => createMutation.mutate()}>Добавить</Button>
+          </Group>
+        </Stack>
       </Stack>
     </Modal>
   );
@@ -720,6 +882,7 @@ function CcProfileCard() {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
+  const [universitiesOpen, setUniversitiesOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [examOpen, setExamOpen] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
@@ -883,6 +1046,7 @@ function CcProfileCard() {
               <Text fw={700}>5. Статус поступления</Text>
               <Group gap="xs">
                 <SegmentedControl size="xs" value={view} onChange={(v) => setView(v as 'table' | 'kanban')} data={[{ value: 'table', label: 'Таблица' }, { value: 'kanban', label: 'Канбан' }]} />
+                <Button size="xs" variant="light" onClick={() => setUniversitiesOpen(true)}>Справочник вузов</Button>
                 <Button size="xs" variant="light" onClick={() => setAppOpen(true)}>+ Вуз</Button>
               </Group>
             </Group>
@@ -997,6 +1161,7 @@ function CcProfileCard() {
               <Text fw={700}>5. Статус поступления</Text>
               <Group gap="xs">
                 <SegmentedControl size="xs" value={view} onChange={(v) => setView(v as 'table' | 'kanban')} data={[{ value: 'table', label: 'Таблица' }, { value: 'kanban', label: 'Канбан' }]} />
+                <Button size="xs" variant="light" onClick={() => setUniversitiesOpen(true)}>Справочник вузов</Button>
                 <Button size="xs" variant="light" onClick={() => setAppOpen(true)}>+ Вуз</Button>
               </Group>
             </Group>
@@ -1008,6 +1173,7 @@ function CcProfileCard() {
       <ProfileEditModal profile={profile} opened={editOpen} onClose={() => setEditOpen(false)} />
       <GoalEditModal profile={profile} opened={goalOpen} onClose={() => setGoalOpen(false)} />
       <ParentExpectationsEditModal profile={profile} opened={parentOpen} onClose={() => setParentOpen(false)} />
+      <ManageUniversitiesModal opened={universitiesOpen} onClose={() => setUniversitiesOpen(false)} />
       <AddApplicationModal profileId={profile.id} opened={appOpen} onClose={() => setAppOpen(false)} />
       <AddMeetingModal profileId={profile.id} opened={meetingOpen} onClose={() => setMeetingOpen(false)} />
       <AddExamModal profileId={profile.id} opened={examOpen} onClose={() => setExamOpen(false)} />
