@@ -56,10 +56,20 @@ PRAvki/
 journey-results/
 SUMMARY.md
 
-# scratch / throwaway dev scripts
+# scratch / throwaway dev scripts (одноразовые QA/smoke/debug в корне)
 hr_*.mjs
 shot-*.mjs
 *.log
+/qa_*.mjs
+/smoke_*.mjs
+/srm_*.mjs
+/shot_*.mjs
+/test_*.mjs
+/jpsy_*.mjs
+/lib_e9_*.mjs
+/dbg_*.mjs
+/cleanup*.mjs
+/verify_*.mjs
 
 # secrets / temp (НЕ коммитить — приватные ключи!)
 vapid-*.tmp.json
