@@ -51,12 +51,27 @@ export function subjectDisplay(
 /** Prisma where-фильтр для списка кейсов под RLS текущего пользователя. */
 export async function caseWhereForScope(scope: PsyScope): Promise<Record<string, unknown>> {
   if (scope.full) return {};
-  return { ownerId: scope.userId };
+  return {
+    OR: [
+      { ownerId: scope.userId },
+      { collaborators: { some: { userId: scope.userId, status: 'accepted' } } },
+    ],
+  };
 }
 
 /** Может ли пользователь видеть/редактировать конкретный кейс. */
 export async function canAccessCase(scope: PsyScope, caseId: string): Promise<boolean> {
   if (scope.full) return true;
-  const c = await prisma.psyCase.findUnique({ where: { id: caseId }, select: { ownerId: true } });
-  return c?.ownerId === scope.userId;
+  const c = await prisma.psyCase.findUnique({
+    where: { id: caseId },
+    select: {
+      ownerId: true,
+      collaborators: {
+        where: { userId: scope.userId, status: 'accepted' },
+        select: { id: true },
+      },
+    },
+  });
+  if (!c) return false;
+  return c.ownerId === scope.userId || c.collaborators.length > 0;
 }

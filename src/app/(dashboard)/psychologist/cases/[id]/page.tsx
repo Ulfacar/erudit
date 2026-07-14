@@ -4,6 +4,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { notifications } from '@mantine/notifications';
 import {
   ActionIcon, Anchor, Badge, Button, Card, Checkbox, Group, Loader, Modal, Paper, Rating, Select,
   Stack, TagsInput, Text, Textarea, Title, Divider, Tooltip, NumberInput,
@@ -56,6 +59,7 @@ interface TestResult { id: string; aiInterpretation: string | null; isHumanVerif
 interface PsyCase {
   id: string; studentId: string | null; subjectType?: 'student' | 'parent' | 'teacher' | 'group'; subjectName?: string | null;
   subjectDisplay?: string;
+  ownerId: string;
   title: string; reason: string | null;
   riskLevel: keyof typeof RISK; status: keyof typeof STATUS; summary: string | null;
   stage: CaseStage | string; outcome?: string;
@@ -75,9 +79,150 @@ interface PsyIntervention {
   id: string; ipsId: string; plannedMeetings: number; status: string;
   startedAt?: string; completedAt?: string | null; _count?: { sessions: number };
 }
+interface PsychologistOption { id: string; login: string; name: string; role: string }
+interface CaseCollaborator { id: string; userId: string; status: string; login: string | null; name: string }
+
+async function apiData<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j.success) throw new Error(j.error?.message ?? 'Не удалось выполнить действие');
+  return j.data as T;
+}
 
 function emptyIpsGoalForm(): IpsGoalForm {
   return { specific: '', measurable: '', achievable: '', relevant: '', timeBound: '', deadline: null, directions: [] };
+}
+
+function CaseCollaborationSection({ caseId, ownerId }: { caseId: string; ownerId: string }) {
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const [collaboratorUserId, setCollaboratorUserId] = useState<string | null>(null);
+  const [transferUserId, setTransferUserId] = useState<string | null>(null);
+  const currentUserId = session?.user?.id ?? null;
+  const currentUserRole = session?.user?.role ?? null;
+  const canManage = currentUserId === ownerId || ['senior_psychologist', 'psy_coordinator', 'super_admin'].includes(currentUserRole ?? '');
+
+  const psychologists = useQuery({
+    queryKey: ['psy-psychologists'],
+    queryFn: () => apiData<PsychologistOption[]>('/api/v1/psy/psychologists'),
+  });
+  const collaborators = useQuery({
+    queryKey: ['psy-case-collaborators', caseId],
+    queryFn: () => apiData<CaseCollaborator[]>(`/api/v1/psy/cases/${caseId}/collaborators`),
+  });
+
+  const collaboratorIds = new Set((collaborators.data ?? []).map((item) => item.userId));
+  const options = (psychologists.data ?? []).map((item) => ({ value: item.id, label: item.name || item.login }));
+  const addOptions = options.filter((item) => item.value !== ownerId && !collaboratorIds.has(item.value));
+  const transferOptions = options.filter((item) => item.value !== ownerId);
+  const ownerName = (psychologists.data ?? []).find((item) => item.id === ownerId)?.name ?? ownerId;
+
+  const addCollaborator = useMutation({
+    mutationFn: (userId: string) => apiData(`/api/v1/psy/cases/${caseId}/collaborators`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    }),
+    onSuccess: async () => {
+      setCollaboratorUserId(null);
+      await queryClient.invalidateQueries({ queryKey: ['psy-case-collaborators', caseId] });
+      notifications.show({ color: 'green', title: 'Готово', message: 'Со-ведущий добавлен' });
+    },
+    onError: (error) => notifications.show({ color: 'red', title: 'Ошибка', message: error instanceof Error ? error.message : 'Не удалось добавить психолога' }),
+  });
+
+  const removeCollaborator = useMutation({
+    mutationFn: (userId: string) => apiData(`/api/v1/psy/cases/${caseId}/collaborators?userId=${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['psy-case-collaborators', caseId] });
+      notifications.show({ color: 'green', title: 'Готово', message: 'Со-ведущий удалён' });
+    },
+    onError: (error) => notifications.show({ color: 'red', title: 'Ошибка', message: error instanceof Error ? error.message : 'Не удалось удалить психолога' }),
+  });
+
+  const transferCase = useMutation({
+    mutationFn: (newOwnerId: string) => apiData(`/api/v1/psy/cases/${caseId}/transfer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newOwnerId }),
+    }),
+    onSuccess: () => {
+      notifications.show({ color: 'green', title: 'Готово', message: 'Кейс передан' });
+      window.location.href = '/psychologist';
+    },
+    onError: (error) => notifications.show({ color: 'red', title: 'Ошибка', message: error instanceof Error ? error.message : 'Не удалось передать кейс' }),
+  });
+
+  function confirmTransfer() {
+    if (!transferUserId) return;
+    const target = options.find((item) => item.value === transferUserId)?.label ?? transferUserId;
+    if (!window.confirm(`Передать кейс психологу ${target}?`)) return;
+    transferCase.mutate(transferUserId);
+  }
+
+  return (
+    <Paper withBorder p="md" radius="md">
+      <Stack gap="sm">
+        <Group justify="space-between" align="flex-start" wrap="wrap">
+          <div>
+            <Title order={5}>Соведение и передача</Title>
+            <Text size="sm" c="dimmed">Владелец: {ownerName}</Text>
+          </div>
+          {(psychologists.isLoading || collaborators.isLoading) && <Loader size="sm" />}
+        </Group>
+
+        <Stack gap={6}>
+          {(collaborators.data ?? []).length === 0 ? (
+            <Text size="sm" c="dimmed">Со-ведущих пока нет.</Text>
+          ) : (
+            (collaborators.data ?? []).map((item) => (
+              <Group key={item.id} justify="space-between" gap="xs" wrap="wrap">
+                <Group gap="xs">
+                  <Text size="sm">{item.name}</Text>
+                  <Badge variant="light">{item.status}</Badge>
+                </Group>
+                <Tooltip label="Удалить со-ведущего">
+                  <ActionIcon variant="light" color="red" onClick={() => removeCollaborator.mutate(item.userId)} loading={removeCollaborator.isPending} style={{ display: canManage ? undefined : 'none' }}>
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+            ))
+          )}
+        </Stack>
+
+        <Group align="flex-end" gap="xs" wrap="wrap" style={{ display: canManage ? undefined : 'none' }}>
+          <Select
+            label="Добавить психолога"
+            placeholder="Выберите психолога"
+            w={260}
+            searchable
+            data={addOptions}
+            value={collaboratorUserId}
+            onChange={setCollaboratorUserId}
+          />
+          <Button leftSection={<IconPlus size={16} />} onClick={() => collaboratorUserId && addCollaborator.mutate(collaboratorUserId)} loading={addCollaborator.isPending} disabled={!collaboratorUserId}>
+            Добавить
+          </Button>
+        </Group>
+
+        <Group align="flex-end" gap="xs" wrap="wrap" style={{ display: canManage ? undefined : 'none' }}>
+          <Select
+            label="Передать кейс"
+            placeholder="Новый владелец"
+            w={260}
+            searchable
+            data={transferOptions}
+            value={transferUserId}
+            onChange={setTransferUserId}
+          />
+          <Button color="orange" variant="light" onClick={confirmTransfer} loading={transferCase.isPending} disabled={!transferUserId}>
+            Передать кейс
+          </Button>
+        </Group>
+      </Stack>
+    </Paper>
+  );
 }
 
 function CaseDetail() {
@@ -515,6 +660,8 @@ function CaseDetail() {
             onChange={(v) => v && patchCase({ status: v })} />
         </Group>
       </Group>
+
+      <CaseCollaborationSection caseId={id} ownerId={c.ownerId} />
 
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" align="center" wrap="wrap">
