@@ -85,6 +85,13 @@ function UniformIssuesContent() {
     disabled: variant.available <= 0,
   }));
 
+  function handleItemChange(value: string | null) {
+    const nextItem = items.find((item) => item.id === value) ?? null;
+    setItemId(value);
+    setPaid(nextItem ? !nextItem.basic : false);
+    setAmount(nextItem?.price ?? 0);
+  }
+
   async function loadIssues() {
     const json = await fetch('/api/v1/uniform/issues').then((r) => r.json());
     if (json.success) setIssues(json.data ?? []);
@@ -157,8 +164,8 @@ function UniformIssuesContent() {
       notifications.show({ color: 'green', title: 'Готово', message: 'Выдача сохранена' });
       setSize(null);
       setStudentId(null);
-      setPaid(false);
-      setAmount(0);
+      setPaid(selectedItem ? !selectedItem.basic : false);
+      setAmount(selectedItem?.price ?? 0);
       setNote('');
       await Promise.all([
         loadIssues(),
@@ -212,7 +219,7 @@ function UniformIssuesContent() {
       <Paper withBorder radius="sm" p="md">
         <Stack gap="sm">
           <Group grow align="flex-end">
-            <Select label="Товар" searchable data={itemOptions} value={itemId} onChange={setItemId} />
+            <Select label="Товар" searchable data={itemOptions} value={itemId} onChange={handleItemChange} />
             <Select label="Размер" searchable data={sizeOptions} value={size} onChange={setSize} disabled={!itemId} />
           </Group>
           <Group grow align="flex-end">
@@ -220,12 +227,13 @@ function UniformIssuesContent() {
             <Select label="Ученик" searchable data={studentOptions} value={studentId} onChange={setStudentId} disabled={!classId} />
           </Group>
           <Group align="flex-end">
-            <Checkbox label="Платно" checked={paid} onChange={(event) => setPaid(event.currentTarget.checked)} />
+            <Checkbox label="Платно (доп-товар / потеря)" checked={paid} onChange={(event) => setPaid(event.currentTarget.checked)} />
             {paid && <NumberInput label="Сумма, сом" min={0} allowDecimal={false} value={amount} onChange={setAmount} w={180} />}
             <Button leftSection={<IconSend size={16} />} onClick={submit} loading={submitting}>
               Выдать
             </Button>
           </Group>
+          <Text size="xs" c="dimmed">Базовый набор — бесплатно; доп-товар или потеря — платно (проводка в бухгалтерию).</Text>
           {selectedItem && !paid && selectedItem.basic && (
             <Text size="xs" c="dimmed">Базовый набор: сумма будет записана как 0.</Text>
           )}

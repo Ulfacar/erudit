@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
     const size = String(body.size ?? '').trim();
     const studentId = String(body.studentId ?? '').trim();
     const className = body.className ? String(body.className).trim() : null;
-    const paid = Boolean(body.paid);
     const note = body.note ? String(body.note).trim() : null;
 
     if (!itemId || !size || !studentId) {
@@ -80,6 +79,8 @@ export async function POST(request: NextRequest) {
     });
     if (!item) return errorResponse('NOT_FOUND', 'Товар не найден', 404);
 
+    // По ТЗ: базовый набор бесплатен (в договоре), доп-товары/потери — платно.
+    const paid = typeof body.paid === 'boolean' ? body.paid : !item.basic;
     const amount = paid ? (item.price ?? 0) : 0;
 
     const issue = await prisma.$transaction(async (tx) => {
