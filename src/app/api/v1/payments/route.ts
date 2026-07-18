@@ -6,6 +6,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { verifiedPaidTotal } from '@/shared/lib/finance/invoice-status';
 import { allocatePayment } from '@/shared/lib/finance/allocate-payment';
 import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
+import { canAccessStudent } from '@/shared/lib/student-access';
 
 const ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager', 'call_center'] as const;
 
@@ -68,6 +69,13 @@ export async function POST(request: NextRequest) {
       include: { payments: { select: { amount: true, verified: true } } },
     });
     if (!invoice) return errorResponse('NOT_FOUND', 'Счёт не найден', 404);
+
+    // Филиальная изоляция: платёж можно проводить только по счёту ученика своего
+    // филиала (fail-closed, до транзакции, allocatePayment и любых side effects).
+    if (!(await canAccessStudent(auth.session.user.role, auth.session.user.id, invoice.studentId, auth.session.user.branchId))) {
+      return errorResponse('FORBIDDEN', 'Нет доступа к счёту', 403);
+    }
+
     if (invoice.status === 'cancelled') return errorResponse('VALIDATION_ERROR', 'Счёт отменён');
 
     const remaining = Math.max(0, invoice.amount - verifiedPaidTotal(invoice.payments));
