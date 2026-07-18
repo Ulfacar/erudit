@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { getBranchScope, branchWhere } from '@/shared/lib/branch-scope';
+import { canAccessStudent } from '@/shared/lib/student-access';
 
 const ROLES = ['super_admin', 'analyst', 'zavuch', 'secretary'] as const;
 
@@ -32,6 +33,12 @@ export async function POST(request: NextRequest) {
   if (auth.response) return auth.response;
   const { studentId, reason } = (await request.json().catch(() => ({}))) as { studentId?: string; reason?: string };
   if (!studentId || !reason?.trim()) return errorResponse('VALIDATION_ERROR', 'Нужны ученик и причина');
+
+  // Филиальная изоляция: нельзя отчислять ученика чужого филиала по прямому ID.
+  // Проверка до транзакции и любых изменений (fail-closed, без existence-oracle).
+  if (!(await canAccessStudent(auth.session.user.role, auth.session.user.id, studentId, auth.session.user.branchId))) {
+    return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
+  }
 
   const student = await prisma.student.findUnique({ where: { id: studentId }, select: { branchId: true } });
   if (!student) return errorResponse('NOT_FOUND', 'Ученик не найден', 404);
