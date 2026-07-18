@@ -4,6 +4,7 @@ import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { putObject, dataUrlToBuffer, isStorageConfigured } from '@/shared/lib/storage/minio';
 import { recalculateFeeInvoiceStatus } from '@/shared/lib/finance/invoice-status';
+import { canAccessStudent } from '@/shared/lib/student-access';
 
 const VERIFY_ROLES = ['super_admin', 'analyst', 'zavuch', 'accountant', 'chief_accountant', 'finance_manager'] as const;
 
@@ -15,6 +16,15 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   const auth = await withAuth(request, { roles: [...VERIFY_ROLES] });
   if (auth.response) return auth.response;
   const { id } = await ctx.params;
+
+  // Филиальная изоляция: платёж можно менять только по счёту ученика своего филиала.
+  // Проверка до любой мутации — update, смены verified, загрузки чека, пересчёта счёта
+  // (fail-closed). Заодно даёт штатный NOT_FOUND для несуществующего платежа.
+  const existing = await prisma.payment.findUnique({ where: { id }, select: { invoice: { select: { studentId: true } } } });
+  if (!existing) return errorResponse('NOT_FOUND', 'Платёж не найден', 404);
+  if (!(await canAccessStudent(auth.session.user.role, auth.session.user.id, existing.invoice.studentId, auth.session.user.branchId))) {
+    return errorResponse('FORBIDDEN', 'Нет доступа к платежу', 403);
+  }
 
   const body = await request.json().catch(() => ({}));
   const data: Record<string, unknown> = {};
