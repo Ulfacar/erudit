@@ -5,6 +5,7 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { emitEvent } from '@/shared/lib/agent/engine';
 import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
 import { getTeacherScope } from '@/shared/lib/teacher-scope';
+import { effectiveRoles } from '@/shared/lib/role-access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,8 +29,12 @@ export async function GET(request: NextRequest) {
     // RBAC: staff видят любого; ученик — только себя; родитель — только своих детей.
     // Без этого любой залогиненный мог бы вытащить посещаемость чужого ребёнка по studentId.
     // doctor/specialist: медкабинет показывает уважительные/мед. пропуски — нужен read посещаемости.
+    // effectiveRoles, а не сырой role: иначе официальные наследники завуча
+    // (zavuch_primary/senior/academic, cambridge_coord) получали 403 на GET, хотя
+    // POST/PUT ниже пускают их через withAuth с тем же наследованием.
     const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'doctor', 'specialist'];
-    if (!STAFF.includes(role)) {
+    const roles = effectiveRoles(role);
+    if (!roles.some((r) => STAFF.includes(r))) {
       if (role === 'student') {
         const self = await prisma.student.findFirst({ where: { userId }, select: { id: true } });
         if (!self) return errorResponse('FORBIDDEN', 'Нет доступа', 403);
@@ -61,6 +66,22 @@ export async function GET(request: NextRequest) {
       const studentBranchWhere = branchWhereVia(scope, 'student').student as Record<string, unknown> | undefined;
       if (studentBranchWhere) {
         where.student = { ...((where.student as object | undefined) ?? {}), ...studentBranchWhere };
+      }
+
+      // Рядовой педагог видит посещаемость только своих классов (нагрузка ∪
+      // кураторство) — как и в POST/PUT ниже. Раньше GET отдавал ему весь филиал.
+      // Администрации (завуч и наследники, секретарь, врач, специалист) не сужаем.
+      if (roles.some((r) => r === 'teacher' || r === 'curator')) {
+        const tscope = await getTeacherScope(userId);
+        if (!tscope) return errorResponse('FORBIDDEN', 'Нет доступа', 403); // fail-closed
+        if (tscope.classIds.length === 0) return successResponse([]);
+        where.student = {
+          ...((where.student as object | undefined) ?? {}),
+          classId: { in: tscope.classIds },
+        };
+        if (classId && !tscope.classIds.includes(classId)) {
+          return errorResponse('FORBIDDEN', 'Нет доступа к посещаемости этого класса', 403);
+        }
       }
     }
 

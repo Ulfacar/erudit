@@ -5,7 +5,8 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { checkRateLimit, getClientIp } from '@/shared/lib/rate-limit';
 import { emitEvent } from '@/shared/lib/agent/engine';
 import { getBranchScope, branchWhereVia } from '@/shared/lib/branch-scope';
-import { getTeacherScope } from '@/shared/lib/teacher-scope';
+import { getTeacherScope, getTeacherSubjectScope } from '@/shared/lib/teacher-scope';
+import { effectiveRoles } from '@/shared/lib/role-access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,6 +51,22 @@ export async function GET(request: NextRequest) {
       const studentBranchWhere = branchWhereVia(scope, 'student').student as Record<string, unknown> | undefined;
       if (studentBranchWhere) {
         where.student = { ...((where.student as object | undefined) ?? {}), ...studentBranchWhere };
+      }
+
+      // Педагог читает оценки ТОЛЬКО по своим парам класс+предмет. Раньше фильтра
+      // не было вовсе — учитель видел оценки любого класса своего филиала, включая
+      // черновики и неопубликованное. Кураторство доступ к чужим предметам не даёт.
+      if (effectiveRoles(role).some((r) => r === 'teacher' || r === 'curator')) {
+        const ts = await getTeacherSubjectScope(auth.session.user.id);
+        if (!ts) {
+          // fail-closed: роль педагогическая, а карточки Teacher нет
+          return errorResponse('FORBIDDEN', 'Нет доступа к оценкам', 403);
+        }
+        if (ts.pairs.length === 0) return successResponse([]);
+        where.OR = ts.pairs.map((p) => ({
+          subjectId: p.subjectId,
+          student: { classId: p.classId },
+        }));
       }
     }
 

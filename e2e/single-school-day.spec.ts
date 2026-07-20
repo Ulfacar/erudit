@@ -112,6 +112,11 @@ const dayTo = new Date(lessonDate.getTime() + 12 * 3600_000).toISOString();
 
 const ids = {
   branch: '',
+  branchOther: '',
+  zavuchPrimaryUser: '',
+  zavuchOtherUser: '',
+  noCardUser: '',
+  gradeS1History: '',
   level: '',
   period: '',
   category: '',
@@ -143,6 +148,9 @@ const ids = {
 };
 
 let zavuch: APIRequestContext;
+let zavuchPrimary: APIRequestContext; // наследник роли завуча, тот же филиал
+let zavuchOther: APIRequestContext; // завуч ДРУГОГО филиала
+let teacherNoCard: APIRequestContext; // роль teacher без карточки Teacher (fail-closed)
 let teacher1: APIRequestContext;
 let teacher2: APIRequestContext;
 let student1: APIRequestContext; // s1A, класс 7А
@@ -209,8 +217,16 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
     ids.slot1 = slot1.id;
     ids.slot2 = slot2.id;
 
+    // Второй филиал — только чтобы проверить, что завуч чужого филиала не читает
+    // журнал нашего класса. Своих классов/учеников ему не создаём.
+    const branchOther = await prisma.branch.create({ data: { name: `${MARK}-other` }, select: { id: true } });
+    ids.branchOther = branchOther.id;
+
     // Персонал
     ids.zavuchUser = (await makeUser(`${MARK}-zavuch`, 'zavuch', ids.branch)).id;
+    ids.zavuchPrimaryUser = (await makeUser(`${MARK}-zavuchprim`, 'zavuch_primary', ids.branch)).id;
+    ids.zavuchOtherUser = (await makeUser(`${MARK}-zavuchother`, 'zavuch', ids.branchOther)).id;
+    ids.noCardUser = (await makeUser(`${MARK}-nocard`, 'teacher', ids.branch)).id;
     ids.t1User = (await makeUser(`${MARK}-teacher1`, 'teacher', ids.branch)).id;
     ids.t2User = (await makeUser(`${MARK}-teacher2`, 'teacher', ids.branch)).id;
 
@@ -225,11 +241,14 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
     });
     ids.t2 = t2.id;
 
-    // Нагрузка: учитель №1 — математика в 7А, учитель №2 — история в 7Б.
+    // Нагрузка: учитель №1 — математика в 7А (и куратор 7А), учитель №2 — история
+    // в 7Б И в 7А. Значит в 7А есть предмет, которого учитель №1 не ведёт: на нём
+    // проверяем, что кураторство не открывает чужие предметы своего класса.
     await prisma.teacherSubject.createMany({
       data: [
         { teacherId: ids.t1, subjectId: ids.subjMath, classId: ids.classA, hoursPerWeek: 5 },
         { teacherId: ids.t2, subjectId: ids.subjHistory, classId: ids.classB, hoursPerWeek: 2 },
+        { teacherId: ids.t2, subjectId: ids.subjHistory, classId: ids.classA, hoursPerWeek: 2 },
       ],
     });
 
@@ -273,6 +292,9 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
     ids.lesson2 = lesson2.id;
 
     zavuch = await loginCtx(`${MARK}-zavuch`, PW);
+    zavuchPrimary = await loginCtx(`${MARK}-zavuchprim`, PW);
+    zavuchOther = await loginCtx(`${MARK}-zavuchother`, PW);
+    teacherNoCard = await loginCtx(`${MARK}-nocard`, PW);
     teacher1 = await loginCtx(`${MARK}-teacher1`, PW);
     teacher2 = await loginCtx(`${MARK}-teacher2`, PW);
     student1 = await loginCtx(`${MARK}-student1`, PW);
@@ -281,6 +303,9 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
 
     const expectedRoles = [
       ['zavuch', zavuch, 'zavuch'],
+      ['zavuchPrimary', zavuchPrimary, 'zavuch_primary'],
+      ['zavuchOther', zavuchOther, 'zavuch'],
+      ['teacherNoCard', teacherNoCard, 'teacher'],
       ['teacher1', teacher1, 'teacher'],
       ['teacher2', teacher2, 'teacher'],
       ['student1', student1, 'student'],
@@ -294,7 +319,10 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
 
   test.afterAll(async () => {
     const studentIds = [ids.s1A, ids.s2A, ids.s3B, ids.s4B].filter(Boolean);
-    const userIds = [ids.zavuchUser, ids.t1User, ids.t2User, ids.s1User, ids.s2User, ids.p1User, ids.p2User].filter(Boolean);
+    const userIds = [
+      ids.zavuchUser, ids.zavuchPrimaryUser, ids.zavuchOtherUser, ids.noCardUser,
+      ids.t1User, ids.t2User, ids.s1User, ids.s2User, ids.p1User, ids.p2User,
+    ].filter(Boolean);
 
     await prisma.gradeAuditLog.deleteMany({ where: { grade: { studentId: { in: studentIds } } } });
     await prisma.grade.deleteMany({ where: { studentId: { in: studentIds } } });
@@ -314,9 +342,13 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
     await prisma.gradeCategory.deleteMany({ where: { id: ids.category } });
     await prisma.academicPeriod.deleteMany({ where: { id: ids.period } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
-    await prisma.branch.deleteMany({ where: { id: ids.branch } });
+    await prisma.branch.deleteMany({ where: { id: { in: [ids.branch, ids.branchOther].filter(Boolean) } } });
 
-    await Promise.all([zavuch, teacher1, teacher2, student1, parent1, anon].map((c) => c?.dispose()));
+    await Promise.all(
+      [zavuch, zavuchPrimary, zavuchOther, teacherNoCard, teacher1, teacher2, student1, parent1, anon].map((c) =>
+        c?.dispose(),
+      ),
+    );
     await prisma.$disconnect();
   });
 
@@ -414,6 +446,24 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
     expect(res.status(), 'оценка по истории в 7Б выставлена').toBe(201);
     ids.gradeS3 = ((await res.json()) as Env<{ id: string }>).data?.id ?? '';
     expect(ids.gradeS3, 'id оценки получен').toBeTruthy();
+
+    // Он же ведёт историю в 7А — ставит оценку там. Эта оценка лежит в классе,
+    // где учитель №1 куратор, но истории он не ведёт: на ней проверяем, что
+    // кураторство не открывает чужие предметы.
+    const inA = await teacher2.post('/api/v1/grading', {
+      data: {
+        studentId: ids.s1A,
+        subjectId: ids.subjHistory,
+        categoryId: ids.category,
+        teacherId: ids.t2,
+        periodId: ids.period,
+        value: 3,
+        date: lessonDateIso,
+      },
+    });
+    expect(inA.status(), 'оценка по истории в 7А выставлена её предметником').toBe(201);
+    ids.gradeS1History = ((await inA.json()) as Env<{ id: string }>).data?.id ?? '';
+    expect(ids.gradeS1History, 'id оценки по истории получен').toBeTruthy();
   });
 
   // ---------------------------------------------------------------- 11:00
@@ -541,8 +591,16 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
       },
     });
     expect(res.status(), 'оценка по предмету, который учитель не ведёт, запрещена').toBe(403);
-    const count = await prisma.grade.count({ where: { studentId: ids.s1A, subjectId: ids.subjHistory } });
-    expect(count, 'оценка по чужому предмету не создана').toBe(0);
+    // По истории в 7А есть легальная оценка предметника (учитель №2) — важно, что
+    // учитель №1 не стал автором ни одной записи по чужому предмету.
+    const mine = await prisma.grade.count({
+      where: { studentId: ids.s1A, subjectId: ids.subjHistory, teacherId: ids.t1 },
+    });
+    expect(mine, 'оценка по чужому предмету от учителя №1 не создана').toBe(0);
+    const legal = await prisma.grade.count({
+      where: { studentId: ids.s1A, subjectId: ids.subjHistory, teacherId: ids.t2 },
+    });
+    expect(legal, 'легальная оценка предметника не пострадала').toBe(1);
   });
 
   test('НЕГАТИВ 4 — учитель не может изменить чужую оценку', async () => {
@@ -630,17 +688,138 @@ test.describe.serial('Один школьный день Bilim OS (вертик�
     expect(post.status(), 'аноним не пишет посещаемость').toBe(401);
   });
 
+  // ============ MAJOR-1: кросс-классовое чтение оценок и журнала ============
+
+  test('MAJOR-1.1 — учитель не читает оценки чужого класса и чужого предмета', async () => {
+    const foreign = await teacher1.get(`/api/v1/grading?classId=${ids.classB}&periodId=${ids.period}`);
+    expect(foreign.status(), 'запрос отрабатывает штатно').toBe(200);
+    const f = (await foreign.json()) as Env<Array<{ id: string }>>;
+    expect(f.data?.map((g) => g.id), 'оценка чужого класса не отдана').not.toContain(ids.gradeS3);
+    expect(f.data?.length, 'по чужому классу ничего не видно').toBe(0);
+
+    // Без параметров — только свои пары класс+предмет.
+    const all = await teacher1.get('/api/v1/grading');
+    expect(all.status(), 'список своих оценок доступен').toBe(200);
+    const a = (await all.json()) as Env<Array<{ id: string; subjectId: string }>>;
+    const gotIds = a.data?.map((g) => g.id) ?? [];
+    expect(gotIds, 'своя оценка по своему предмету видна').toContain(ids.gradeS1);
+    expect(gotIds, 'оценка чужого класса не видна').not.toContain(ids.gradeS3);
+    expect(gotIds, 'оценка по чужому предмету в СВОЁМ классе не видна').not.toContain(ids.gradeS1History);
+    expect(
+      a.data?.every((g) => g.subjectId === ids.subjMath),
+      'только свой предмет',
+    ).toBe(true);
+  });
+
+  test('MAJOR-1.2 — учитель не читает журнал чужого класса', async () => {
+    const res = await teacher1.get(`/api/v1/grading/class-journal?classId=${ids.classB}&periodId=${ids.period}`);
+    expect(res.status(), 'журнал чужого класса закрыт для педагога').toBe(403);
+  });
+
+  test('MAJOR-1.3 — кураторство не открывает чужие предметы своего класса', async () => {
+    const res = await teacher1.get(`/api/v1/grading/class-journal?classId=${ids.classA}&periodId=${ids.period}`);
+    expect(res.status(), 'свой класс куратору доступен').toBe(200);
+    const json = (await res.json()) as Env<{
+      subjects: Array<{ id: string }>;
+      students: Array<{ id: string; subjectGrades: Record<string, { count: number }> }>;
+    }>;
+    expect(json.data?.subjects.map((s) => s.id), 'в журнале только свой предмет').toEqual([ids.subjMath]);
+    const asel = json.data?.students.find((s) => s.id === ids.s1A);
+    expect(asel?.subjectGrades?.[ids.subjMath]?.count, 'своя оценка на месте').toBe(1);
+    expect(asel?.subjectGrades?.[ids.subjHistory], 'оценок по чужому предмету нет').toBeUndefined();
+  });
+
+  test('MAJOR-1.4 — обычный staff не получает общешкольный overview', async () => {
+    const res = await teacher1.get('/api/v1/grading/overview');
+    expect(res.status(), 'сводка успеваемости педагогу закрыта').toBe(403);
+  });
+
+  test('MAJOR-1.5 — завуч видит журнал своего филиала, но не чужого', async () => {
+    const own = await zavuch.get(`/api/v1/grading/class-journal?classId=${ids.classA}&periodId=${ids.period}`);
+    expect(own.status(), 'завуч читает журнал своего филиала').toBe(200);
+    const j = (await own.json()) as Env<{ subjects: Array<{ id: string }>; students: Array<{ id: string }> }>;
+    expect(j.data?.subjects.map((s) => s.id).sort(), 'завуч видит все предметы класса').toEqual(
+      [ids.subjMath, ids.subjHistory].sort(),
+    );
+    expect(j.data?.students.length, 'весь список класса').toBe(2);
+
+    const foreign = await zavuchOther.get(`/api/v1/grading/class-journal?classId=${ids.classA}&periodId=${ids.period}`);
+    expect(foreign.status(), 'завуч чужого филиала журнал не читает').toBe(403);
+  });
+
+  test('MAJOR-1.6 — fail-closed: роль педагога без карточки Teacher не читает оценки', async () => {
+    const res = await teacherNoCard.get('/api/v1/grading');
+    expect(res.status(), 'неполный scope → отказ, а не весь филиал').toBe(403);
+
+    const journal = await teacherNoCard.get(`/api/v1/grading/class-journal?classId=${ids.classA}&periodId=${ids.period}`);
+    expect(journal.status(), 'журнал тоже закрыт').toBe(403);
+  });
+
+  // ============ MAJOR-2: наследование ролей в посещаемости ============
+
+  test('MAJOR-2.1 — наследник завуча читает посещаемость как завуч', async () => {
+    const res = await zavuchPrimary.get(`/api/v1/attendance?startDate=${dayFrom}&endDate=${dayTo}`);
+    expect(res.status(), 'zavuch_primary получает тот же доступ, что и zavuch').toBe(200);
+    const a = (await res.json()) as Env<Array<{ studentId: string }>>;
+    const seen = new Set((a.data ?? []).map((r) => r.studentId));
+    expect(seen.has(ids.s1A), 'видит 7А').toBe(true);
+    expect(seen.has(ids.s3B), 'видит 7Б — как завуч по филиалу').toBe(true);
+  });
+
+  test('MAJOR-2.2 — учитель не получает посещаемость чужого класса', async () => {
+    const foreign = await teacher1.get(`/api/v1/attendance?classId=${ids.classB}&startDate=${dayFrom}&endDate=${dayTo}`);
+    expect(foreign.status(), 'посещаемость чужого класса закрыта').toBe(403);
+
+    const own = await teacher1.get(`/api/v1/attendance?startDate=${dayFrom}&endDate=${dayTo}`);
+    expect(own.status(), 'своя посещаемость доступна').toBe(200);
+    const o = (await own.json()) as Env<Array<{ studentId: string }>>;
+    const seen = new Set((o.data ?? []).map((r) => r.studentId));
+    expect(seen.has(ids.s1A), 'видит своего ученика').toBe(true);
+    expect(seen.has(ids.s3B), 'ученик чужого класса не попал в выдачу').toBe(false);
+  });
+
+  test('MAJOR-2.3 — ученик и родитель сохраняют свой scope после ужесточения', async () => {
+    const sAtt = await student1.get('/api/v1/attendance');
+    expect(sAtt.status(), 'ученик читает свою посещаемость').toBe(200);
+    const sa = (await sAtt.json()) as Env<Array<{ studentId: string }>>;
+    expect(sa.data?.length, 'своя запись на месте').toBeGreaterThan(0);
+    expect(sa.data?.every((r) => r.studentId === ids.s1A), 'только свои записи').toBe(true);
+
+    const sGr = await student1.get('/api/v1/grading');
+    expect(sGr.status(), 'ученик читает свои оценки').toBe(200);
+    const sg = (await sGr.json()) as Env<Array<{ studentId: string; id: string }>>;
+    expect(sg.data?.every((g) => g.studentId === ids.s1A), 'только свои оценки').toBe(true);
+    expect(sg.data?.map((g) => g.id), 'видит и оценку предметника по истории').toContain(ids.gradeS1History);
+
+    const pAtt = await parent1.get('/api/v1/attendance');
+    expect(pAtt.status(), 'родитель читает посещаемость ребёнка').toBe(200);
+    const pa = (await pAtt.json()) as Env<Array<{ studentId: string }>>;
+    expect(pa.data?.every((r) => r.studentId === ids.s1A), 'только свой ребёнок').toBe(true);
+
+    const pGr = await parent1.get('/api/v1/grading');
+    expect(pGr.status(), 'родитель читает оценки ребёнка').toBe(200);
+    const pg = (await pGr.json()) as Env<Array<{ studentId: string }>>;
+    expect(pg.data?.every((g) => g.studentId === ids.s1A), 'только оценки своего ребёнка').toBe(true);
+  });
+
   // Правила «закрытого учебного периода» в системе НЕТ: у AcademicPeriod есть только
   // isActive (без isClosed/closedAt), POST /api/v1/grading вообще не читает период,
   // а посещаемость с периодом не связана. Единственное ограничение правки — окно 24ч
-  // по Grade.createdAt. Проверять нечего → фиксируем как явный пробел в бэклоге.
-  test.skip('НЕГАТИВ 10 — учитель не редактирует закрытый период (правила нет в системе)', async () => {});
+  // по Grade.createdAt.
+  //
+  // Продуктовое решение на ограниченный пилот (осознанное, не забытое):
+  //   • пилот работает на ОДНОМ текущем активном AcademicPeriod;
+  //   • исторические периоды не редактируются организационно, а не технически;
+  //   • полноценное правило закрытия периода — отдельный MAJOR в бэклоге
+  //     (нужны поля closedAt/closedBy + энфорсмент в grading и attendance).
+  // Пока правила нет — проверять нечего, тест держим видимым как skip.
+  test.skip('НЕГАТИВ 10 — учитель не редактирует закрытый период (правило отложено до пилота)', async () => {});
 
   test('НЕГАТИВ 9 — запрещённые запросы не создали побочных записей', async () => {
     const studentIds = [ids.s1A, ids.s2A, ids.s3B, ids.s4B];
 
     const grades = await prisma.grade.count({ where: { studentId: { in: studentIds } } });
-    expect(grades, 'ровно 2 оценки за день — обе легальные').toBe(2);
+    expect(grades, 'ровно 3 оценки за день — все легальные').toBe(3);
 
     const attendance = await prisma.attendance.count({ where: { studentId: { in: studentIds } } });
     expect(attendance, 'ровно 3 отметки посещаемости — все легальные').toBe(3);

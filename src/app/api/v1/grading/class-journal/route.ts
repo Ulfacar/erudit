@@ -3,6 +3,8 @@ import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
 import { effectiveRoles } from '@/shared/lib/role-access';
+import { getBranchScope } from '@/shared/lib/branch-scope';
+import { getTeacherSubjectScope } from '@/shared/lib/teacher-scope';
 
 /**
  * GET /api/v1/grading/class-journal?classId=X&periodId=Y
@@ -25,11 +27,39 @@ export async function GET(request: NextRequest) {
       return errorResponse('VALIDATION_ERROR', 'Параметр classId обязателен');
     }
 
-    // RBAC: staff may view any class; a student may only view their own class,
-    // a parent only their children's classes. Without this, anyone could read any
-    // class roster + grades by passing an arbitrary classId.
-    const STAFF: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator', 'specialist'];
-    if (!effectiveRoles(role).some((r) => STAFF.includes(r))) {
+    // RBAC: администрация видит журналы СВОЕГО филиала; педагог — только классы,
+    // куда он назначен, и только по своим предметам; ученик — свой класс, родитель —
+    // класс своего ребёнка. Раньше здесь было «staff may view any class» без
+    // филиала и без нагрузки — любой учитель читал журнал любого класса школы.
+    const roles = effectiveRoles(role);
+    const isTeaching = roles.some((r) => r === 'teacher' || r === 'curator');
+    const ADMIN: string[] = ['super_admin', 'analyst', 'zavuch', 'secretary', 'specialist'];
+    const isAdmin = roles.some((r) => ADMIN.includes(r));
+
+    /** Предметы, которые педагогу разрешено видеть в этом классе (null = все). */
+    let allowedSubjectIds: string[] | null = null;
+
+    if (isAdmin) {
+      const bscope = await getBranchScope(userId, role, auth.session.user.branchId);
+      const cls = await prisma.class.findUnique({ where: { id: classId }, select: { branchId: true } });
+      if (!cls) return errorResponse('NOT_FOUND', 'Класс не найден', 404);
+      // fail-closed: сотрудник без филиала не читает ничего. Класс без филиала —
+      // legacy-данные (в базе такие есть), он не принадлежит ЧУЖОМУ филиалу, поэтому
+      // остаётся видимым; бэклог — бэкфилл Class.branchId и жёсткое равенство.
+      const denied =
+        bscope.closed ||
+        (!bscope.canSeeAll && (!bscope.branchId || (cls.branchId !== null && cls.branchId !== bscope.branchId)));
+      if (denied) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к журналу этого класса', 403);
+      }
+    } else if (isTeaching) {
+      const ts = await getTeacherSubjectScope(userId);
+      if (!ts || !ts.classIds.includes(classId)) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к журналу этого класса', 403);
+      }
+      // Кураторство даёт список класса, но НЕ оценки по чужим предметам.
+      allowedSubjectIds = ts.pairs.filter((p) => p.classId === classId).map((p) => p.subjectId);
+    } else {
       let owns = false;
       if (role === 'student') {
         const self = await prisma.student.findFirst({ where: { userId }, select: { classId: true } });
@@ -85,6 +115,7 @@ export async function GET(request: NextRequest) {
     const seen = new Set<string>();
     const subjects: { id: string; name: string; color: string | null }[] = [];
     for (const ts of teacherSubjects) {
+      if (allowedSubjectIds && !allowedSubjectIds.includes(ts.subject.id)) continue;
       if (!seen.has(ts.subject.id)) {
         seen.add(ts.subject.id);
         subjects.push(ts.subject);
@@ -102,6 +133,10 @@ export async function GET(request: NextRequest) {
     // Родитель/ученик видят только опубликованные оценки
     if (role === 'parent' || role === 'student') {
       gradeWhere.status = 'published';
+    }
+    // Педагог — только оценки по своим предметам в этом классе.
+    if (allowedSubjectIds) {
+      gradeWhere.subjectId = { in: allowedSubjectIds };
     }
 
     const allGrades = await prisma.grade.findMany({
