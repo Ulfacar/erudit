@@ -175,6 +175,16 @@ export async function POST(request: NextRequest) {
       if (!scope || !scope.classIds.includes(student.classId)) {
         return errorResponse('FORBIDDEN', 'Нет доступа к этому ученику', 403);
       }
+      // Класса мало: getTeacherScope склеивает предметную нагрузку и кураторство,
+      // поэтому без проверки нагрузки педагог мог ставить оценки по ЧУЖОМУ предмету
+      // в своём классе (а куратор — вообще по любому). Сверяем пару класс+предмет.
+      const teaches = await prisma.teacherSubject.findFirst({
+        where: { teacherId: scope.teacherId, subjectId, classId: student.classId },
+        select: { id: true },
+      });
+      if (!teaches) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к этому предмету в этом классе', 403);
+      }
       effectiveTeacherId = scope.teacherId;
     }
 
