@@ -51,6 +51,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/erudit
       NEXTAUTH_SECRET: ci-e2e-secret
       NEXTAUTH_URL: http://localhost:3000
+      AUTH_RATE_LIMIT_PER_MIN: 200
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -78,7 +79,7 @@ jobs:
           echo "app did not start in time" && exit 1
       # --retries=2: setup-логин иногда флейкает под нагрузкой CI (cookie >30s);
       # сами rbac-leaks детерминированы. Ретрай гасит транзиентную флейки.
-      - run: npx playwright test e2e/rbac-leaks.spec.ts e2e/withdrawals-branch-scope.spec.ts e2e/fee-invoices-branch-scope.spec.ts e2e/payments-branch-scope.spec.ts e2e/payments-patch-branch-scope.spec.ts --retries=2
+      - run: npx playwright test e2e/rbac-leaks.spec.ts e2e/withdrawals-branch-scope.spec.ts e2e/fee-invoices-branch-scope.spec.ts e2e/payments-branch-scope.spec.ts e2e/payments-patch-branch-scope.spec.ts e2e/psy-privacy-hotfix.spec.ts --retries=2
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

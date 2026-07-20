@@ -3,7 +3,7 @@ import { Prisma, type Role } from '@prisma/client';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
-import { gradeBandGrades } from '@/shared/lib/psy-screening';
+import { computeScreeningScore, gradeBandGrades } from '@/shared/lib/psy-screening';
 
 /** POST /api/v1/psy/screening/campaigns/[id]/submit - student submits screening result. */
 export async function POST(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
 
     const campaign = await prisma.psyScreeningCampaign.findFirst({
       where: { id, status: 'active' },
-      select: { id: true, gradeBand: true, grade: true, riskThreshold: true },
+      select: { id: true, gradeBand: true, grade: true, riskThreshold: true, templateId: true },
     });
     if (!campaign) return errorResponse('NOT_FOUND', 'Active campaign not found', 404);
 
@@ -35,13 +35,18 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
     }
 
     const body = await request.json().catch(() => ({}));
-    const { rawScores, score } = body as Record<string, unknown>;
+    const { rawScores } = body as Record<string, unknown>;
+    const tpl = await prisma.psyDiagnosticTemplate.findUnique({
+      where: { id: campaign.templateId },
+      select: { scaleConfig: true, schema: true },
+    });
+    const { score: computed, invalid } = computeScreeningScore(rawScores, tpl?.scaleConfig ?? null, tpl?.schema ?? null);
+    if (invalid) return errorResponse('VALIDATION_ERROR', 'Некорректные ответы скрининга');
     const rawScoresData = rawScores == null ? undefined : (rawScores as Prisma.InputJsonValue);
-    const normalizedScore = typeof score === 'number' ? score : null;
     const isRisk =
       campaign.riskThreshold != null &&
-      normalizedScore != null &&
-      normalizedScore >= campaign.riskThreshold;
+      computed != null &&
+      computed >= campaign.riskThreshold;
 
     const existing = await prisma.psyScreeningResult.findUnique({
       where: { campaignId_studentId: { campaignId: id, studentId: st.id } },
@@ -54,12 +59,12 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
         campaignId: id,
         studentId: st.id,
         rawScores: rawScoresData,
-        score: normalizedScore,
+        score: computed,
         isRisk,
       },
       update: {
         rawScores: rawScoresData,
-        score: normalizedScore,
+        score: computed,
         isRisk,
         completedAt: new Date(),
       },
