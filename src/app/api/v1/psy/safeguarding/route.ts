@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { hasPsyCapability } from '@/shared/lib/psy-branch';
 import { COORDINATOR_ROLES, escalateStaleAlerts } from '@/shared/lib/psy-safeguarding';
 
 /**
@@ -12,6 +13,7 @@ import { COORDINATOR_ROLES, escalateStaleAlerts } from '@/shared/lib/psy-safegua
 export async function GET(request: NextRequest) {
   const auth = await withAuth(request, { roles: [...COORDINATOR_ROLES] });
   if (auth.response) return auth.response;
+  const canSeeReason = await hasPsyCapability(auth.session.user.id, 'psy_safeguarding_reason');
 
   try {
     // Ленивый прогон авто-эскалации при каждом открытии контура (на случай,
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
     const result = alerts.map((a) => {
       const c = cases.find((x) => x.id === a.caseId);
       return {
-        id: a.id, status: a.status, createdAt: a.createdAt, reason: a.reason,
+        id: a.id, status: a.status, createdAt: a.createdAt, reason: canSeeReason ? a.reason : null,
         studentInitials: c && c.studentId ? initials(c.studentId) : '—',
         riskLevel: c?.riskLevel ?? 'red',
         escalatedAt: a.escalatedAt, remindCount: a.remindCount,

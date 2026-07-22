@@ -5,6 +5,9 @@ import { withAuth } from '@/shared/lib/api-auth';
 import { getPsyScope, caseWhereForScope, canSeeFio, subjectDisplay, CASE_OWNER_ROLES, PSY_CABINET_ROLES } from '@/shared/lib/psy-scope';
 import { emitSafeguardingAlert } from '@/shared/lib/psy-safeguarding';
 import { emitEvent } from '@/shared/lib/agent/engine';
+import { canAccessStudent } from '@/shared/lib/student-access';
+import { getBranchScope } from '@/shared/lib/branch-scope';
+import { branchAllowed, hasPsyCrossBranch, subjectBranchIds } from '@/shared/lib/psy-branch';
 
 /** GET /api/v1/psy/cases?studentId=&status=&riskLevel= — список кейсов под RLS. */
 export async function GET(request: NextRequest) {
@@ -87,6 +90,17 @@ export async function POST(request: NextRequest) {
     if (!studentId) return errorResponse('VALIDATION_ERROR', 'Нужен ученик');
   } else if (!subjectId || !subjectName?.trim()) {
     return errorResponse('VALIDATION_ERROR', 'Нужно выбрать субъект кейса');
+  }
+  const cross = await hasPsyCrossBranch(auth.session.user.id);
+  if (!cross) {
+    if (subjectType === 'student') {
+      const ok = await canAccessStudent(auth.session.user.role, auth.session.user.id, studentId!, auth.session.user.branchId);
+      if (!ok) return errorResponse('FORBIDDEN', 'Нет доступа к ученику', 403);
+    } else if (subjectType === 'parent' || subjectType === 'teacher') {
+      const branchScope = await getBranchScope(auth.session.user.id, auth.session.user.role, auth.session.user.branchId);
+      const bIds = await subjectBranchIds(subjectType, subjectId!);
+      if (!branchAllowed(branchScope, bIds, false)) return errorResponse('FORBIDDEN', 'Нет доступа к субъекту', 403);
+    }
   }
   const risk = (['green', 'yellow', 'red'].includes(riskLevel) ? riskLevel : 'green') as 'green' | 'yellow' | 'red';
   // Патч безопасности: красный риск требует текстового обоснования.

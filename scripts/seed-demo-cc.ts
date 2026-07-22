@@ -1,5 +1,7 @@
 import { PrismaClient, type CcAdmissionStatus, type CcApplicationType, type CcConflictStatus, type CcDocStatus, type CcDocType, type CcExamType, type Prisma } from '@prisma/client'
 import { hash } from 'bcryptjs'
+import { isDemoSeedEnabled } from './seed-mode.mjs'
+import { resolveDemoPassword } from './seed-demo-password.mjs'
 
 const prisma = new PrismaClient()
 
@@ -7,7 +9,6 @@ const DAY = 864e5
 const DEMO_MARKER = '[demo-cc]'
 const COUNSELOR_LOGIN = 'counselor'
 const COUNSELOR_EMAIL = 'counselor@erudit.kg'
-const DEMO_PASSWORD = 'erudit2025'
 const DEMO_UNIVERSITIES = ['University of Toronto', 'New York University', 'University of Manchester']
 
 type DemoStudent = Prisma.StudentGetPayload<{
@@ -55,8 +56,8 @@ async function getTargetBranchId(): Promise<string | null> {
   return branch?.id ?? null
 }
 
-async function ensureCounselor(targetBranchId: string | null) {
-  const password = await hash(DEMO_PASSWORD, 10)
+async function ensureCounselor(targetBranchId: string | null, plainPassword: string) {
+  const password = await hash(plainPassword, 10)
   const existing = await prisma.user.findUnique({ where: { login: COUNSELOR_LOGIN } })
   if (existing) {
     return prisma.user.update({
@@ -282,8 +283,15 @@ function buildDefs(students: DemoStudent[]): ProfileDef[] {
 }
 
 async function main() {
+  // Гейт №1: только при точном SEED_DEMO=1 (defense-in-depth; predeploy и так зовёт лишь тогда).
+  if (!isDemoSeedEnabled(process.env)) {
+    console.log('  = seed-demo-cc: SEED_DEMO!=1 — демо-каунселор не создаётся/не трогается, пропускаем')
+    return
+  }
+  // Гейт №2 (fail-closed): пароль только из ENV, без fallback. Резолвим ДО любых операций с БД.
+  const demoPassword = resolveDemoPassword()
   const targetBranchId = await getTargetBranchId()
-  const counselor = await ensureCounselor(targetBranchId)
+  const counselor = await ensureCounselor(targetBranchId, demoPassword)
   const students = await pickStudents(counselor.id, targetBranchId)
   if (students.length < 2) {
     console.warn(`[seed-demo-cc] skipped: need at least 2 students without CC profiles, got ${students.length}`)
@@ -360,7 +368,7 @@ async function main() {
     count++
   }
 
-  console.log(`[seed-demo-cc] ok (${count} profiles, counselor: ${COUNSELOR_LOGIN}/${DEMO_PASSWORD})`)
+  console.log(`[seed-demo-cc] ok (${count} profiles, counselor login: ${COUNSELOR_LOGIN})`)
 }
 
 main()
