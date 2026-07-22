@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx tsc --noEmit
+      - name: Unit tests (seed gating + demo-counselor fail-closed)
+        run: npm run test:unit
       - name: ESLint (non-blocking while src lint debt is tracked separately)
         run: npm run lint
         continue-on-error: true
@@ -62,9 +64,15 @@ jobs:
       - run: npx prisma generate
       - run: npx prisma db push --skip-generate
       - name: Seeds (order matters — demo requires main seed first)
+        # Demo users now live in seed-demo-users.ts and run ONLY under SEED_DEMO=1 with an
+        # explicit password env. CI is a demo/test env → enable them so e2e logins keep working.
+        env:
+          SEED_DEMO: '1'
+          SEED_DEMO_PASSWORD: erudit2025
         run: |
           npx tsx prisma/seed.ts
           npx tsx scripts/seed-roles.ts
+          npx tsx scripts/seed-demo-users.ts
           npx tsx scripts/seed-demo.ts
       - run: npm run build
       - name: Start app

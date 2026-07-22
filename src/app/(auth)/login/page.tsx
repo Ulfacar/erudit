@@ -28,7 +28,12 @@ import {
 import OrganismHero from './OrganismHero';
 import { CLUSTERS, getRoleLabel } from '@/shared/constants/role-clusters';
 
-const DEMO_PASSWORD = 'erudit2025';
+// Демо-вход (pre-fill + чипы ролей) только на публичном демо-развёртывании: строго
+// NEXT_PUBLIC_DEMO_LOGIN_ENABLED === '1'. По умолчанию/при любом ином значении демо скрыт,
+// а демо-пароль берётся из NEXT_PUBLIC_DEMO_LOGIN_PASSWORD — в проде школы переменная не
+// задана, поэтому статический пароль вообще не попадает в клиентский bundle.
+const DEMO_LOGIN_ENABLED = process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED === '1';
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_LOGIN_PASSWORD ?? '';
 const WARM_TEXT = '#2b2118';
 const WARM_BORDER = '#eadfce';
 const WARM_ACCENT = '#e8590c';
@@ -104,7 +109,10 @@ export default function LoginPage() {
   );
 
   const form = useForm({
-    initialValues: { login: 'admin', password: DEMO_PASSWORD },
+    initialValues: {
+      login: DEMO_LOGIN_ENABLED ? 'admin' : '',
+      password: DEMO_LOGIN_ENABLED ? DEMO_PASSWORD : '',
+    },
     validate: {
       login: (v) => (v.length < 1 ? 'Введите логин' : null),
       password: (v) => (v.length < 1 ? 'Введите пароль' : null),
@@ -268,9 +276,13 @@ export default function LoginPage() {
             Войдите в свой кабинет
           </Text>
           <Text size="md" mt={14} style={{ lineHeight: 1.55, maxWidth: 440, color: '#6b5f52' }}>
-            Выберите роль, чтобы подставить демо-логин, или введите свои данные вручную.
+            {DEMO_LOGIN_ENABLED
+              ? 'Выберите роль, чтобы подставить демо-логин, или введите свои данные вручную.'
+              : 'Введите логин и пароль вашего кабинета.'}
           </Text>
 
+          {DEMO_LOGIN_ENABLED && (
+            <>
           <SimpleGrid cols={{ base: 2, xs: 3, sm: 5 }} spacing={10} mt={30} style={{ maxWidth: 520 }}>
             {ROLE_TABS.map((tab) => {
               const active = activeRole === tab.id;
@@ -319,6 +331,8 @@ export default function LoginPage() {
           <Box hiddenFrom="md">
             <Collapse in={staffOpen}>{staffGroups}</Collapse>
           </Box>
+            </>
+          )}
 
           <form onSubmit={handleSubmit}>
             <Stack gap={14} mt={24} maw={430}>

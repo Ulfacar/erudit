@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "prisma generate && next build",
     "start": "node scripts/predeploy.mjs && next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:unit": "node --test \"scripts/__tests__/**/*.test.mjs\""
   },
   "dependencies": {
     "@mantine/core": "^7.17.8",
