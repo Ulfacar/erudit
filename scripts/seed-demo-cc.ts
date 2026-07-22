@@ -1,6 +1,7 @@
 import { PrismaClient, type CcAdmissionStatus, type CcApplicationType, type CcConflictStatus, type CcDocStatus, type CcDocType, type CcExamType, type Prisma } from '@prisma/client'
 import { hash } from 'bcryptjs'
-import { resolveDemoCounselorPassword } from './seed-demo-password.mjs'
+import { isDemoSeedEnabled } from './seed-mode.mjs'
+import { resolveDemoPassword } from './seed-demo-password.mjs'
 
 const prisma = new PrismaClient()
 
@@ -282,8 +283,13 @@ function buildDefs(students: DemoStudent[]): ProfileDef[] {
 }
 
 async function main() {
-  // Fail-closed ДО любых операций с БД: без ENV-пароля демо-каунселора не создаём и не трогаем.
-  const demoPassword = resolveDemoCounselorPassword()
+  // Гейт №1: только при точном SEED_DEMO=1 (defense-in-depth; predeploy и так зовёт лишь тогда).
+  if (!isDemoSeedEnabled(process.env)) {
+    console.log('  = seed-demo-cc: SEED_DEMO!=1 — демо-каунселор не создаётся/не трогается, пропускаем')
+    return
+  }
+  // Гейт №2 (fail-closed): пароль только из ENV, без fallback. Резолвим ДО любых операций с БД.
+  const demoPassword = resolveDemoPassword()
   const targetBranchId = await getTargetBranchId()
   const counselor = await ensureCounselor(targetBranchId, demoPassword)
   const students = await pickStudents(counselor.id, targetBranchId)

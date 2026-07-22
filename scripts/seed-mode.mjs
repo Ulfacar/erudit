@@ -13,7 +13,9 @@ export const BASE_SEEDS = [
 ]
 
 // Демо-сиды — наполняют стенд демо-данными и демо-аккаунтами. Не для прод-школы.
+// seed-demo-users идёт первым: остальные демо-сиды рассчитывают на демо-аккаунты ролей.
 export const DEMO_SEEDS = [
+  'scripts/seed-demo-users.ts',
   'scripts/seed-demo-intake.ts',
   'scripts/seed-demo-media.ts',
   'scripts/seed-demo-cc.ts',
