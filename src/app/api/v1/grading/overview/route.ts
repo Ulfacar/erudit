@@ -2,16 +2,32 @@ import { type NextRequest } from 'next/server';
 import { prisma } from '@/shared/lib/prisma';
 import { successResponse, errorResponse } from '@/shared/lib/api-response';
 import { withAuth } from '@/shared/lib/api-auth';
+import { getBranchScope, branchWhere, branchWhereVia } from '@/shared/lib/branch-scope';
 
 export async function GET(request: NextRequest) {
   try {
+    // Общешкольная сводка по успеваемости всех классов — управленческий отчёт.
+    // teacher/curator убраны: рядовому педагогу он давал успеваемость всех классов
+    // школы. Потребитель в UI — страница /grading (роли super_admin/analyst/zavuch).
     const auth = await withAuth(request, {
-      roles: ['super_admin', 'analyst', 'zavuch', 'teacher', 'curator'],
+      roles: ['super_admin', 'analyst', 'zavuch'],
     });
     if (auth.response) return auth.response;
 
+    // Сводка ограничена филиалом сотрудника (fail-closed, если филиала нет).
+    const bscope = await getBranchScope(
+      auth.session.user.id,
+      auth.session.user.role,
+      auth.session.user.branchId,
+    );
+    if (bscope.closed) {
+      return errorResponse('FORBIDDEN', 'Филиал не определён', 403);
+    }
+    const classWhere = branchWhere(bscope);
+
     // Get all classes with curator and student count
     const classes = await prisma.class.findMany({
+      where: classWhere,
       include: {
         level: true,
         curator: {
@@ -38,6 +54,7 @@ export async function GET(request: NextRequest) {
     // Get grade counts grouped by class (via student -> class)
     // We'll fetch all grades and aggregate in JS for simplicity
     const allGrades = await prisma.grade.findMany({
+      where: { ...branchWhereVia(bscope, 'student') },
       select: {
         value: true,
         periodId: true,
@@ -82,6 +99,7 @@ export async function GET(request: NextRequest) {
     const todayAttendance = await prisma.attendance.findMany({
       where: {
         date: { gte: today, lt: tomorrow },
+        ...branchWhereVia(bscope, 'student'),
       },
       select: {
         studentId: true,

@@ -7,10 +7,16 @@ import { withAuth } from '@/shared/lib/api-auth';
  * GET all schedule entries for days 1-6 (Mon-Sat).
  * Used by the substitutions page weekly grid.
  * No filters — returns everything so the grid can show all classes.
+ *
+ * Роли = STAFF_TIER страницы /substitutions (единственного потребителя). Без этого
+ * ученик/родитель вытягивали общешкольную сетку со всеми классами и педагогами,
+ * хотя обычный GET /api/v1/schedule жёстко сужен до своего класса.
  */
 export async function GET(request: NextRequest) {
   try {
-    const auth = await withAuth(request);
+    const auth = await withAuth(request, {
+      roles: ['super_admin', 'analyst', 'zavuch', 'secretary', 'teacher', 'curator'],
+    });
     if (auth.response) return auth.response;
 
     const entries = await prisma.scheduleEntry.findMany({

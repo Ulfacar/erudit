@@ -3,6 +3,7 @@ import { prisma } from '@/shared/lib/prisma'
 import { successResponse, errorResponse } from '@/shared/lib/api-response'
 import { withAuth } from '@/shared/lib/api-auth'
 import { roleMatches } from '@/shared/lib/role-access'
+import { getTeacherScope } from '@/shared/lib/teacher-scope'
 
 export async function GET(
   request: NextRequest,
@@ -103,6 +104,23 @@ export async function PUT(
     const isPrivileged = roleMatches(['zavuch', 'super_admin', 'analyst'], userRole)
 
     if (!isPrivileged) {
+      // Раньше здесь проверялось ТОЛЬКО окно 24ч — любой учитель мог править свежую
+      // оценку любого коллеги в любом классе (и сразу выставить status: 'published',
+      // минуя модерацию). Правим только свою оценку и только в своём классе.
+      const scope = await getTeacherScope(auth.session.user.id)
+      const student = await prisma.student.findUnique({
+        where: { id: existingGrade.studentId },
+        select: { classId: true },
+      })
+      if (
+        !scope ||
+        !student ||
+        !scope.classIds.includes(student.classId) ||
+        existingGrade.teacherId !== scope.teacherId
+      ) {
+        return errorResponse('FORBIDDEN', 'Нет доступа к этой оценке', 403)
+      }
+
       const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000
       const gradeAge = Date.now() - new Date(existingGrade.createdAt).getTime()
       if (gradeAge > TWENTY_FOUR_HOURS) {
