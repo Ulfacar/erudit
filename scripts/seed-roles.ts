@@ -1,39 +1,12 @@
-import { PrismaClient, type Role } from '@prisma/client'
-import { hash } from 'bcryptjs'
+import { PrismaClient } from '@prisma/client'
 
-// Идемпотентный сид демо-аккаунтов для новых ролей (ивент-менеджер + завучи).
-// Пароль erudit2025. Логины совпадают с чипами на странице логина.
+// Base seed: ТОЛЬКО справочные данные (схемы наград), безопасные для реальной школы.
+// НЕ создаёт и НЕ трогает пользователей — демо-аккаунты ролей вынесены в
+// scripts/seed-demo-users.ts (запускается только при SEED_DEMO=1). Так обычный
+// production-рестарт не создаёт демо-юзеров, не активирует и не меняет пароли/роли/филиал.
 const prisma = new PrismaClient()
 
 async function main() {
-  const pw = await hash('erudit2025', 10)
-  const defs: Array<{ login: string; role: Role; email: string; star?: number }> = [
-    { login: 'event1', role: 'event_manager', email: 'event@erudit.kg', star: 4 },
-    { login: 'sport1', role: 'sport_coordinator', email: 'sport@erudit.kg', star: 4 },
-    { login: 'zavuch_primary1', role: 'zavuch_primary', email: 'zavuch.primary@erudit.kg', star: 4 },
-    { login: 'zavuch_senior1', role: 'zavuch_senior', email: 'zavuch.senior@erudit.kg', star: 4 },
-    { login: 'zavuch_academic1', role: 'zavuch_academic', email: 'zavuch.academic@erudit.kg', star: 4 },
-    { login: 'cambridge1', role: 'cambridge_coord', email: 'cambridge@erudit.kg', star: 4 },
-    { login: 'founder1', role: 'founder', email: 'founder@erudit.kg', star: 4 },
-    { login: 'media1', role: 'media', email: 'media@erudit.kg', star: 4 },
-    { login: 'chief_accountant1', role: 'chief_accountant', email: 'chief.accountant@erudit.kg', star: 4 },
-    { login: 'finance_manager1', role: 'finance_manager', email: 'finance.manager@erudit.kg', star: 4 },
-    { login: 'psychologist1', role: 'psychologist', email: 'psychologist@erudit.kg', star: 4 },
-    { login: 'senior_psy', role: 'senior_psychologist', email: 'senior.psy@erudit.kg', star: 4 },
-    { login: 'psy_coord', role: 'psy_coordinator', email: 'psy.coord@erudit.kg', star: 4 },
-    { login: 'olympcoach1', role: 'olympiad_coach', email: 'olympcoach@erudit.kg', star: 4 },
-    { login: 'club1', role: 'club_coach', email: 'club@erudit.kg', star: 4 },
-    { login: 'uniform1', role: 'uniform_manager', email: 'uniform@erudit.kg', star: 4 },
-  ]
-  const branch = await prisma.branch.findFirst({ orderBy: { createdAt: 'asc' } })
-  for (const u of defs) {
-    const extraBranch = branch ? { branchId: branch.id } : {}
-    await prisma.user.upsert({
-      where: { login: u.login },
-      update: { role: u.role, isActive: true, ...extraBranch },
-      create: { login: u.login, email: u.email, password: pw, role: u.role, starLevel: u.star ?? 1, isActive: true, ...extraBranch },
-    })
-  }
 
   const awardSchemes = [
     {
@@ -71,7 +44,7 @@ async function main() {
     })
   }
 
-  console.log(`[seed-roles] ok (${defs.length} ролей, ${awardSchemes.length} схем наград)`)
+  console.log(`[seed-roles] ok (${awardSchemes.length} схем наград; демо-пользователи в seed-demo-users при SEED_DEMO=1)`)
 }
 
 main().catch((e) => { console.error('[seed-roles]', e) }).finally(() => prisma.$disconnect())
