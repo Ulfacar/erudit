@@ -9,6 +9,7 @@
 //  - детерминированная (ошибка схемы/констрейнт/data-loss) → НЕ ретраим, логируем громко и
 //    СТАРТУЕМ апп на текущей схеме (прод остаётся жив, чиним схему форвардом — не crashloop).
 import { execSync } from 'node:child_process';
+import { resolveSeeds } from './seed-mode.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const run = (cmd) => { console.log(`[predeploy] $ ${cmd}`); execSync(cmd, { stdio: 'inherit' }); };
@@ -46,16 +47,9 @@ for (let i = 0; i < delays.length; i++) {
 }
 
 // Сиды — идемпотентные, НЕ фатальные.
-const baseSeeds = [
-  'scripts/backfill-branches.ts',
-  'scripts/seed-psy-templates.ts',
-  'scripts/backfill-debtor-contracts.ts',
-  'scripts/backfill-psy-codes.ts',
-  'scripts/seed-roles.ts',
-];
-const demoSeeds = ['scripts/seed-demo-intake.ts', 'scripts/seed-demo-media.ts', 'scripts/seed-demo-cc.ts'];
-// Сиды с демо-данными не льем в реальную школу при SEED_DEMO=0.
-const seeds = process.env.SEED_DEMO !== '0' ? [...baseSeeds, ...demoSeeds] : baseSeeds;
+// Демо-сиды запускаются ТОЛЬКО при точном SEED_DEMO=1 (см. scripts/seed-mode.mjs).
+// Отсутствие переменной / SEED_DEMO=0 / любое иное значение → только base seeds.
+const seeds = resolveSeeds(process.env);
 
 for (const seed of seeds) {
   try { run(`npx tsx ${seed}`); }

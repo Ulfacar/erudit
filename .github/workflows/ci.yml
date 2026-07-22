@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx tsc --noEmit
+      - name: Unit tests (seed gating + demo-counselor fail-closed)
+        run: npm run test:unit
       - name: ESLint (non-blocking while src lint debt is tracked separately)
         run: npm run lint
         continue-on-error: true
