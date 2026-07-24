@@ -17,9 +17,14 @@ COPY src ./src
 COPY public ./public
 COPY prisma ./prisma
 COPY scripts ./scripts
-COPY package.json package-lock.json next.config.ts tsconfig.json next-env.d.ts postcss.config.mjs eslint.config.mjs prisma.config.ts ./
+# next-env.d.ts НЕ копируем — он gitignored и отсутствует в чистом чекауте (клон сервера);
+# `next build` генерирует его сам. Копирование ломало on-prem сборку на свежем клоне.
+COPY package.json package-lock.json next.config.ts tsconfig.json postcss.config.mjs eslint.config.mjs prisma.config.ts ./
 RUN npm run build
-RUN node -e "const fs=require('fs'); const pkgs=['prisma','tsx','bcryptjs']; const deps=Object.fromEntries(pkgs.map((p)=>[p, require('/app/node_modules/'+p+'/package.json').version])); fs.mkdirSync('/tools',{recursive:true}); fs.writeFileSync('/tools/package.json', JSON.stringify({private:true,dependencies:deps}, null, 2));" \
+# pg нужен runtime: scripts/predeploy.mjs делает `import pg` (safe-by-default guard перед
+# migrate deploy). В standalone-трейс он не попадает → без этого on-prem контейнер падает
+# ERR_MODULE_NOT_FOUND. tsx/prisma — для миграций и сидов, bcryptjs — для сидов.
+RUN node -e "const fs=require('fs'); const pkgs=['prisma','tsx','bcryptjs','pg']; const deps=Object.fromEntries(pkgs.map((p)=>[p, require('/app/node_modules/'+p+'/package.json').version])); fs.mkdirSync('/tools',{recursive:true}); fs.writeFileSync('/tools/package.json', JSON.stringify({private:true,dependencies:deps}, null, 2));" \
   && cd /tools \
   && npm install --omit=dev
 
