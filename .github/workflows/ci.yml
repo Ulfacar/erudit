@@ -63,7 +63,15 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx prisma generate
-      - run: npx prisma db push --skip-generate
+      # Regression-guard: схема НЕ должна уходить вперёд миграций (класс «db push дрейф»).
+      # Если schema.prisma изменили без миграции — migrate diff --exit-code вернёт 2 → CI красный.
+      - name: Guard — no un-migrated schema drift
+        run: |
+          node -e "const {Client}=require('pg');(async()=>{const c=new Client({connectionString:'postgresql://postgres:postgres@localhost:5432/postgres'});await c.connect();await c.query('DROP DATABASE IF EXISTS shadow');await c.query('CREATE DATABASE shadow');await c.end()})()"
+          npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url postgresql://postgres:postgres@localhost:5432/shadow --exit-code
+      # Версионированные миграции вместо db push: свежая CI-БД получает схему через migrate deploy
+      # (тот же путь, что и прод/Intellect-инстанс). Доказывает, что миграции применяются чисто.
+      - run: npx prisma migrate deploy
       - name: Seeds (order matters — demo requires main seed first)
         # Demo users now live in seed-demo-users.ts and run ONLY under SEED_DEMO=1 with an
         # explicit password env. CI is a demo/test env → enable them so e2e logins keep working.
