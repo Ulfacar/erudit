@@ -76,8 +76,16 @@
 - ✅ Catch-up без деструктива данных (нет DROP TABLE/COLUMN/DELETE/TRUNCATE).
 - CI (pending push): drift-guard (`migrate diff --exit-code`) + `migrate deploy` на свежей БД + seeds + e2e RBAC.
 
+## Независимый Opus-review (свежий субагент)
+Вердикт 1: **REQUEST CHANGES** — 0 BLOCKER, 2 MAJOR:
+- MAJOR-1: переход не safe-by-default (деплой до baseline → failed-миграция → P3009 залипает).
+- MAJOR-2: корректность baseline против живого bilimos не доказана (resolve мог «зафиксировать ложь»).
+Оба закрыты:
+- MAJOR-1 → `predeploy.mjs`: guard `dbState()` (прямой pg-запрос) — состояние `unbaselined` (есть схема, нет истории миграций) → SKIP migrate deploy + warn, без P3009. Проверено на 4 состояниях (fresh/tracked/tracked/unbaselined ✓).
+- MAJOR-2 → runbook: обязательный гейт `migrate diff --from-url <копия> --exit-code == 0` ДО `resolve --applied` + что делать при дифф≠0.
+
 ## Текущее состояние выполнения
-Код + catch-up + runbook готовы, локальные инварианты доказаны. Далее: commit → push → CI → независимый Opus-review → отчёт. Merge/deploy — по слову Алана.
+Первый CI зелёный (check + e2e на свежей БД). MAJOR-фиксы внесены и проверены локально. Далее: commit фиксов → повторный CI → отчёт. Merge/deploy — по слову Алана.
 
 ## Решение, необходимое от Алана
 Пока нет (техническое). Появится только на этапе deploy (разрешение + rehearsal на копии прод-БД).

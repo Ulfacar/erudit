@@ -28,20 +28,37 @@
 **Сначала rehearsal на КОПИИ, не на живой БД.**
 
 1. **Копия:** Neon branch (секунды) ИЛИ `pg_dump` prod → restore в scratch-БД.
-2. На копии выставить `DATABASE_URL` = копия и пометить все миграции applied:
+2. **ОБЯЗАТЕЛЬНЫЙ ГЕЙТ корректности baseline (review MAJOR-2): доказать, что схема живой БД
+   РАВНА `schema.prisma` ДО того как метить миграции applied.** На копии:
+   ```bash
+   npx prisma migrate diff \
+     --from-url "$DATABASE_URL_COPY" \
+     --to-schema-datamodel prisma/schema.prisma --exit-code   # ДОЛЖНО быть exit 0
+   ```
+   - **exit 0** → схема копии == `schema.prisma`, baseline корректен, идём к шагу 3.
+   - **exit 2 (есть дифф)** → живой bilimos РАСХОДИТСЯ со `schema.prisma` (накопленный db-push
+     дрейф / ручной хотфикс). **НЕ бейзлайнить вслепую** — иначе `resolve --applied` зафиксирует
+     ложь и следующая настоящая миграция упадёт на проде. Сначала примирить: изучить дифф,
+     привести схему (аккуратный `db push`/новая миграция с review), повторить гейт до exit 0.
+3. Пометить все миграции applied (только когда шаг 2 = exit 0):
    ```bash
    for m in $(ls prisma/migrations | grep -v migration_lock); do
      npx prisma migrate resolve --applied "$m"
    done
    ```
    `resolve --applied` пишет ТОЛЬКО строку в `_prisma_migrations`, данные/схему не трогает.
-3. Проверка на копии:
+4. Проверка на копии:
    - `npx prisma migrate status` → «Database schema is up to date».
-   - `npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code` → exit 0 (дрейфа нет).
    - `npx prisma migrate deploy` → «No pending migrations».
-4. Если копия чистая — **повторить шаги 2-3 на реальной bilimos-БД** (сама операция resolve
-   безопасна, но уже отрепетирована).
-5. Только теперь деплоить код этого PR на bilimos — `migrate deploy` увидит всё applied → чисто.
+5. Если копия чистая — **повторить шаги 2-4 на реальной bilimos-БД** (resolve безопасен, но уже
+   отрепетирован; гейт шага 2 повторить и на живой БД).
+6. Только теперь деплоить код этого PR на bilimos — `migrate deploy` увидит всё applied → чисто.
+
+> **Safe-by-default в коде (review MAJOR-1):** если этот PR всё же доедет до bilimos ДО baseline,
+> `predeploy.mjs` детектит состояние «схема есть, истории миграций нет» (прямой запрос:
+> есть `"User"`, но `_prisma_migrations` пуст) и **пропускает `migrate deploy` с громким warn** —
+> НЕ создаёт failed-миграцию и не залипает в P3009. Апп стартует на текущей схеме. Baseline всё
+> равно обязателен, но порядок «деплой раньше baseline» больше не отравляет БД.
 
 ## Порядок для нового инстанса Intellect
 
