@@ -104,3 +104,44 @@ jobs:
             playwright-report
             e2e/.report
           retention-days: 7
+
+  onprem-image:
+    name: on-prem docker image builds & boots
+    runs-on: ubuntu-latest
+    # Regression-guard класса «on-prem образ ломается на чистом чекауте»:
+    # (1) сборка ловит COPY несуществующих/gitignored файлов; (2) прогон ловит рантайм-дыры
+    # (нехватка deps в standalone-runner, миграции не применяются). Оба уже случались.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bilimos
+          POSTGRES_PASSWORD: onprempass
+          POSTGRES_DB: bilimos
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U bilimos"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build on-prem image (clean checkout)
+        run: docker build -t bilimos-app:ci .
+      - name: Boot container (migrate deploy on fresh DB + health)
+        run: |
+          docker run -d --name app --network host \
+            -e DATABASE_URL="postgresql://bilimos:onprempass@localhost:5432/bilimos?schema=public" \
+            -e NEXTAUTH_SECRET="ci-onprem-secret-not-real-1234567890" \
+            -e NEXTAUTH_URL="http://localhost:3000" -e SEED_DEMO=0 \
+            bilimos-app:ci
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health || true)
+            [ "$code" = "200" ] && { echo "health 200"; break; }
+            echo "waiting ($i) health=$code"; sleep 3
+          done
+          curl -s http://localhost:3000/api/health | grep -q '"database":"connected"' || { echo "health not connected"; docker logs app | tail -40; exit 1; }
+      - name: Assert migrations applied via migrate deploy (not db push)
+        run: |
+          docker logs app 2>&1 | grep -q "migrate deploy" || { echo "predeploy did not run migrate deploy"; docker logs app | tail -40; exit 1; }
+          applied=$(docker exec app node -e "const{Client}=require('pg');(async()=>{const c=new Client({connectionString:process.env.DATABASE_URL});await c.connect();const r=await c.query('SELECT count(*)::int n FROM _prisma_migrations WHERE finished_at IS NOT NULL');console.log(r.rows[0].n);await c.end()})()" )
+          echo "applied migrations: $applied"
+          [ "$applied" -ge 27 ] || { echo "expected >=27 applied migrations, got $applied"; exit 1; }
