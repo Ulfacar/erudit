@@ -1,13 +1,20 @@
 // Запускается на СТАРТЕ контейнера (npm start), не в build — чтобы билд был детерминированным
-// и не зависел от состояния Neon. db push с exponential backoff: Neon просыпается за 1-5с.
+// и не зависел от состояния Neon. `prisma migrate deploy` с exponential backoff: Neon просыпается за 1-5с.
 // Сиды идемпотентные и НЕ фатальные — перебой/отсутствие tsx не валит старт.
 //
-// ВАЖНО (урок 2026-06-18): раньше любая ошибка db push считалась «cold-start» → 5 ретраев →
-// exit 1 → Docker рестартит контейнер → бесконечный crashloop, прод 502. Теперь различаем:
+// ВАЖНО: схему применяем ВЕРСИОНИРОВАННЫМИ миграциями (`migrate deploy`), а НЕ `db push`.
+// db push подгонял схему «как получится» без истории и мог тихо потерять/переписать данные —
+// на реальных данных школы это недопустимо. migrate deploy применяет только накопленные,
+// отревьюенные миграции по порядку.
+//
+// Классификация ошибок (урок 2026-06-18: любая ошибка → crashloop, прод 502):
 //  - transient (Neon спит: P1001/таймаут/нет сети) → ретраим с backoff, при стойком провале
 //    exit 1 (Docker перезапустит — Neon рано или поздно проснётся, это не вечный краш);
-//  - детерминированная (ошибка схемы/констрейнт/data-loss) → НЕ ретраим, логируем громко и
-//    СТАРТУЕМ апп на текущей схеме (прод остаётся жив, чиним схему форвардом — не crashloop).
+//  - детерминированная (конфликт миграции / БД не забейзлайнена / data-loss guard) → НЕ ретраим,
+//    логируем громко и СТАРТУЕМ апп на ТЕКУЩЕЙ схеме (прод жив, чиним форвардом — не crashloop).
+//    Это же делает переход безопасным: существующая прод-БД, синхронизированная db push и ещё не
+//    забейзлайненная (`migrate resolve --applied`), даст детерминированную ошибку — апп стартует
+//    на текущей (корректной) схеме, а не падает в цикл. Порядок бейзлайна — в deploy-runbook.
 import { execSync } from 'node:child_process';
 import { resolveSeeds } from './seed-mode.mjs';
 
@@ -16,9 +23,9 @@ const run = (cmd) => { console.log(`[predeploy] $ ${cmd}`); execSync(cmd, { stdi
 
 const TRANSIENT = /P1001|reach (the )?database|can't reach|ENETUNREACH|ETIMEDOUT|ECONNREFUSED|timed out|connection.*(closed|reset)/i;
 
-function tryDbPush() {
+function tryMigrateDeploy() {
   try {
-    execSync('npx prisma db push --skip-generate', { stdio: ['inherit', 'inherit', 'pipe'], encoding: 'utf8' });
+    execSync('npx prisma migrate deploy', { stdio: ['inherit', 'inherit', 'pipe'], encoding: 'utf8' });
     return { ok: true };
   } catch (e) {
     const msg = `${e.stderr ?? ''}${e.stdout ?? ''}${e.message ?? ''}`;
@@ -27,15 +34,15 @@ function tryDbPush() {
   }
 }
 
-// Применить схему. Transient → backoff (~30с суммарно); детерминированная → стартуем без неё.
+// Применить миграции. Transient → backoff (~30с суммарно); детерминированная → стартуем без них.
 const delays = [1000, 2000, 4000, 8000, 16000];
 for (let i = 0; i < delays.length; i++) {
-  const r = tryDbPush();
-  if (r.ok) { console.log('[predeploy] ✓ схема применена'); break; }
+  const r = tryMigrateDeploy();
+  if (r.ok) { console.log('[predeploy] ✓ миграции применены'); break; }
 
   if (!r.transient) {
-    console.error('[predeploy] ⚠️ db push: ДЕТЕРМИНИРОВАННАЯ ошибка (схема/констрейнт/data-loss) — НЕ ретраим.');
-    console.error('[predeploy] Стартуем апп на ТЕКУЩЕЙ схеме, чтобы прод не ушёл в crashloop. Чините схему форвардом и передеплойте.');
+    console.error('[predeploy] ⚠️ migrate deploy: ДЕТЕРМИНИРОВАННАЯ ошибка (конфликт миграции / БД не забейзлайнена / data-loss) — НЕ ретраим.');
+    console.error('[predeploy] Стартуем апп на ТЕКУЩЕЙ схеме, чтобы прод не ушёл в crashloop. Забейзлайньте БД (migrate resolve --applied) или чините форвардом и передеплойте.');
     break; // не exit(1) — продолжаем к старту приложения
   }
   if (i === delays.length - 1) {
